@@ -1,0 +1,22 @@
+{
+    "name": "Chao Du Booking",
+    "short_name": "Chao Du",
+    "description": "Sistem booking Chao Du untuk admin, checker, dan operasional acara.",
+    "start_url": "/",
+    "display": "standalone",
+    "background_color": "#f6f1e8",
+    "theme_color": "#8a2d1f",
+    "lang": "id-ID",
+    "icons": [
+        {
+            "src": "/apple-touch-icon.png",
+            "sizes": "180x180",
+            "type": "image/png"
+        },
+        {
+            "src": "/favicon.ico",
+            "sizes": "48x48",
+            "type": "image/x-icon"
+        }
+    ]
+}
