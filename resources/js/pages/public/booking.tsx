@@ -166,6 +166,16 @@ function formatRemainingTime(totalSeconds: number): string {
     return `${minutes}m ${seconds}d`;
 }
 
+function normalizePaymentAmount(value: string | number): string {
+    const numeric = Number(value);
+
+    if (!Number.isFinite(numeric)) {
+        return '';
+    }
+
+    return String(Math.round(numeric));
+}
+
 function labelReferralSource(value: FormState['referral_source']): string {
     return {
         TEMAN: 'Teman',
@@ -681,7 +691,8 @@ export default function PublicBookingPage() {
         useState(false);
     const [generalError, setGeneralError] = useState<string | null>(null);
     const [errors, setErrors] = useState<ErrorBag>({});
-    const [copied, setCopied] = useState(false);
+    const [copiedAccountNumber, setCopiedAccountNumber] = useState(false);
+    const [copiedAmount, setCopiedAmount] = useState(false);
     const [virtualAccount, setVirtualAccount] =
         useState<VirtualAccountReservation | null>(null);
     const [reservationRemainingSeconds, setReservationRemainingSeconds] =
@@ -965,7 +976,8 @@ export default function PublicBookingPage() {
         }
 
         if (form.package_code && form.package_code !== item.code) {
-            setCopied(false);
+            setCopiedAccountNumber(false);
+            setCopiedAmount(false);
             setVirtualAccount(null);
             setReservationRemainingSeconds(null);
         }
@@ -1367,8 +1379,20 @@ export default function PublicBookingPage() {
         }
 
         await navigator.clipboard.writeText(packageAccountNumber);
-        setCopied(true);
-        window.setTimeout(() => setCopied(false), 2000);
+        setCopiedAccountNumber(true);
+        window.setTimeout(() => setCopiedAccountNumber(false), 2000);
+    };
+
+    const copyPaymentAmount = async () => {
+        if (!selectedPackage) {
+            return;
+        }
+
+        await navigator.clipboard.writeText(
+            normalizePaymentAmount(selectedPackage.price),
+        );
+        setCopiedAmount(true);
+        window.setTimeout(() => setCopiedAmount(false), 2000);
     };
 
     /* ── Submit (unchanged) ── */
@@ -2013,6 +2037,27 @@ export default function PublicBookingPage() {
                                                   )
                                                 : 'Pilih paket terlebih dahulu'}
                                         </p>
+                                        <button
+                                            type="button"
+                                            onClick={copyPaymentAmount}
+                                            disabled={!selectedPackage}
+                                            className="mt-3 flex items-center gap-2 rounded-full border-2 border-[#8B1A1A] px-4 py-2 text-sm font-semibold text-[#8B1A1A] transition hover:bg-[#FDF8F0] disabled:opacity-50"
+                                        >
+                                            {copiedAmount
+                                                ? 'Nominal sudah tersalin'
+                                                : 'Salin nominal bayar'}
+                                        </button>
+                                        <div className="mt-4 rounded-xl border border-[#E8D084] bg-[#FFF7D6] px-4 py-4 text-sm leading-7 text-[#5C3D2E]">
+                                            <p className="font-semibold text-[#2C1810]">
+                                                Catatan penting saat transfer
+                                            </p>
+                                            <p className="mt-1">
+                                                Pastikan menuliskan nama paket
+                                                yang diambil saat transfer,
+                                                supaya lebih mudah dicek oleh
+                                                petugas.
+                                            </p>
+                                        </div>
                                         <div className="mt-4 space-y-1 text-sm text-[#5C3D2E]">
                                             <p>
                                                 Bank:{' '}
@@ -2058,7 +2103,7 @@ export default function PublicBookingPage() {
                                             disabled={!packageAccountNumber}
                                             className="mt-4 flex items-center gap-2 rounded-full border-2 border-[#8B1A1A] px-4 py-2 text-sm font-semibold text-[#8B1A1A] transition hover:bg-[#FDF8F0] disabled:opacity-50"
                                         >
-                                            {copied
+                                            {copiedAccountNumber
                                                 ? 'Sudah tersalin'
                                                 : 'Salin nomor VA'}
                                         </button>

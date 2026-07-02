@@ -23,6 +23,7 @@ class BookingSubmissionService
         private readonly SlotAllocator $slotAllocator,
         private readonly PrayerPaperGenerationService $prayerPaperGenerationService,
         private readonly VirtualAccountService $virtualAccountService,
+        private readonly BookingDiscordNotificationService $bookingDiscordNotificationService,
     ) {}
 
     /**
@@ -138,6 +139,7 @@ class BookingSubmissionService
         }
 
         $this->prayerPaperGenerationService->generateForBooking($booking);
+        $this->bookingDiscordNotificationService->notifySubmitted($booking);
 
         return $booking->fresh(['meal', 'payment', 'names', 'prayerPapers']) ?? $booking;
     }

@@ -11,11 +11,14 @@ class BookingApprovalService
     public function __construct(
         private readonly SlotAllocator $slotAllocator,
         private readonly ApprovalIntegrationService $approvalIntegrationService,
+        private readonly BookingDiscordNotificationService $bookingDiscordNotificationService,
     ) {}
 
     public function approve(Booking $booking, int $adminId): Booking
     {
-        DB::transaction(function () use ($booking, $adminId): void {
+        $approvedNow = false;
+
+        DB::transaction(function () use ($booking, $adminId, &$approvedNow): void {
             $booking = Booking::query()
                 ->lockForUpdate()
                 ->findOrFail($booking->id);
@@ -41,10 +44,15 @@ class BookingApprovalService
 
             $this->slotAllocator->assignByBookingId($booking->id);
             $this->approvalIntegrationService->ensureRow($booking);
+            $approvedNow = true;
         });
 
         $booking = $booking->fresh(['tableSlots', 'incenseSlots', 'approvalIntegration']) ?? $booking;
         $this->approvalIntegrationService->runAfterApproval($booking);
+
+        if ($approvedNow) {
+            $this->bookingDiscordNotificationService->notifyAgentApproved($booking);
+        }
 
         return $booking->fresh(['tableSlots', 'incenseSlots', 'approvalIntegration']) ?? $booking;
     }

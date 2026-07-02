@@ -13,6 +13,8 @@ use App\Http\Controllers\Admin\PrayerPaperMarkingController;
 use App\Http\Controllers\Admin\PrayerPaperMarkingImageController;
 use App\Http\Controllers\Admin\PrayerPaperPreviewController;
 use App\Http\Controllers\Admin\PrayerPaperPreviewDownloadController;
+use App\Http\Controllers\Admin\ReportController;
+use App\Http\Controllers\Admin\ReportExportController;
 use App\Http\Controllers\Admin\SettingController;
 use App\Http\Controllers\Admin\TableLayoutController;
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
@@ -74,6 +76,10 @@ Route::middleware('auth')->group(function () {
             ->name('admin.settings.update');
         Route::get('/admin/layout-meja', TableLayoutController::class)
             ->name('admin.table-layout');
+        Route::get('/admin/laporan', ReportController::class)
+            ->name('admin.reports.index');
+        Route::get('/admin/laporan/export/{tab}/{format}', ReportExportController::class)
+            ->name('admin.reports.export');
         Route::get('/admin/kertas-doa/marking', [PrayerPaperMarkingController::class, 'edit'])
             ->name('admin.prayer-paper-marking.edit');
         Route::put('/admin/kertas-doa/marking', [PrayerPaperMarkingController::class, 'update'])

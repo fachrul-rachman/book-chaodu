@@ -4,6 +4,7 @@ import { vi } from 'vitest';
 import PublicBookingPage from '@/pages/public/booking';
 
 const fetchMock = vi.fn();
+const writeTextMock = vi.fn();
 
 vi.mock('@inertiajs/react', () => ({
     Head: () => null,
@@ -96,6 +97,7 @@ vi.mock('@inertiajs/react', () => ({
 
 beforeEach(() => {
     fetchMock.mockReset();
+    writeTextMock.mockReset();
     fetchMock.mockImplementation(async () => {
         return {
             ok: true,
@@ -103,6 +105,11 @@ beforeEach(() => {
         } satisfies Partial<Response> as Response;
     });
     vi.stubGlobal('fetch', fetchMock);
+    vi.stubGlobal('navigator', {
+        clipboard: {
+            writeText: writeTextMock,
+        },
+    });
     vi.stubGlobal(
         'URL',
         Object.assign(globalThis.URL ?? {}, {
@@ -209,6 +216,12 @@ it('shows the package payment number on the payment step', async () => {
         expect(screen.getByText(/Nomor VA:/)).toBeInTheDocument();
     });
     expect(screen.getByText('900001')).toBeInTheDocument();
+    expect(
+        screen.getByRole('button', { name: 'Salin nomor VA' }),
+    ).toBeInTheDocument();
+    expect(
+        screen.getByRole('button', { name: 'Salin nominal bayar' }),
+    ).toBeInTheDocument();
 });
 
 it('fills mandarin name from photo and keeps it editable', async () => {

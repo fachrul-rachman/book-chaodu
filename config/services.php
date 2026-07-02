@@ -38,6 +38,14 @@ return [
         'base_url' => env('TWO_OCR_BASE_URL', 'https://backend.scandocflow.com'),
     ],
 
+    'discord' => [
+        'general_booking_webhook_url' => env('DISCORD_GENERAL_BOOKING_WEBHOOK_URL'),
+        'agent_booking_webhook_url' => env('DISCORD_AGENT_BOOKING_WEBHOOK_URL'),
+        'username' => env('DISCORD_WEBHOOK_USERNAME', env('APP_NAME')),
+        'timeout_seconds' => env('DISCORD_WEBHOOK_TIMEOUT_SECONDS', 5),
+        'retry_times' => env('DISCORD_WEBHOOK_RETRY_TIMES', 1),
+    ],
+
     'slack' => [
         'notifications' => [
             'bot_user_oauth_token' => env('SLACK_BOT_USER_OAUTH_TOKEN'),
