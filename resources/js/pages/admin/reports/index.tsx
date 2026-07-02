@@ -52,6 +52,7 @@ type Props = {
             customer_name: string;
             package_name: string;
             amount: number;
+            virtual_account_number: string | null;
             referral_source: string;
             agent_name: string | null;
         }>;
@@ -570,6 +571,7 @@ export default function AdminReportsPage() {
                                                 'Nama customer',
                                                 'Paket',
                                                 'Nominal',
+                                                'Nomor VA',
                                                 'Sumber',
                                                 'Agent',
                                             ].map((label) => (
@@ -605,6 +607,10 @@ export default function AdminReportsPage() {
                                                 </td>
                                                 <td className="px-3 py-3">
                                                     {formatCurrency(row.amount)}
+                                                </td>
+                                                <td className="px-3 py-3">
+                                                    {row.virtual_account_number ||
+                                                        '-'}
                                                 </td>
                                                 <td className="px-3 py-3">
                                                     {row.referral_source}

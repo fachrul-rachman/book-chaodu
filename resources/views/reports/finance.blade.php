@@ -54,6 +54,7 @@
                 <th>Nama customer</th>
                 <th>Paket</th>
                 <th>Nominal</th>
+                <th>Nomor VA</th>
                 <th>Sumber</th>
                 <th>Agent</th>
             </tr>
@@ -67,6 +68,7 @@
                     <td>{{ $row['customer_name'] }}</td>
                     <td>{{ $row['package_name'] }}</td>
                     <td>Rp {{ number_format((float) $row['amount'], 0, ',', '.') }}</td>
+                    <td>{{ $row['virtual_account_number'] ?: '-' }}</td>
                     <td>{{ $row['referral_source'] }}</td>
                     <td>{{ $row['agent_name'] ?: '-' }}</td>
                 </tr>

@@ -352,6 +352,7 @@ class AdminReportService
             'package_code' => $booking->package_code_snapshot,
             'package_name' => $booking->package_name_snapshot,
             'amount' => (float) ($payment ? $payment->transferred_amount : 0),
+            'virtual_account_number' => $payment?->virtual_account_number,
             'referral_source' => $this->referralSourceLabel($booking->referral_source),
             'agent_name' => $booking->agent_name,
         ];

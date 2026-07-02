@@ -157,7 +157,7 @@ class AdminReportExportService
 
         $row++;
         $sheet->fromArray([
-            ['Nomor booking', 'Tanggal booking', 'Tanggal setuju', 'Nama customer', 'Paket', 'Nominal', 'Sumber', 'Agent'],
+            ['Nomor booking', 'Tanggal booking', 'Tanggal setuju', 'Nama customer', 'Paket', 'Nominal', 'Nomor VA', 'Sumber', 'Agent'],
         ], null, 'A'.$row);
         $row++;
 
@@ -170,6 +170,7 @@ class AdminReportExportService
                     $item['customer_name'],
                     $item['package_name'],
                     $item['amount'],
+                    $item['virtual_account_number'],
                     $item['referral_source'],
                     $item['agent_name'],
                 ],

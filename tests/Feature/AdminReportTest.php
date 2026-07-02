@@ -139,7 +139,8 @@ it('uses stored transferred amount in finance report', function () {
     $props = $response->viewData('page')['props'];
 
     expect($props['finance']['summary']['total_revenue'])->toBe(1234567.0)
-        ->and($props['finance']['rows'][0]['amount'])->toBe(1234567.0);
+        ->and($props['finance']['rows'][0]['amount'])->toBe(1234567.0)
+        ->and($props['finance']['rows'][0]['virtual_account_number'])->toBeNull();
 });
 
 it('groups agent names with basic normalization only', function () {
