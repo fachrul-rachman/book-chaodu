@@ -19,6 +19,11 @@ class PrayerPaperRenderer
     private const LATIN_FONT_PATHS = [
         'C:\Windows\Fonts\arial.ttf',
         'C:\Windows\Fonts\NotoSans-Regular.ttf',
+        '/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf',
+        '/usr/share/fonts/truetype/liberation2/LiberationSans-Regular.ttf',
+        '/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf',
+        '/usr/share/fonts/truetype/noto/NotoSans-Regular.ttf',
+        '/usr/share/fonts/opentype/noto/NotoSans-Regular.ttf',
     ];
 
     /**
@@ -28,6 +33,13 @@ class PrayerPaperRenderer
         'C:\Windows\Fonts\simsun.ttc',
         'C:\Windows\Fonts\msyh.ttc',
         'C:\Windows\Fonts\msjh.ttc',
+        '/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc',
+        '/usr/share/fonts/opentype/noto/NotoSerifCJK-Regular.ttc',
+        '/usr/share/fonts/opentype/noto/NotoSansCJKSC-Regular.otf',
+        '/usr/share/fonts/opentype/noto/NotoSerifCJKSC-Regular.otf',
+        '/usr/share/fonts/truetype/wqy/wqy-zenhei.ttc',
+        '/usr/share/fonts/truetype/arphic/uming.ttc',
+        '/usr/share/fonts/truetype/arphic/ukai.ttc',
     ];
 
     public function __construct(
@@ -313,6 +325,7 @@ class PrayerPaperRenderer
      */
     private function createCanvasFromTemplate(array $template, PrayerPaperType $type)
     {
+        $this->ensureGdIsAvailable();
         $image = null;
 
         if (filled($template['image_data_uri'])) {
@@ -376,15 +389,18 @@ class PrayerPaperRenderer
 
     private function fontPath(bool $cjk): string
     {
-        $candidates = $cjk ? self::CJK_FONT_PATHS : self::LATIN_FONT_PATHS;
+        $candidates = $this->fontCandidates($cjk);
 
         foreach ($candidates as $candidate) {
-            if (is_file($candidate)) {
+            if (is_string($candidate) && $candidate !== '' && is_readable($candidate)) {
                 return $candidate;
             }
         }
 
-        throw new \RuntimeException('File font kertas doa tidak ditemukan.');
+        throw new \RuntimeException(sprintf(
+            'File font kertas doa tidak ditemukan. Cek env %s atau pasang font di server Linux.',
+            $cjk ? 'PRAYER_PAPER_CJK_FONT_PATHS' : 'PRAYER_PAPER_LATIN_FONT_PATHS',
+        ));
     }
 
     /**
@@ -469,5 +485,53 @@ class PrayerPaperRenderer
                 ((((float) $marker['height'] * 1.05) * 1.05) / ($count * 0.78)),
             ),
         );
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    private function fontCandidates(bool $cjk): array
+    {
+        $configured = $this->configuredFontPaths(
+            (string) env($cjk ? 'PRAYER_PAPER_CJK_FONT_PATHS' : 'PRAYER_PAPER_LATIN_FONT_PATHS', ''),
+        );
+        $defaults = $cjk ? self::CJK_FONT_PATHS : self::LATIN_FONT_PATHS;
+
+        return array_values(array_unique([
+            ...$configured,
+            ...$defaults,
+        ]));
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    private function configuredFontPaths(string $value): array
+    {
+        if (trim($value) === '') {
+            return [];
+        }
+
+        return array_values(array_filter(array_map(
+            static fn (string $path): string => trim($path),
+            explode(',', $value),
+        )));
+    }
+
+    private function ensureGdIsAvailable(): void
+    {
+        $requiredFunctions = [
+            'imagecreatetruecolor',
+            'imagecreatefromstring',
+            'imagettftext',
+            'imagettfbbox',
+            'imagepng',
+        ];
+
+        foreach ($requiredFunctions as $function) {
+            if (! function_exists($function)) {
+                throw new \RuntimeException('Fitur gambar PHP GD/Freetype belum aktif di server.');
+            }
+        }
     }
 }
