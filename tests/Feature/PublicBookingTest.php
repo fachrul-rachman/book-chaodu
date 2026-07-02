@@ -6,6 +6,7 @@ use App\Enums\BookingNameCategory;
 use App\Enums\BookingStatus;
 use App\Enums\PackageCode;
 use App\Enums\SlotStatus;
+use App\Models\AppSetting;
 use App\Models\Booking;
 use App\Models\IncenseSlot;
 use App\Models\Package;
@@ -20,7 +21,6 @@ beforeEach(function () {
     config()->set('phase3.private_upload_disk', 'booking-private');
     config()->set('phase3.submit_rate_limit_max_attempts', 6);
     config()->set('phase3.submit_rate_limit_decay_seconds', 60);
-    config()->set('phase3.virtual_account_hold_minutes', 60);
     config()->set('phase4.private_upload_disk', 'booking-private');
     config()->set('phase4.ocr_rate_limit_max_attempts', 6);
     config()->set('phase4.ocr_rate_limit_decay_seconds', 60);
@@ -36,6 +36,7 @@ beforeEach(function () {
 
     $this->seed();
     seedVirtualAccounts();
+    setVirtualAccountMode(VirtualAccountService::MODE_FIXED);
 });
 
 function seedVirtualAccounts(): void
@@ -52,6 +53,13 @@ function seedVirtualAccounts(): void
             ]);
         }
     }
+}
+
+function setVirtualAccountMode(string $mode): void
+{
+    AppSetting::putMany([
+        'virtual_account_mode' => $mode,
+    ]);
 }
 
 function activatePackage(PackageCode $code, string $price = '2000000'): Package
@@ -106,6 +114,10 @@ function bookingPayload(array $overrides = []): array
 
 function reserveVirtualAccountForPayload(array $payload): void
 {
+    if ((AppSetting::getMany(['virtual_account_mode'])['virtual_account_mode'] ?? null) !== VirtualAccountService::MODE_POOL) {
+        return;
+    }
+
     app(VirtualAccountService::class)->reserve(
         PackageCode::from((string) $payload['package_code']),
         (string) $payload['idempotency_key'],
@@ -206,6 +218,25 @@ it('allows zero meal quantities in public booking', function () {
 
     expect($booking->meal?->vegetarian_quantity)->toBe(0)
         ->and($booking->meal?->non_vegetarian_quantity)->toBe(0);
+});
+
+it('rejects meal quantity above package quota', function () {
+    activatePackage(PackageCode::Prayer);
+
+    $payload = bookingPayload([
+        'idempotency_key' => 'meal-over-quota',
+        'vegetarian_quantity' => '111',
+        'non_vegetarian_quantity' => '0',
+    ]);
+
+    $this->post(route('api.public.bookings.store'), $payload, [
+        'Accept' => 'application/json',
+    ])
+        ->assertStatus(422)
+        ->assertJsonValidationErrors([
+            'vegetarian_quantity',
+            'non_vegetarian_quantity',
+        ]);
 });
 
 it('does not create a duplicate booking when the same form is sent twice', function () {
@@ -393,7 +424,44 @@ it('limits repeated submit attempts from the same sender in a short time', funct
         ->assertTooManyRequests();
 });
 
-it('reserves a virtual account for the selected package', function () {
+it('reuses the same payment number for different bookings in the same package', function () {
+    setVirtualAccountMode(VirtualAccountService::MODE_FIXED);
+    activatePackage(PackageCode::Prayer);
+    $firstPayload = bookingPayload([
+        'idempotency_key' => 'same-va-1',
+    ]);
+    $secondPayload = bookingPayload([
+        'idempotency_key' => 'same-va-2',
+        'customer_email' => 'customer2@gmail.com',
+        'customer_phone_local' => '81234567891',
+    ]);
+
+    $this->post(route('api.public.bookings.store'), $firstPayload, [
+        'Accept' => 'application/json',
+    ])->assertCreated();
+
+    TableSlot::query()->where('booking_id', Booking::query()->firstOrFail()->id)->update([
+        'status' => SlotStatus::Available->value,
+        'booking_id' => null,
+    ]);
+
+    $this->post(route('api.public.bookings.store'), $secondPayload, [
+        'Accept' => 'application/json',
+    ])->assertCreated();
+
+    $payments = Booking::query()
+        ->with('payment')
+        ->orderBy('id')
+        ->get()
+        ->pluck('payment.virtual_account_number')
+        ->all();
+
+    expect($payments)->toBe(['900001', '900001']);
+});
+
+it('reserves a virtual account for the selected package in many-number mode', function () {
+    setVirtualAccountMode(VirtualAccountService::MODE_POOL);
+
     $response = $this->postJson(route('api.public.virtual-accounts.reserve'), [
         'idempotency_key' => 'reserve-key-1',
         'package_code' => PackageCode::Prayer->value,
@@ -404,21 +472,9 @@ it('reserves a virtual account for the selected package', function () {
         ->assertJsonPath('package_code', PackageCode::Prayer->value);
 });
 
-it('reuses the same held virtual account while it is still active', function () {
-    $first = $this->postJson(route('api.public.virtual-accounts.reserve'), [
-        'idempotency_key' => 'reserve-key-2',
-        'package_code' => PackageCode::Prayer->value,
-    ]);
-    $second = $this->postJson(route('api.public.virtual-accounts.reserve'), [
-        'idempotency_key' => 'reserve-key-2',
-        'package_code' => PackageCode::Prayer->value,
-    ]);
+it('releases the old virtual account when the package changes in many-number mode', function () {
+    setVirtualAccountMode(VirtualAccountService::MODE_POOL);
 
-    expect($first->json('account_number'))->toBe('900001')
-        ->and($second->json('account_number'))->toBe('900001');
-});
-
-it('releases the old virtual account when the package changes', function () {
     $this->postJson(route('api.public.virtual-accounts.reserve'), [
         'idempotency_key' => 'reserve-key-3',
         'package_code' => PackageCode::Prayer->value,
@@ -431,16 +487,10 @@ it('releases the old virtual account when the package changes', function () {
 
     $response->assertOk()
         ->assertJsonPath('account_number', '920001');
-
-    expect(
-        VirtualAccount::query()
-            ->where('package_code', PackageCode::Prayer)
-            ->where('account_number', '900001')
-            ->value('status'),
-    )->toBe(\App\Enums\VirtualAccountStatus::Available);
 });
 
-it('rejects booking submit when the virtual account has expired', function () {
+it('rejects booking submit when the virtual account has expired in many-number mode', function () {
+    setVirtualAccountMode(VirtualAccountService::MODE_POOL);
     activatePackage(PackageCode::Prayer);
 
     $payload = bookingPayload([

@@ -11,7 +11,6 @@ use App\Models\CheckIn;
 use App\Models\Package;
 use App\Models\User;
 use App\Models\VirtualAccount;
-use App\Services\VirtualAccountService;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\Storage;
@@ -21,7 +20,6 @@ beforeEach(function () {
     config()->set('phase4.private_upload_disk', 'booking-private');
     config()->set('phase5.storage_disk', 'prayer-paper-files');
     config()->set('phase5.enabled', true);
-    config()->set('phase3.virtual_account_hold_minutes', 60);
     Storage::fake('booking-private');
     Storage::fake('prayer-paper-files');
 
@@ -32,9 +30,9 @@ beforeEach(function () {
 function seedCheckerVirtualAccounts(): void
 {
     foreach ([
-        [PackageCode::Prayer, ['900001', '900002', '900003']],
-        [PackageCode::Incense, ['910001', '910002']],
-        [PackageCode::Combo, ['920001', '920002', '920003']],
+        [PackageCode::Prayer, ['900001']],
+        [PackageCode::Incense, ['910001']],
+        [PackageCode::Combo, ['920001']],
     ] as [$packageCode, $numbers]) {
         foreach ($numbers as $number) {
             VirtualAccount::query()->create([
@@ -98,10 +96,6 @@ function createCheckerBooking(BookingStatus $status, array $overrides = []): arr
 {
     $payload = checkerBookingPayload($overrides);
     activateCheckerPackage(PackageCode::from($payload['package_code']));
-    app(VirtualAccountService::class)->reserve(
-        PackageCode::from((string) $payload['package_code']),
-        (string) $payload['idempotency_key'],
-    );
 
     test()->post(route('api.public.bookings.store'), $payload, [
         'Accept' => 'application/json',

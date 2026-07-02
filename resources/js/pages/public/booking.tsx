@@ -51,6 +51,8 @@ type Props = {
     payment: {
         bank_name: string | null;
         bank_account_holder: string | null;
+        virtual_account_mode: 'FIXED' | 'POOL';
+        accounts_by_package: Partial<Record<PackageItem['code'], string | null>>;
         hold_minutes: number;
     };
     limits: {
@@ -65,14 +67,6 @@ type Props = {
         prayer: PrayerPreviewTemplate;
         incense: PrayerPreviewTemplate;
     };
-};
-
-type VirtualAccountReservation = {
-    package_code: PackageItem['code'];
-    account_number: string;
-    bank_name: string | null;
-    account_holder: string | null;
-    expires_at: string | null;
 };
 
 type NameEntry = {
@@ -106,6 +100,14 @@ type FormState = {
 };
 
 type ErrorBag = Record<string, string>;
+
+type VirtualAccountReservation = {
+    package_code: PackageItem['code'];
+    account_number: string;
+    bank_name: string | null;
+    account_holder: string | null;
+    expires_at: string | null;
+};
 
 type TurnstileApi = {
     render: (
@@ -151,6 +153,19 @@ function isValidEmail(value: string): boolean {
     return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim());
 }
 
+function formatRemainingTime(totalSeconds: number): string {
+    const safeSeconds = Math.max(0, totalSeconds);
+    const hours = Math.floor(safeSeconds / 3600);
+    const minutes = Math.floor((safeSeconds % 3600) / 60);
+    const seconds = safeSeconds % 60;
+
+    if (hours > 0) {
+        return `${hours}j ${minutes}m`;
+    }
+
+    return `${minutes}m ${seconds}d`;
+}
+
 function labelReferralSource(value: FormState['referral_source']): string {
     return {
         TEMAN: 'Teman',
@@ -167,7 +182,7 @@ function pickPrayerName(
 ): { text: string; vertical: boolean } | null {
     const mandarin = entry.mandarin_name.trim();
     const indonesian = entry.indonesian_name.trim();
-    const text = mandarin || indonesian;
+    const text = mandarin || indonesian.toUpperCase();
 
     if (!text) {
         return null;
@@ -272,39 +287,32 @@ function getStepFromErrors(errorBag: ErrorBag): number {
     return 6;
 }
 
-function formatRemainingTime(totalSeconds: number): string {
-    const safeSeconds = Math.max(totalSeconds, 0);
-    const hours = Math.floor(safeSeconds / 3600);
-    const minutes = Math.floor((safeSeconds % 3600) / 60);
-    const seconds = safeSeconds % 60;
-
-    return [hours, minutes, seconds]
-        .map((value) => value.toString().padStart(2, '0'))
-        .join(':');
-}
-
 /* ─── Sub-components ──────────────────────────────────────────────────────── */
 
 function PackageCard({
     item,
     selected,
     onSelect,
+    disabled = false,
 }: {
     item: PackageItem;
     selected: boolean;
     onSelect: () => void;
+    disabled?: boolean;
 }) {
     return (
         <button
             type="button"
             onClick={onSelect}
-            disabled={!item.available}
+            disabled={!item.available || disabled}
             className={[
                 'w-full overflow-hidden rounded-2xl border-2 text-left transition',
                 selected
                     ? 'border-[#8B1A1A] bg-[#FDF8F0] ring-2 ring-[#8B1A1A]/20'
                     : 'border-[#E8D5C0] bg-white hover:border-[#C84040]',
-                !item.available ? 'cursor-not-allowed opacity-55' : '',
+                !item.available || disabled
+                    ? 'cursor-not-allowed opacity-55'
+                    : '',
             ].join(' ')}
         >
             {/* Image */}
@@ -350,7 +358,7 @@ function PackageCard({
                     {formatCurrency(item.price)}
                 </p>
                 <p className="text-sm text-[#5C3D2E]">
-                    {item.meal_quota} porsi makanan
+                    free {item.meal_quota} porsi konsumsi
                 </p>
 
                 {item.available ? (
@@ -646,7 +654,8 @@ export default function PublicBookingPage() {
     const [copied, setCopied] = useState(false);
     const [virtualAccount, setVirtualAccount] =
         useState<VirtualAccountReservation | null>(null);
-    const [reservationClock, setReservationClock] = useState(() => Date.now());
+    const [reservationRemainingSeconds, setReservationRemainingSeconds] =
+        useState<number | null>(null);
     const captchaContainerRef = useRef<HTMLDivElement | null>(null);
 
     const [form, setForm] = useState<FormState>({
@@ -678,21 +687,15 @@ export default function PublicBookingPage() {
     );
     const headerBannerUrl = '/images/booking/header.jpg';
     const [headerBannerMissing, setHeaderBannerMissing] = useState(false);
-    const reservationRemainingSeconds = (() => {
-        if (!virtualAccount?.expires_at) {
-            return null;
-        }
-
-        const expiresAt = Date.parse(virtualAccount.expires_at);
-
-        if (Number.isNaN(expiresAt)) {
-            return null;
-        }
-
-        return Math.floor((expiresAt - reservationClock) / 1000);
-    })();
+    const isPoolVirtualAccount = payment.virtual_account_mode === 'POOL';
+    const packageAccountNumber = selectedPackage
+        ? (isPoolVirtualAccount
+              ? virtualAccount?.account_number ?? null
+              : payment.accounts_by_package[selectedPackage.code] ?? null)
+        : null;
     const reservationExpired =
-        typeof reservationRemainingSeconds === 'number' &&
+        isPoolVirtualAccount &&
+        reservationRemainingSeconds !== null &&
         reservationRemainingSeconds <= 0;
 
     /* ── Captcha (unchanged) ── */
@@ -743,18 +746,27 @@ export default function PublicBookingPage() {
     }, [captcha.enabled, captcha.site_key]);
 
     useEffect(() => {
-        if (!virtualAccount?.expires_at) {
+        if (!isPoolVirtualAccount || !virtualAccount?.expires_at) {
             return;
         }
 
-        const interval = window.setInterval(() => {
-            setReservationClock(Date.now());
-        }, 1000);
+        const updateRemaining = () => {
+            const expiresAt = new Date(virtualAccount.expires_at as string);
+            const nextValue = Math.max(
+                0,
+                Math.floor((expiresAt.getTime() - Date.now()) / 1000),
+            );
+
+            setReservationRemainingSeconds(nextValue);
+        };
+
+        updateRemaining();
+        const timer = window.setInterval(updateRemaining, 1000);
 
         return () => {
-            window.clearInterval(interval);
+            window.clearInterval(timer);
         };
-    }, [virtualAccount?.expires_at]);
+    }, [isPoolVirtualAccount, virtualAccount]);
 
     /* ── Form helpers (unchanged logic) ── */
     const clearErrors = (prefixes: string[]) => {
@@ -855,32 +867,15 @@ export default function PublicBookingPage() {
         setGeneralError(null);
     };
 
-    const releaseVirtualAccount = async (idempotencyKey: string) => {
-        try {
-            await fetch('/api/public/virtual-accounts/release', {
-                method: 'DELETE',
-                headers: {
-                    Accept: 'application/json',
-                    'Content-Type': 'application/json',
-                    'X-Requested-With': 'XMLHttpRequest',
-                },
-                body: JSON.stringify({
-                    idempotency_key: idempotencyKey,
-                }),
-            });
-        } catch {
-            // Biarkan nomor lama dilepas otomatis oleh waktu jika permintaan ini gagal.
-        }
-    };
-
     const choosePackage = (item: PackageItem) => {
-        if (form.package_code && form.package_code !== item.code) {
-            if (virtualAccount) {
-                void releaseVirtualAccount(form.idempotency_key);
-            }
+        if (reservingVirtualAccount) {
+            return;
+        }
 
-            setVirtualAccount(null);
+        if (form.package_code && form.package_code !== item.code) {
             setCopied(false);
+            setVirtualAccount(null);
+            setReservationRemainingSeconds(null);
         }
 
         setField('package_code', item.code);
@@ -888,57 +883,30 @@ export default function PublicBookingPage() {
         setField('non_vegetarian_quantity', '0');
     };
 
-    const ensureVirtualAccountActive = () => {
-        if (step < 3) {
+    const reserveVirtualAccount = async () => {
+        if (reservingVirtualAccount) {
+            return false;
+        }
+
+        if (!selectedPackage) {
+            setErrors({
+                package_code: 'Silakan pilih paket terlebih dahulu.',
+            });
+            setGeneralError('Silakan pilih paket terlebih dahulu.');
+
+            return false;
+        }
+
+        if (!isPoolVirtualAccount) {
             return true;
         }
 
-        if (!selectedPackage || !virtualAccount) {
-            setErrors({
-                package_code:
-                    'Nomor pembayaran belum tersedia. Silakan pilih paket lagi.',
-            });
-            setGeneralError(
-                'Nomor pembayaran belum tersedia. Silakan pilih paket lagi.',
-            );
-            setStep(2);
-
-            return false;
-        }
-
-        if (virtualAccount.package_code !== selectedPackage.code) {
-            setErrors({
-                package_code:
-                    'Nomor pembayaran sudah tidak sesuai. Silakan pilih paket lagi.',
-            });
-            setGeneralError(
-                'Nomor pembayaran sudah tidak sesuai. Silakan pilih paket lagi.',
-            );
-            setStep(2);
-
-            return false;
-        }
-
-        if (reservationExpired) {
-            setVirtualAccount(null);
-            setErrors({
-                package_code:
-                    'Nomor pembayaran sudah lewat waktu. Silakan pilih paket lagi.',
-            });
-            setGeneralError(
-                'Nomor pembayaran sudah lewat waktu. Silakan pilih paket lagi.',
-            );
-            setStep(2);
-
-            return false;
-        }
-
-        return true;
-    };
-
-    const reserveVirtualAccount = async (): Promise<boolean> => {
-        if (!selectedPackage) {
-            return false;
+        if (
+            virtualAccount?.package_code === selectedPackage.code &&
+            virtualAccount.account_number &&
+            !reservationExpired
+        ) {
+            return true;
         }
 
         setReservingVirtualAccount(true);
@@ -957,48 +925,80 @@ export default function PublicBookingPage() {
                     package_code: selectedPackage.code,
                 }),
             });
+            const data = (await response.json().catch(() => ({}))) as
+                | VirtualAccountReservation
+                | { message?: string; errors?: Record<string, string[]> };
 
-            if (response.status === 429) {
-                setGeneralError(
-                    'Terlalu banyak percobaan. Silakan tunggu sebentar lalu coba lagi.',
-                );
+            if (
+                response.ok &&
+                'account_number' in data &&
+                typeof data.account_number === 'string'
+            ) {
+                setVirtualAccount(data);
+                clearErrors(['package_code']);
 
-                return false;
+                return true;
             }
 
-            if (!response.ok) {
-                const data = (await response.json().catch(() => ({}))) as {
-                    errors?: Record<string, string[]>;
-                    message?: string;
-                };
-                const nextErrors = Object.fromEntries(
-                    Object.entries(data.errors ?? {}).map(([key, value]) => [
-                        key,
-                        value[0] ?? 'Data belum benar.',
-                    ]),
-                );
+            const packageError =
+                'errors' in data && data.errors?.package_code?.[0]
+                    ? data.errors.package_code[0]
+                    : ('message' in data && data.message) ||
+                      'Nomor pembayaran untuk paket ini belum tersedia. Silakan coba lagi nanti.';
 
-                if (Object.keys(nextErrors).length > 0) {
-                    setErrors(nextErrors);
-                }
+            setErrors({
+                package_code: packageError,
+            });
+            setGeneralError(packageError);
 
-                setGeneralError(
-                    data.message ??
-                        nextErrors.package_code ??
-                        'Sistem pembayaran sedang tidak tersedia. Silakan coba lagi nanti.',
-                );
+            return false;
+        } catch {
+            const fallbackMessage =
+                'Nomor pembayaran untuk paket ini belum tersedia. Silakan coba lagi nanti.';
 
-                return false;
-            }
+            setErrors({
+                package_code: fallbackMessage,
+            });
+            setGeneralError(fallbackMessage);
 
-            const data = (await response.json()) as VirtualAccountReservation;
-            setVirtualAccount(data);
-            setReservationClock(Date.now());
-
-            return true;
+            return false;
         } finally {
             setReservingVirtualAccount(false);
         }
+    };
+
+    const ensurePackageAccountExists = () => {
+        if (step < 3) {
+            return true;
+        }
+
+        if (reservationExpired) {
+            setErrors({
+                package_code:
+                    'Nomor pembayaran sudah lewat waktu. Silakan pilih paket lagi.',
+            });
+            setGeneralError(
+                'Nomor pembayaran sudah lewat waktu. Silakan pilih paket lagi.',
+            );
+            setStep(2);
+
+            return false;
+        }
+
+        if (!selectedPackage || !packageAccountNumber) {
+            setErrors({
+                package_code:
+                    'Nomor pembayaran untuk paket ini belum tersedia. Silakan coba lagi nanti.',
+            });
+            setGeneralError(
+                'Nomor pembayaran untuk paket ini belum tersedia. Silakan coba lagi nanti.',
+            );
+            setStep(2);
+
+            return false;
+        }
+
+        return true;
     };
 
     const applyDeceasedReadState = (
@@ -1180,9 +1180,9 @@ export default function PublicBookingPage() {
         }
 
         if (currentStep === 4) {
-            if (!virtualAccount || reservationExpired) {
+            if (!packageAccountNumber) {
                 nextErrors.package_code =
-                    'Nomor pembayaran sudah lewat waktu. Silakan pilih paket lagi.';
+                    'Nomor pembayaran untuk paket ini belum tersedia. Silakan coba lagi nanti.';
             }
 
             if (!form.sender_name.trim()) {
@@ -1195,6 +1195,19 @@ export default function PublicBookingPage() {
 
             if (!form.proof) {
                 nextErrors.proof = 'Bukti transfer wajib diunggah.';
+            }
+        }
+
+        if (currentStep === 3 && selectedPackage) {
+            const mealTotal =
+                Number(form.vegetarian_quantity || 0) +
+                Number(form.non_vegetarian_quantity || 0);
+
+            if (mealTotal > selectedPackage.meal_quota) {
+                nextErrors.vegetarian_quantity =
+                    `Total makanan maksimal ${selectedPackage.meal_quota} porsi.`;
+                nextErrors.non_vegetarian_quantity =
+                    `Total makanan maksimal ${selectedPackage.meal_quota} porsi.`;
             }
         }
 
@@ -1225,15 +1238,15 @@ export default function PublicBookingPage() {
     };
 
     const nextStep = async () => {
-        if (!ensureVirtualAccountActive()) {
-            return;
-        }
-
         if (!validateStep(step)) {
             return;
         }
 
-        if (step === 2) {
+        if (step >= 3 && !ensurePackageAccountExists()) {
+            return;
+        }
+
+        if (step === 2 && isPoolVirtualAccount) {
             const reserved = await reserveVirtualAccount();
 
             if (!reserved) {
@@ -1249,11 +1262,11 @@ export default function PublicBookingPage() {
     };
 
     const copyAccountNumber = async () => {
-        if (!virtualAccount?.account_number) {
+        if (!packageAccountNumber) {
             return;
         }
 
-        await navigator.clipboard.writeText(virtualAccount.account_number);
+        await navigator.clipboard.writeText(packageAccountNumber);
         setCopied(true);
         window.setTimeout(() => setCopied(false), 2000);
     };
@@ -1262,7 +1275,7 @@ export default function PublicBookingPage() {
     const submit = async (event: FormEvent<HTMLFormElement>) => {
         event.preventDefault();
 
-        if (!ensureVirtualAccountActive() || !validateStep(6)) {
+        if (!ensurePackageAccountExists() || !validateStep(6)) {
             return;
         }
 
@@ -1634,6 +1647,9 @@ export default function PublicBookingPage() {
                                                     form.package_code ===
                                                     item.code
                                                 }
+                                                disabled={
+                                                    reservingVirtualAccount
+                                                }
                                                 onSelect={() =>
                                                     choosePackage(item)
                                                 }
@@ -1648,7 +1664,7 @@ export default function PublicBookingPage() {
                                             <div className="flex flex-wrap items-start justify-between gap-3">
                                                 <div>
                                                     <h3 className="text-lg font-semibold text-[#2C1810]">
-                                                        Nama untuk sembahyang
+                                                        Nama Almarhum/ah
                                                     </h3>
                                                     <p className="mt-1 text-sm leading-6 text-[#5C3D2E]">
                                                         Anda bisa isi langsung,
@@ -1657,7 +1673,7 @@ export default function PublicBookingPage() {
                                                     </p>
                                                 </div>
                                                 <p className="max-w-sm text-sm leading-6 text-[#5C3D2E]">
-                                                    Periksa contoh kertas di
+                                                    Periksa kembali penulisan mandarin di
                                                     samping sebelum lanjut ke
                                                     langkah berikutnya.
                                                 </p>
@@ -1667,7 +1683,7 @@ export default function PublicBookingPage() {
                                                     (item, index) => (
                                                         <NameCard
                                                             key={index}
-                                                            title={`Data nama ${index + 1}`}
+                                                            title={`Data Almarhum/ah ${index + 1}`}
                                                             indonesianLabel={`Nama Indonesia ${index + 1}`}
                                                             mandarinLabel={`Nama Mandarin ${index + 1}`}
                                                             photoLabel={`Foto nama ${index + 1}`}
@@ -1791,7 +1807,7 @@ export default function PublicBookingPage() {
                                     </h2>
                                     <p className="mt-2 text-sm leading-6 text-[#5C3D2E]">
                                         {selectedPackage
-                                            ? 'Bagian ini boleh diisi 0 jika belum ingin menentukan jumlah makanan.'
+                                            ? `Total maksimal ${selectedPackage.meal_quota} porsi.`
                                             : 'Pilih paket terlebih dahulu.'}
                                     </p>
 
@@ -1846,7 +1862,9 @@ export default function PublicBookingPage() {
                                             <span className="font-semibold text-[#B8860B]">
                                                 {currentMealTotal} porsi
                                             </span>
-                                            . Boleh diisi 0.
+                                            {selectedPackage
+                                                ? ` dari maksimal ${selectedPackage.meal_quota} porsi.`
+                                                : '. Boleh diisi 0.'}
                                         </p>
                                     </div>
                                     <ErrorText
@@ -1884,34 +1902,34 @@ export default function PublicBookingPage() {
                                         <div className="mt-4 space-y-1 text-sm text-[#5C3D2E]">
                                             <p>
                                                 Bank:{' '}
-                                                {virtualAccount?.bank_name ??
-                                                    payment.bank_name ??
+                                                {payment.bank_name ??
                                                     'Belum diatur'}
                                             </p>
                                             <p>
                                                 Nomor VA:{' '}
                                                 <span className="font-semibold text-[#2C1810]">
-                                                    {virtualAccount?.account_number ??
+                                                    {packageAccountNumber ??
                                                         'Belum diatur'}
                                                 </span>
                                             </p>
                                             <p>
                                                 Atas nama:{' '}
-                                                {virtualAccount?.account_holder ??
-                                                    payment.bank_account_holder ??
+                                                {payment.bank_account_holder ??
                                                     'Belum diatur'}
                                             </p>
-                                            <p>
-                                                Batas waktu:{' '}
-                                                <span className="font-semibold text-[#2C1810]">
-                                                    {typeof reservationRemainingSeconds ===
-                                                    'number'
-                                                        ? formatRemainingTime(
-                                                              reservationRemainingSeconds,
-                                                          )
-                                                        : `${payment.hold_minutes} menit`}
-                                                </span>
-                                            </p>
+                                            {isPoolVirtualAccount ? (
+                                                <p>
+                                                    Batas waktu:{' '}
+                                                    <span className="font-semibold text-[#2C1810]">
+                                                        {typeof reservationRemainingSeconds ===
+                                                        'number'
+                                                            ? formatRemainingTime(
+                                                                  reservationRemainingSeconds,
+                                                              )
+                                                            : `${payment.hold_minutes} menit`}
+                                                    </span>
+                                                </p>
+                                            ) : null}
                                         </div>
                                         {reservationExpired ? (
                                             <p className="mt-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
@@ -1923,9 +1941,7 @@ export default function PublicBookingPage() {
                                         <button
                                             type="button"
                                             onClick={copyAccountNumber}
-                                            disabled={
-                                                !virtualAccount?.account_number
-                                            }
+                                            disabled={!packageAccountNumber}
                                             className="mt-4 flex items-center gap-2 rounded-full border-2 border-[#8B1A1A] px-4 py-2 text-sm font-semibold text-[#8B1A1A] transition hover:bg-[#FDF8F0] disabled:opacity-50"
                                         >
                                             {copied
@@ -2284,16 +2300,16 @@ export default function PublicBookingPage() {
 
                             {/* ── Navigation buttons ── */}
                             <div className="flex items-center justify-between gap-3">
-                                <button
-                                    type="button"
-                                    onClick={previousStep}
+                                    <button
+                                        type="button"
+                                        onClick={previousStep}
                                     disabled={
                                         step === 1 ||
                                         processing ||
                                         reservingVirtualAccount
                                     }
-                                    className="rounded-full border-2 border-[#E8D5C0] px-6 py-3 text-base font-semibold text-[#5C3D2E] transition hover:border-[#5C3D2E] disabled:opacity-40"
-                                >
+                                        className="rounded-full border-2 border-[#E8D5C0] px-6 py-3 text-base font-semibold text-[#5C3D2E] transition hover:border-[#5C3D2E] disabled:opacity-40"
+                                    >
                                     ← Kembali
                                 </button>
 
@@ -2302,13 +2318,14 @@ export default function PublicBookingPage() {
                                         type="button"
                                         onClick={nextStep}
                                         disabled={
-                                            processing || reservingVirtualAccount
+                                            processing ||
+                                            reservingVirtualAccount
                                         }
                                         className="rounded-full bg-[#8B1A1A] px-8 py-3 text-base font-semibold text-white transition hover:bg-[#6B1414]"
                                     >
                                         {reservingVirtualAccount
                                             ? 'Menyiapkan nomor VA...'
-                                            : 'Lanjut →'}
+                                            : 'Lanjut'}
                                     </button>
                                 ) : (
                                     <button
@@ -2366,3 +2383,4 @@ export default function PublicBookingPage() {
         </>
     );
 }
+

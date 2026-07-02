@@ -63,10 +63,9 @@ class BookingSubmissionService
         );
 
         $booking = null;
-        $reservedVirtualAccount = null;
 
         try {
-            $booking = DB::transaction(function () use ($payload, $package, $proofPath, $nameImagePaths, &$reservedVirtualAccount): Booking {
+            $booking = DB::transaction(function () use ($payload, $package, $proofPath, $nameImagePaths): Booking {
                 $booking = Booking::query()->create([
                     'booking_number' => $this->generateBookingNumber(),
                     'idempotency_key' => $payload['idempotency_key'],
@@ -92,6 +91,11 @@ class BookingSubmissionService
                 ]);
 
                 $paymentIdentity = $this->virtualAccountService->paymentIdentity();
+                $packageAccount = $this->virtualAccountService->assignToBooking(
+                    $booking,
+                    (string) $payload['idempotency_key'],
+                    $package->code,
+                );
 
                 $booking->payment()->create([
                     'expected_amount' => $package->price,
@@ -99,24 +103,12 @@ class BookingSubmissionService
                     'transferred_amount' => $package->price,
                     'transfer_date' => $payload['transfer_date'],
                     'proof_path' => $proofPath,
-                    'virtual_account_bank_name' => null,
-                    'virtual_account_number' => null,
-                    'virtual_account_holder' => null,
-                ]);
-
-                $this->slotAllocator->reserveForPackage($package->code, $booking->id);
-                $reservedVirtualAccount = $this->virtualAccountService->assignToBooking(
-                    $booking,
-                    (string) $payload['idempotency_key'],
-                    $package->code,
-                );
-                $booking->payment()->update([
-                    'transferred_amount' => $package->price,
                     'virtual_account_bank_name' => $paymentIdentity['bank_name'],
-                    'virtual_account_number' => $reservedVirtualAccount->account_number,
+                    'virtual_account_number' => $packageAccount->account_number,
                     'virtual_account_holder' => $paymentIdentity['bank_account_holder'],
                 ]);
 
+                $this->slotAllocator->reserveForPackage($package->code, $booking->id);
                 $this->prayerPaperGenerationService->createPendingRows($booking);
 
                 return $booking->fresh(['meal', 'payment', 'names', 'prayerPapers']) ?? $booking;
@@ -147,7 +139,7 @@ class BookingSubmissionService
 
         $this->prayerPaperGenerationService->generateForBooking($booking);
 
-        return $booking->fresh(['meal', 'payment', 'names', 'prayerPapers', 'virtualAccount']) ?? $booking;
+        return $booking->fresh(['meal', 'payment', 'names', 'prayerPapers']) ?? $booking;
     }
 
     /**

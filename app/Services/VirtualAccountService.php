@@ -8,13 +8,134 @@ use App\Models\AppSetting;
 use App\Models\Booking;
 use App\Models\VirtualAccount;
 use Carbon\CarbonInterface;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
 class VirtualAccountService
 {
+    public const MODE_FIXED = 'FIXED';
+
+    public const MODE_POOL = 'POOL';
+
+    public function mode(): string
+    {
+        $mode = AppSetting::getMany(['virtual_account_mode'])['virtual_account_mode'] ?? null;
+
+        if (in_array($mode, [self::MODE_FIXED, self::MODE_POOL], true)) {
+            return $mode;
+        }
+
+        return $this->detectModeFromAccounts();
+    }
+
+    public function isFixedMode(): bool
+    {
+        return $this->mode() === self::MODE_FIXED;
+    }
+
+    public function isPoolMode(): bool
+    {
+        return $this->mode() === self::MODE_POOL;
+    }
+
+    /**
+     * @return array<string, array{configured:bool,account_number:string|null,total:int,available:int,held:int,assigned:int,numbers:array<int, string>}>
+     */
+    public function summary(): array
+    {
+        $accounts = $this->accountsByPackage();
+        $summary = [];
+
+        foreach (PackageCode::cases() as $packageCode) {
+            /** @var Collection<int, VirtualAccount> $rows */
+            $rows = $accounts->get($packageCode->value) ?? collect();
+
+            $summary[$packageCode->value] = [
+                'configured' => $rows->isNotEmpty(),
+                'account_number' => $rows->first()?->account_number,
+                'total' => $rows->count(),
+                'available' => $rows->where('status', VirtualAccountStatus::Available)->count(),
+                'held' => $rows->where('status', VirtualAccountStatus::Held)->count(),
+                'assigned' => $rows->where('status', VirtualAccountStatus::Assigned)->count(),
+                'numbers' => $rows->pluck('account_number')->values()->all(),
+            ];
+        }
+
+        return $summary;
+    }
+
+    public function paymentIdentity(): array
+    {
+        $settings = AppSetting::getMany([
+            'bank_name',
+            'bank_account_holder',
+        ]);
+
+        return [
+            'bank_name' => $settings['bank_name'],
+            'bank_account_holder' => $settings['bank_account_holder'],
+        ];
+    }
+
+    /**
+     * @return array<string, string|null>
+     */
+    public function packageAccounts(): array
+    {
+        $accounts = $this->accountsByPackage();
+        $result = [];
+
+        foreach (PackageCode::cases() as $packageCode) {
+            $result[$packageCode->value] = $accounts->get($packageCode->value)?->first()?->account_number;
+        }
+
+        return $result;
+    }
+
+    /**
+     * @return array<string, array<int, string>>
+     */
+    public function packageAccountLists(): array
+    {
+        $accounts = $this->accountsByPackage();
+        $result = [];
+
+        foreach (PackageCode::cases() as $packageCode) {
+            $result[$packageCode->value] = $accounts
+                ->get($packageCode->value, collect())
+                ->pluck('account_number')
+                ->values()
+                ->all();
+        }
+
+        return $result;
+    }
+
+    public function requirePackageAccount(PackageCode $packageCode): VirtualAccount
+    {
+        $account = VirtualAccount::query()
+            ->where('package_code', $packageCode)
+            ->orderBy('id')
+            ->first();
+
+        if (! $account) {
+            throw ValidationException::withMessages([
+                'package_code' => 'Sistem pembayaran sedang tidak tersedia. Silakan coba lagi nanti.',
+            ]);
+        }
+
+        return $account;
+    }
+
     public function reserve(PackageCode $packageCode, string $reference): array
     {
+        if ($this->isFixedMode()) {
+            $account = $this->requirePackageAccount($packageCode);
+
+            return $this->reservationPayload($account, null);
+        }
+
         return DB::transaction(function () use ($packageCode, $reference): array {
             $now = now();
             $this->releaseExpiredRows($now);
@@ -31,7 +152,7 @@ class VirtualAccountService
                     && $row->hold_expires_at instanceof CarbonInterface
                     && $row->hold_expires_at->isFuture()
                 ) {
-                    return $this->reservationPayload($row);
+                    return $this->reservationPayload($row, $row->hold_expires_at);
                 }
 
                 $this->releaseRow($row);
@@ -57,12 +178,16 @@ class VirtualAccountService
                 'booking_id' => null,
             ])->save();
 
-            return $this->reservationPayload($account);
+            return $this->reservationPayload($account, $account->hold_expires_at);
         });
     }
 
     public function releaseReservation(string $reference): void
     {
+        if ($this->isFixedMode()) {
+            return;
+        }
+
         DB::transaction(function () use ($reference): void {
             $rows = VirtualAccount::query()
                 ->where('hold_reference', trim($reference))
@@ -78,6 +203,10 @@ class VirtualAccountService
 
     public function assignToBooking(Booking $booking, string $reference, PackageCode $packageCode): VirtualAccount
     {
+        if ($this->isFixedMode()) {
+            return $this->requirePackageAccount($packageCode);
+        }
+
         return DB::transaction(function () use ($booking, $reference, $packageCode): VirtualAccount {
             $now = now();
             $this->releaseExpiredRows($now);
@@ -112,6 +241,10 @@ class VirtualAccountService
 
     public function releaseByBooking(Booking $booking): void
     {
+        if ($this->isFixedMode()) {
+            return;
+        }
+
         DB::transaction(function () use ($booking): void {
             $account = VirtualAccount::query()
                 ->where('booking_id', $booking->id)
@@ -128,6 +261,10 @@ class VirtualAccountService
 
     public function releaseExpired(): int
     {
+        if ($this->isFixedMode()) {
+            return 0;
+        }
+
         return DB::transaction(function (): int {
             $rows = $this->expiredRowsQuery(now())
                 ->lockForUpdate()
@@ -142,44 +279,30 @@ class VirtualAccountService
     }
 
     /**
-     * @param  array<string, array<int, string>>  $numbersByPackage
-     * @return array<string, array{added:int, skipped:int}>
+     * @param  array<string, string|null>  $numbersByPackage
+     * @return array<string, bool>
      */
-    public function import(array $numbersByPackage): array
+    public function replaceFixedAccounts(array $numbersByPackage): array
     {
         return DB::transaction(function () use ($numbersByPackage): array {
             $summary = [];
 
-            foreach ($numbersByPackage as $packageCode => $numbers) {
-                $added = 0;
-                $skipped = 0;
+            foreach (PackageCode::cases() as $packageCode) {
+                $number = trim((string) ($numbersByPackage[$packageCode->value] ?? ''));
 
-                foreach ($numbers as $number) {
-                    $existing = VirtualAccount::query()
-                        ->where('package_code', $packageCode)
-                        ->where('account_number', $number)
-                        ->lockForUpdate()
-                        ->first();
+                VirtualAccount::query()
+                    ->where('package_code', $packageCode)
+                    ->delete();
 
-                    if ($existing) {
-                        $skipped++;
-
-                        continue;
-                    }
-
+                if ($number !== '') {
                     VirtualAccount::query()->create([
                         'package_code' => $packageCode,
                         'account_number' => $number,
                         'status' => VirtualAccountStatus::Available,
                     ]);
-
-                    $added++;
                 }
 
-                $summary[$packageCode] = [
-                    'added' => $added,
-                    'skipped' => $skipped,
-                ];
+                $summary[$packageCode->value] = $number !== '';
             }
 
             return $summary;
@@ -187,67 +310,67 @@ class VirtualAccountService
     }
 
     /**
-     * @return array<string, array{total:int,available:int,held:int,assigned:int}>
+     * @param  array<string, array<int, string>>  $numbersByPackage
+     * @return array<string, int>
      */
-    public function summary(): array
+    public function replacePoolAccounts(array $numbersByPackage): array
     {
-        $this->releaseExpired();
+        return DB::transaction(function () use ($numbersByPackage): array {
+            $summary = [];
 
-        $counts = VirtualAccount::query()
-            ->selectRaw('package_code, status, count(*) as aggregate')
-            ->groupBy('package_code', 'status')
-            ->get();
+            foreach (PackageCode::cases() as $packageCode) {
+                $numbers = collect($numbersByPackage[$packageCode->value] ?? [])
+                    ->map(fn (string $number): string => trim($number))
+                    ->filter()
+                    ->unique()
+                    ->values();
 
-        $summary = [];
+                VirtualAccount::query()
+                    ->where('package_code', $packageCode)
+                    ->delete();
 
-        foreach (PackageCode::cases() as $packageCode) {
-            $summary[$packageCode->value] = [
-                'total' => 0,
-                'available' => 0,
-                'held' => 0,
-                'assigned' => 0,
-            ];
-        }
+                foreach ($numbers as $number) {
+                    VirtualAccount::query()->create([
+                        'package_code' => $packageCode,
+                        'account_number' => $number,
+                        'status' => VirtualAccountStatus::Available,
+                    ]);
+                }
 
-        foreach ($counts as $row) {
-            $packageCode = $row->package_code instanceof PackageCode
-                ? $row->package_code->value
-                : (string) $row->package_code;
-            $status = $row->status instanceof VirtualAccountStatus
-                ? strtolower($row->status->value)
-                : strtolower((string) $row->status);
-            $count = (int) $row->aggregate;
-
-            if (! isset($summary[$packageCode])) {
-                continue;
+                $summary[$packageCode->value] = $numbers->count();
             }
 
-            $summary[$packageCode]['total'] += $count;
-
-            if (array_key_exists($status, $summary[$packageCode])) {
-                $summary[$packageCode][$status] = $count;
-            }
-        }
-
-        return $summary;
+            return $summary;
+        });
     }
 
-    public function paymentIdentity(): array
+    /**
+     * @return Collection<string, Collection<int, VirtualAccount>>
+     */
+    private function accountsByPackage(): Collection
     {
-        $settings = AppSetting::getMany([
-            'bank_name',
-            'bank_account_holder',
-        ]);
-
-        return [
-            'bank_name' => $settings['bank_name'],
-            'bank_account_holder' => $settings['bank_account_holder'],
-        ];
+        return VirtualAccount::query()
+            ->orderBy('id')
+            ->get()
+            ->groupBy(fn (VirtualAccount $account): string => $account->package_code->value);
     }
 
     private function holdMinutes(): int
     {
         return max(1, (int) config('phase3.virtual_account_hold_minutes', 60));
+    }
+
+    private function detectModeFromAccounts(): string
+    {
+        $hasMultipleAccounts = VirtualAccount::query()
+            ->select('package_code')
+            ->groupBy('package_code')
+            ->havingRaw('COUNT(*) > 1')
+            ->exists();
+
+        return $hasMultipleAccounts
+            ? self::MODE_POOL
+            : self::MODE_FIXED;
     }
 
     private function releaseExpiredRows(CarbonInterface $now): void
@@ -279,7 +402,7 @@ class VirtualAccountService
         ])->save();
     }
 
-    private function reservationPayload(VirtualAccount $account): array
+    private function reservationPayload(VirtualAccount $account, ?CarbonInterface $expiresAt): array
     {
         $paymentIdentity = $this->paymentIdentity();
 
@@ -288,7 +411,7 @@ class VirtualAccountService
             'account_number' => $account->account_number,
             'bank_name' => $paymentIdentity['bank_name'],
             'account_holder' => $paymentIdentity['bank_account_holder'],
-            'expires_at' => optional($account->hold_expires_at)?->toIso8601String(),
+            'expires_at' => $expiresAt?->toIso8601String(),
         ];
     }
 }

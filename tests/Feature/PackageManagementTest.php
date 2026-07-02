@@ -79,9 +79,10 @@ it('allows an admin to update payment information', function () {
         ->put(route('admin.settings.update'), [
             'bank_name' => 'BCA',
             'bank_account_holder' => 'PT Chao Du',
-            'prayer_virtual_accounts' => "900001\n900002",
-            'incense_virtual_accounts' => "910001",
-            'combo_virtual_accounts' => "920001",
+            'virtual_account_mode' => 'FIXED',
+            'prayer_virtual_account' => '900001',
+            'incense_virtual_account' => '910001',
+            'combo_virtual_account' => '920001',
         ])
         ->assertRedirect();
 

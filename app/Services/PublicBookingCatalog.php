@@ -56,6 +56,8 @@ class PublicBookingCatalog
             'availability' => $availability,
             'payment' => [
                 ...$virtualAccountService->paymentIdentity(),
+                'virtual_account_mode' => $virtualAccountService->mode(),
+                'accounts_by_package' => $virtualAccountService->packageAccounts(),
                 'hold_minutes' => max(1, (int) config('phase3.virtual_account_hold_minutes', 60)),
             ],
             'limits' => [

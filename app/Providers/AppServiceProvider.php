@@ -71,15 +71,14 @@ class AppServiceProvider extends ServiceProvider
         });
 
         RateLimiter::for('virtual-account-reserve', function (Request $request): Limit {
-            $key = implode('|', [
+            return Limit::perMinutes(
+                max(1, (int) ceil((int) config('phase3.virtual_account_rate_limit_decay_seconds', 60) / 60)),
+                max(1, (int) config('phase3.virtual_account_rate_limit_max_attempts', 10)),
+            )->by(implode('|', [
                 (string) $request->ip(),
                 (string) $request->input('idempotency_key'),
-            ]);
-
-            return Limit::perMinutes(
-                max(1, (int) ceil((int) config('phase3.virtual_account_rate_limit_decay_seconds') / 60)),
-                max(1, (int) config('phase3.virtual_account_rate_limit_max_attempts')),
-            )->by($key);
+            ]));
         });
+
     }
 }

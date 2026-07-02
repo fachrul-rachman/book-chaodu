@@ -12,7 +12,6 @@ use App\Models\PrayerPaper;
 use App\Models\User;
 use App\Models\VirtualAccount;
 use App\Services\PrayerPaperRenderer;
-use App\Services\VirtualAccountService;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 
@@ -23,7 +22,6 @@ beforeEach(function () {
     config()->set('phase4.private_upload_disk', 'booking-private');
     config()->set('phase5.storage_disk', 'prayer-paper-files');
     config()->set('phase5.enabled', true);
-    config()->set('phase3.virtual_account_hold_minutes', 60);
     Storage::fake('booking-private');
     Storage::fake('prayer-paper-files');
 
@@ -34,9 +32,9 @@ beforeEach(function () {
 function seedPrayerPaperVirtualAccounts(): void
 {
     foreach ([
-        [PackageCode::Prayer, ['900001', '900002', '900003']],
-        [PackageCode::Incense, ['910001', '910002']],
-        [PackageCode::Combo, ['920001', '920002', '920003']],
+        [PackageCode::Prayer, ['900001']],
+        [PackageCode::Incense, ['910001']],
+        [PackageCode::Combo, ['920001']],
     ] as [$packageCode, $numbers]) {
         foreach ($numbers as $number) {
             VirtualAccount::query()->create([
@@ -71,7 +69,7 @@ function prayerPaperBookingPayload(array $overrides = []): array
         'deceased_names' => [
             [
                 'indonesian_name' => 'Tan Ah Kok',
-                'mandarin_name' => 'æž—ç–æœˆ',
+                'mandarin_name' => '林光月',
                 'source_image' => null,
             ],
             [
@@ -100,10 +98,7 @@ function prayerPaperBookingPayload(array $overrides = []): array
 
 function reservePrayerPaperVirtualAccount(array $payload): void
 {
-    app(VirtualAccountService::class)->reserve(
-        PackageCode::from((string) $payload['package_code']),
-        (string) $payload['idempotency_key'],
-    );
+    // Nomor VA sekarang tetap per paket, jadi tidak perlu dipakai sementara.
 }
 
 it('generates the final prayer paper after booking is stored', function () {
@@ -126,10 +121,13 @@ it('generates the final prayer paper after booking is stored', function () {
         ->and($paper->version)->toBe(1)
         ->and($paper->generated_at)->not->toBeNull()
         ->and($paper->file_path)->not->toBeNull()
+        ->and((string) $paper->file_path)->toEndWith('.png')
         ->and($booking->prayer_paper_status)->toBe(PrayerPaperStatus::Ready)
         ->and($booking->latest_prayer_paper_generated_at)->not->toBeNull();
 
     Storage::disk('prayer-paper-files')->assertExists((string) $paper->file_path);
+    expect(Storage::disk('prayer-paper-files')->get((string) $paper->file_path))
+        ->toStartWith("\x89PNG\r\n\x1a\n");
 });
 
 it('creates both final paper types for combo bookings', function () {
@@ -146,18 +144,18 @@ it('creates both final paper types for combo bookings', function () {
         'deceased_names' => [
             [
                 'indonesian_name' => 'Nama Satu',
-                'mandarin_name' => 'æž—ç–æœˆ',
+                'mandarin_name' => '林光月',
                 'source_image' => null,
             ],
             [
                 'indonesian_name' => 'Nama Dua',
-                'mandarin_name' => 'é™³ç§€è“®',
+                'mandarin_name' => '陈秋兰',
                 'source_image' => null,
             ],
         ],
         'incense_name' => [
             'indonesian_name' => 'Keluarga Tan',
-            'mandarin_name' => 'é™³å®¶',
+            'mandarin_name' => '陈家',
             'source_image' => null,
         ],
         'vegetarian_quantity' => '2',
@@ -273,7 +271,7 @@ it('shows the latest final paper file on the admin booking detail page', functio
         ->assertSee('admin\\/kertas-doa\\/'.PrayerPaper::query()->firstOrFail()->id, false);
 });
 
-it('uses the saved single-name position for Indonesian prayer paper text', function () {
+it('uses the print-only layout for Indonesian prayer paper text', function () {
     activatePrayerPaperPackage(PackageCode::Prayer);
     reservePrayerPaperVirtualAccount([
         'idempotency_key' => 'paper-layout-1',
@@ -311,13 +309,16 @@ it('uses the saved single-name position for Indonesian prayer paper text', funct
     ])->assertCreated();
 
     $paper = PrayerPaper::query()->where('type', PrayerPaperType::A)->where('sequence', 1)->firstOrFail();
-    $svg = Storage::disk('prayer-paper-files')->get((string) $paper->file_path);
+    $png = Storage::disk('prayer-paper-files')->get((string) $paper->file_path);
+    $size = getimagesizefromstring($png);
+    $image = imagecreatefromstring($png);
 
-    expect($svg)
-        ->toContain('viewBox="0 0 800 1200"')
-        ->toContain('rotate(90 200.00 450.00)')
-        ->toContain('fill="#000000"')
-        ->toContain('Tan Ah Kok');
+    expect((string) $paper->file_path)->toEndWith('.png')
+        ->and($png)->toStartWith("\x89PNG\r\n\x1a\n")
+        ->and($size[0] ?? null)->toBe(950)
+        ->and($size[1] ?? null)->toBe(2900)
+        ->and($image)->not->toBeFalse();
+    imagedestroy($image);
 });
 
 it('creates two separate prayer papers when two prayer names are filled', function () {
@@ -344,7 +345,7 @@ it('creates two separate prayer papers when two prayer names are filled', functi
         'deceased_names' => [
             [
                 'indonesian_name' => 'Nama Satu',
-                'mandarin_name' => 'æž—ç–æœˆ',
+                'mandarin_name' => '林光月',
                 'source_image' => null,
             ],
             [
@@ -364,20 +365,19 @@ it('creates two separate prayer papers when two prayer names are filled', functi
 
     expect($papers)->toHaveCount(2);
 
-    $firstSvg = Storage::disk('prayer-paper-files')->get((string) $papers[0]->file_path);
-    $secondSvg = Storage::disk('prayer-paper-files')->get((string) $papers[1]->file_path);
+    $firstPng = Storage::disk('prayer-paper-files')->get((string) $papers[0]->file_path);
+    $secondPng = Storage::disk('prayer-paper-files')->get((string) $papers[1]->file_path);
+    $firstSize = getimagesizefromstring($firstPng);
+    $secondSize = getimagesizefromstring($secondPng);
 
-    expect(substr_count($firstSvg, '<text '))
-        ->toBeGreaterThan(1)
-        ->and($firstSvg)
-        ->toContain('fill="#000000"')
-        ->not->toContain('Nama Dua');
-
-    expect($secondSvg)
-        ->toContain('rotate(90 460.00 660.00)')
-        ->toContain('Nama Dua')
-        ->toContain('fill="#000000"')
-        ->not->toContain('<text x="460.00" y="468.00"');
+    expect((string) $papers[0]->file_path)->toEndWith('.png')
+        ->and((string) $papers[1]->file_path)->toEndWith('.png')
+        ->and($firstPng)->toStartWith("\x89PNG\r\n\x1a\n")
+        ->and($secondPng)->toStartWith("\x89PNG\r\n\x1a\n")
+        ->and($firstSize[0] ?? null)->toBe(950)
+        ->and($firstSize[1] ?? null)->toBe(2900)
+        ->and($secondSize[0] ?? null)->toBe(950)
+        ->and($secondSize[1] ?? null)->toBe(2900);
 });
 
 it('uses the saved hio position for incense paper text', function () {
@@ -424,11 +424,11 @@ it('uses the saved hio position for incense paper text', function () {
     ])->assertCreated();
 
     $paper = PrayerPaper::query()->where('type', PrayerPaperType::B)->where('sequence', 1)->firstOrFail();
-    $svg = Storage::disk('prayer-paper-files')->get((string) $paper->file_path);
+    $png = Storage::disk('prayer-paper-files')->get((string) $paper->file_path);
+    $size = getimagesizefromstring($png);
 
-    expect($svg)
-        ->toContain('viewBox="0 0 700 1200"')
-        ->toContain('textLength="79.20"')
-        ->toContain('fill="#E82C2A"')
-        ->toContain('Keluarga Tan');
+    expect((string) $paper->file_path)->toEndWith('.png')
+        ->and($png)->toStartWith("\x89PNG\r\n\x1a\n")
+        ->and($size[0] ?? null)->toBe(950)
+        ->and($size[1] ?? null)->toBe(2100);
 });

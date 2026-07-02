@@ -64,12 +64,12 @@ class PrayerPaperGenerationService
         ])->save();
 
         try {
-            $svg = $this->renderer->render($booking, $type, $this->namesForPaper($booking, $paper));
+            $rendered = $this->renderer->render($booking, $type, $this->namesForPaper($booking, $paper));
             $nextVersion = max(1, $paper->version + 1);
-            $newPath = $this->buildPath($booking, $type, $paper->sequence, $nextVersion);
+            $newPath = $this->buildPath($booking, $type, $paper->sequence, $nextVersion, $rendered['extension']);
 
-            Storage::disk((string) config('phase5.storage_disk'))->put($newPath, $svg, [
-                'ContentType' => 'image/svg+xml',
+            Storage::disk((string) config('phase5.storage_disk'))->put($newPath, $rendered['content'], [
+                'ContentType' => $rendered['content_type'],
             ]);
 
             $oldPath = $paper->file_path;
@@ -233,14 +233,15 @@ class PrayerPaperGenerationService
         ];
     }
 
-    private function buildPath(Booking $booking, PrayerPaperType $type, int $sequence, int $version): string
+    private function buildPath(Booking $booking, PrayerPaperType $type, int $sequence, int $version, string $extension): string
     {
         return sprintf(
-            'prayer-papers/%s/%s-%d-v%d.svg',
+            'prayer-papers/%s/%s-%d-v%d.%s',
             $booking->booking_number,
             Str::lower($type->value),
             $sequence,
             $version,
+            $extension,
         );
     }
 

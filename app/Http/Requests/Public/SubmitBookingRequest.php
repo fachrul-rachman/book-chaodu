@@ -90,6 +90,20 @@ class SubmitBookingRequest extends FormRequest
                     $validator->errors()->add('agent_name', 'Nama agent wajib diisi.');
                 }
 
+                $mealTotal = (int) $this->input('vegetarian_quantity', 0)
+                    + (int) $this->input('non_vegetarian_quantity', 0);
+
+                if ($mealTotal > $package->meal_quota) {
+                    $validator->errors()->add(
+                        'vegetarian_quantity',
+                        "Total makanan maksimal {$package->meal_quota} porsi.",
+                    );
+                    $validator->errors()->add(
+                        'non_vegetarian_quantity',
+                        "Total makanan maksimal {$package->meal_quota} porsi.",
+                    );
+                }
+
                 $this->validateNames($validator, $packageCode);
             },
         ];

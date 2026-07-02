@@ -6,14 +6,12 @@ use App\Enums\BookingStatus;
 use App\Enums\PackageCode;
 use App\Enums\PrayerPaperStatus;
 use App\Enums\SlotStatus;
-use App\Enums\VirtualAccountStatus;
 use App\Models\Booking;
 use App\Models\Package;
 use App\Models\PrayerPaper;
 use App\Models\TableSlot;
 use App\Models\User;
 use App\Models\VirtualAccount;
-use App\Services\VirtualAccountService;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 
@@ -24,7 +22,6 @@ beforeEach(function () {
     config()->set('phase4.private_upload_disk', 'booking-private');
     config()->set('phase5.storage_disk', 'prayer-paper-files');
     config()->set('phase5.enabled', true);
-    config()->set('phase3.virtual_account_hold_minutes', 60);
     Storage::fake('booking-private');
     Storage::fake('prayer-paper-files');
 
@@ -35,9 +32,9 @@ beforeEach(function () {
 function seedAdminVirtualAccounts(): void
 {
     foreach ([
-        [PackageCode::Prayer, ['900001', '900002', '900003']],
-        [PackageCode::Incense, ['910001', '910002']],
-        [PackageCode::Combo, ['920001', '920002', '920003']],
+        [PackageCode::Prayer, ['900001']],
+        [PackageCode::Incense, ['910001']],
+        [PackageCode::Combo, ['920001']],
     ] as [$packageCode, $numbers]) {
         foreach ($numbers as $number) {
             VirtualAccount::query()->create([
@@ -103,10 +100,6 @@ function createPendingBooking(array $overrides = []): Booking
 {
     $payload = adminBookingPayload($overrides);
     activateAdminBookingPackage(PackageCode::from($payload['package_code']));
-    app(VirtualAccountService::class)->reserve(
-        PackageCode::from((string) $payload['package_code']),
-        (string) $payload['idempotency_key'],
-    );
 
     test()->post(route('api.public.bookings.store'), $payload, [
         'Accept' => 'application/json',
@@ -137,20 +130,20 @@ it('shows booking lists for all statuses to admin users', function () {
     $this->actingAs($admin)
         ->get(route('admin.bookings.index'))
         ->assertOk()
-        ->assertSee($pending->booking_number)
-        ->assertSee($approved->booking_number)
-        ->assertSee($rejected->booking_number)
-        ->assertSee('PENDING')
-        ->assertSee('APPROVED')
-        ->assertSee('REJECTED');
+        ->assertSeeText($pending->booking_number, false)
+        ->assertSeeText($approved->booking_number, false)
+        ->assertSeeText($rejected->booking_number, false)
+        ->assertSeeText('PENDING', false)
+        ->assertSeeText('APPROVED', false)
+        ->assertSeeText('REJECTED', false);
 
     $this->actingAs($admin)
         ->get(route('admin.bookings.index', ['status' => BookingStatus::Pending->value]))
         ->assertOk()
-        ->assertSee($pending->booking_number)
-        ->assertDontSee($approved->booking_number)
-        ->assertDontSee($rejected->booking_number)
-        ->assertSee('PENDING');
+        ->assertSeeText($pending->booking_number, false)
+        ->assertDontSeeText($approved->booking_number, false)
+        ->assertDontSeeText($rejected->booking_number, false)
+        ->assertSeeText('PENDING', false);
 });
 
 it('shows booking detail including reserved slots and proof', function () {
@@ -227,7 +220,7 @@ it('does not allow admin to change package on an existing booking', function () 
                 [
                     'position' => 1,
                     'indonesian_name' => 'Tan Ah Kok',
-                    'mandarin_name' => '林珖月',
+                    'mandarin_name' => null,
                 ],
             ],
         ])
@@ -310,8 +303,7 @@ it('rejects a booking with reason and releases reserved slots', function () {
     expect($booking->status)->toBe(BookingStatus::Rejected)
         ->and($booking->rejection_reason)->toBe('Bukti transfer belum sesuai.')
         ->and(TableSlot::query()->where('code', 'A18')->value('status'))->toBe(SlotStatus::Available)
-        ->and(TableSlot::query()->where('code', 'A18')->value('booking_id'))->toBeNull()
-        ->and(VirtualAccount::query()->where('account_number', '900001')->value('status'))->toBe(VirtualAccountStatus::Available);
+        ->and(TableSlot::query()->where('code', 'A18')->value('booking_id'))->toBeNull();
 });
 
 it('keeps rejection safe from double requests', function () {
@@ -361,4 +353,38 @@ it('allows zero meal quantities when admin updates a booking', function () {
 
     expect($booking->fresh()?->meal?->vegetarian_quantity)->toBe(0)
         ->and($booking->fresh()?->meal?->non_vegetarian_quantity)->toBe(0);
+});
+
+it('rejects meal quantity above package quota when admin updates a booking', function () {
+    $booking = createPendingBooking([
+        'idempotency_key' => 'admin-booking-over-meal',
+    ]);
+    $admin = User::factory()->admin()->create();
+
+    $this->actingAs($admin)
+        ->put(route('admin.bookings.update', $booking), [
+            'customer_name' => $booking->customer_name,
+            'customer_phone' => $booking->customer_phone,
+            'customer_email' => $booking->customer_email,
+            'attendee_count' => $booking->attendee_count,
+            'sender_name' => $booking->payment?->sender_name,
+            'transferred_amount' => '2000000',
+            'transfer_date' => optional($booking->payment?->transfer_date)->toDateString(),
+            'referral_source' => $booking->referral_source,
+            'agent_name' => $booking->agent_name,
+            'vegetarian_quantity' => 111,
+            'non_vegetarian_quantity' => 0,
+            'deceased_names' => [
+                [
+                    'position' => 1,
+                    'indonesian_name' => 'Tan Ah Kok',
+                    'mandarin_name' => '林珖月',
+                ],
+            ],
+            'incense_name' => null,
+        ])
+        ->assertSessionHasErrors([
+            'vegetarian_quantity',
+            'non_vegetarian_quantity',
+        ]);
 });

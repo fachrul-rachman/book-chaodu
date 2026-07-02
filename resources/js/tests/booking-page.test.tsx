@@ -47,6 +47,11 @@ vi.mock('@inertiajs/react', () => ({
             payment: {
                 bank_name: 'BCA',
                 bank_account_holder: 'PT Chao Du',
+                virtual_account_mode: 'FIXED',
+                accounts_by_package: {
+                    PRAYER: '900001',
+                    COMBO: '920001',
+                },
                 hold_minutes: 60,
             },
             limits: {
@@ -91,22 +96,7 @@ vi.mock('@inertiajs/react', () => ({
 
 beforeEach(() => {
     fetchMock.mockReset();
-    fetchMock.mockImplementation(async (input: RequestInfo | URL) => {
-        const url = String(input);
-
-        if (url.includes('/api/public/virtual-accounts/reserve')) {
-            return {
-                ok: true,
-                json: async () => ({
-                    package_code: 'PRAYER',
-                    account_number: '900001',
-                    bank_name: 'BCA',
-                    account_holder: 'PT Chao Du',
-                    expires_at: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
-                }),
-            } satisfies Partial<Response> as Response;
-        }
-
+    fetchMock.mockImplementation(async () => {
         return {
             ok: true,
             json: async () => ({}),
@@ -183,7 +173,7 @@ it('shows two prayer paper previews when two deceased names are filled', () => {
     expect(screen.queryByText('Contoh kertas doa')).not.toBeInTheDocument();
 });
 
-it('shows the reserved virtual account on the payment step', async () => {
+it('shows the package payment number on the payment step', async () => {
     render(<PublicBookingPage />);
 
     fillStepOne();
@@ -255,24 +245,7 @@ it('fills mandarin name from photo and keeps it editable', async () => {
 });
 
 it('lets customer continue with manual input when photo reading fails', async () => {
-    fetchMock.mockImplementation(async (input: RequestInfo | URL) => {
-        const url = String(input);
-
-        if (url.includes('/api/public/virtual-accounts/reserve')) {
-            return {
-                ok: true,
-                json: async () => ({
-                    package_code: 'PRAYER',
-                    account_number: '900001',
-                    bank_name: 'BCA',
-                    account_holder: 'PT Chao Du',
-                    expires_at: new Date(
-                        Date.now() + 60 * 60 * 1000,
-                    ).toISOString(),
-                }),
-            } satisfies Partial<Response> as Response;
-        }
-
+    fetchMock.mockImplementation(async () => {
         return {
             ok: false,
             json: async () => ({

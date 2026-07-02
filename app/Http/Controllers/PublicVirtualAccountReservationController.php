@@ -14,12 +14,12 @@ class PublicVirtualAccountReservationController extends Controller
         ReserveVirtualAccountRequest $request,
         VirtualAccountService $virtualAccountService,
     ): JsonResponse {
-        $reservation = $virtualAccountService->reserve(
-            PackageCode::from((string) $request->validated('package_code')),
-            (string) $request->validated('idempotency_key'),
+        return response()->json(
+            $virtualAccountService->reserve(
+                PackageCode::from((string) $request->validated('package_code')),
+                (string) $request->validated('idempotency_key'),
+            ),
         );
-
-        return response()->json($reservation);
     }
 
     public function destroy(
@@ -31,7 +31,7 @@ class PublicVirtualAccountReservationController extends Controller
         );
 
         return response()->json([
-            'released' => true,
+            'status' => 'ok',
         ]);
     }
 }

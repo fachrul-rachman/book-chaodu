@@ -5,6 +5,7 @@ namespace App\Http\Requests\Admin;
 use App\Enums\BookingStatus;
 use App\Enums\PackageCode;
 use App\Models\Booking;
+use App\Models\Package;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Validator;
@@ -104,6 +105,27 @@ class UpdateBookingRequest extends FormRequest
 
                     if (blank($incenseName['indonesian_name'] ?? null) && blank($incenseName['mandarin_name'] ?? null)) {
                         $validator->errors()->add('incense_name', 'Isi nama untuk hio jumbo.');
+                    }
+                }
+
+                $package = Package::query()
+                    ->where('code', $packageCode)
+                    ->where('is_active', true)
+                    ->first();
+
+                if ($package) {
+                    $mealTotal = (int) $this->input('vegetarian_quantity', 0)
+                        + (int) $this->input('non_vegetarian_quantity', 0);
+
+                    if ($mealTotal > $package->meal_quota) {
+                        $validator->errors()->add(
+                            'vegetarian_quantity',
+                            "Total makanan maksimal {$package->meal_quota} porsi.",
+                        );
+                        $validator->errors()->add(
+                            'non_vegetarian_quantity',
+                            "Total makanan maksimal {$package->meal_quota} porsi.",
+                        );
                     }
                 }
 

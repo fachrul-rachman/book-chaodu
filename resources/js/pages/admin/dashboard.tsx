@@ -186,6 +186,19 @@ export default function AdminDashboard() {
                                     template.
                                 </p>
                             </Link>
+
+                            <Link
+                                href="/admin/kertas-doa/cek-cepat"
+                                className="rounded-[24px] border border-[var(--color-border)] bg-white/90 p-6 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md"
+                            >
+                                <h3 className="text-lg font-semibold text-slate-900">
+                                    Cek cepat kertas
+                                </h3>
+                                <p className="mt-2 text-sm leading-6 text-slate-600">
+                                    Coba nama lalu langsung lihat dan download
+                                    hasilnya.
+                                </p>
+                            </Link>
                         </div>
                     </section>
                 </div>

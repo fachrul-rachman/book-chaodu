@@ -11,6 +11,8 @@ use App\Http\Controllers\Admin\PaymentProofFileController;
 use App\Http\Controllers\Admin\PrayerPaperFileController;
 use App\Http\Controllers\Admin\PrayerPaperMarkingController;
 use App\Http\Controllers\Admin\PrayerPaperMarkingImageController;
+use App\Http\Controllers\Admin\PrayerPaperPreviewController;
+use App\Http\Controllers\Admin\PrayerPaperPreviewDownloadController;
 use App\Http\Controllers\Admin\SettingController;
 use App\Http\Controllers\Admin\TableLayoutController;
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
@@ -78,6 +80,10 @@ Route::middleware('auth')->group(function () {
             ->name('admin.prayer-paper-marking.update');
         Route::get('/admin/kertas-doa/marking/gambar', PrayerPaperMarkingImageController::class)
             ->name('admin.prayer-paper-marking.image.show');
+        Route::get('/admin/kertas-doa/cek-cepat', PrayerPaperPreviewController::class)
+            ->name('admin.prayer-paper-preview');
+        Route::get('/admin/kertas-doa/cek-cepat/download', PrayerPaperPreviewDownloadController::class)
+            ->name('admin.prayer-paper-preview.download');
         Route::get('/admin/kertas-doa/{prayerPaper}', PrayerPaperFileController::class)
             ->name('admin.prayer-papers.show');
     });

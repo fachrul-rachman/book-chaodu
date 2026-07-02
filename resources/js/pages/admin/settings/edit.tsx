@@ -5,14 +5,20 @@ type Props = {
     payment_settings: {
         bank_name: string | null;
         bank_account_holder: string | null;
+        virtual_account_mode: 'FIXED' | 'POOL' | null;
+        prayer_virtual_account: string | null;
+        incense_virtual_account: string | null;
+        combo_virtual_account: string | null;
+        prayer_virtual_accounts: string | null;
+        incense_virtual_accounts: string | null;
+        combo_virtual_accounts: string | null;
     };
     virtual_account_summary: Record<
         string,
         {
+            configured: boolean;
+            account_number: string | null;
             total: number;
-            available: number;
-            held: number;
-            assigned: number;
         }
     >;
     flash?: {
@@ -26,9 +32,13 @@ export default function PaymentSettingsPage() {
     const form = useForm({
         bank_name: payment_settings.bank_name ?? '',
         bank_account_holder: payment_settings.bank_account_holder ?? '',
-        prayer_virtual_accounts: '',
-        incense_virtual_accounts: '',
-        combo_virtual_accounts: '',
+        virtual_account_mode: payment_settings.virtual_account_mode ?? 'FIXED',
+        prayer_virtual_account: payment_settings.prayer_virtual_account ?? '',
+        incense_virtual_account: payment_settings.incense_virtual_account ?? '',
+        combo_virtual_account: payment_settings.combo_virtual_account ?? '',
+        prayer_virtual_accounts: payment_settings.prayer_virtual_accounts ?? '',
+        incense_virtual_accounts: payment_settings.incense_virtual_accounts ?? '',
+        combo_virtual_accounts: payment_settings.combo_virtual_accounts ?? '',
     });
 
     const submit = (event: FormEvent<HTMLFormElement>) => {
@@ -108,6 +118,31 @@ export default function PaymentSettingsPage() {
                                 />
                             </label>
 
+                            <label className="block">
+                                <span className="mb-2 block text-sm font-medium">
+                                    Cara pakai nomor VA
+                                </span>
+                                <select
+                                    value={form.data.virtual_account_mode}
+                                    onChange={(event) =>
+                                        form.setData(
+                                            'virtual_account_mode',
+                                            event.target.value as
+                                                | 'FIXED'
+                                                | 'POOL',
+                                        )
+                                    }
+                                    className="w-full rounded-2xl border border-[var(--color-border)] bg-white px-4 py-3 text-base"
+                                >
+                                    <option value="FIXED">
+                                        Satu paket satu nomor tetap
+                                    </option>
+                                    <option value="POOL">
+                                        Satu paket banyak nomor
+                                    </option>
+                                </select>
+                            </label>
+
                             <div className="grid gap-4 rounded-2xl border border-[var(--color-border)] bg-[#F8F4EE] p-4 sm:grid-cols-3">
                                 {[
                                     ['PRAYER', 'Sembahyang'],
@@ -119,82 +154,154 @@ export default function PaymentSettingsPage() {
                                             {label}
                                         </p>
                                         <p>
-                                            Total:{' '}
+                                            Status:{' '}
+                                            {virtual_account_summary[code]
+                                                ?.configured
+                                                ? 'Sudah diisi'
+                                                : 'Belum diisi'}
+                                        </p>
+                                        <p>
+                                            Nomor:{' '}
+                                            {virtual_account_summary[code]
+                                                ?.account_number ?? '-'}
+                                        </p>
+                                        <p>
+                                            Jumlah:{' '}
                                             {virtual_account_summary[code]
                                                 ?.total ?? 0}
-                                        </p>
-                                        <p>
-                                            Tersedia:{' '}
-                                            {virtual_account_summary[code]
-                                                ?.available ?? 0}
-                                        </p>
-                                        <p>
-                                            Dipakai sementara:{' '}
-                                            {virtual_account_summary[code]
-                                                ?.held ?? 0}
-                                        </p>
-                                        <p>
-                                            Sudah masuk booking:{' '}
-                                            {virtual_account_summary[code]
-                                                ?.assigned ?? 0}
                                         </p>
                                     </div>
                                 ))}
                             </div>
 
-                            <label className="block">
-                                <span className="mb-2 block text-sm font-medium">
-                                    Tambah VA sembahyang
-                                </span>
-                                <textarea
-                                    rows={6}
-                                    value={form.data.prayer_virtual_accounts}
-                                    onChange={(event) =>
-                                        form.setData(
-                                            'prayer_virtual_accounts',
-                                            event.target.value,
-                                        )
-                                    }
-                                    placeholder="Satu nomor per baris"
-                                    className="w-full rounded-2xl border border-[var(--color-border)] bg-white px-4 py-3 text-base"
-                                />
-                            </label>
+                            {form.data.virtual_account_mode === 'FIXED' ? (
+                                <>
+                                    <label className="block">
+                                        <span className="mb-2 block text-sm font-medium">
+                                            Nomor VA sembahyang
+                                        </span>
+                                        <input
+                                            type="text"
+                                            inputMode="numeric"
+                                            value={
+                                                form.data
+                                                    .prayer_virtual_account
+                                            }
+                                            onChange={(event) =>
+                                                form.setData(
+                                                    'prayer_virtual_account',
+                                                    event.target.value,
+                                                )
+                                            }
+                                            className="w-full rounded-2xl border border-[var(--color-border)] bg-white px-4 py-3 text-base"
+                                        />
+                                    </label>
 
-                            <label className="block">
-                                <span className="mb-2 block text-sm font-medium">
-                                    Tambah VA hio
-                                </span>
-                                <textarea
-                                    rows={6}
-                                    value={form.data.incense_virtual_accounts}
-                                    onChange={(event) =>
-                                        form.setData(
-                                            'incense_virtual_accounts',
-                                            event.target.value,
-                                        )
-                                    }
-                                    placeholder="Satu nomor per baris"
-                                    className="w-full rounded-2xl border border-[var(--color-border)] bg-white px-4 py-3 text-base"
-                                />
-                            </label>
+                                    <label className="block">
+                                        <span className="mb-2 block text-sm font-medium">
+                                            Nomor VA hio
+                                        </span>
+                                        <input
+                                            type="text"
+                                            inputMode="numeric"
+                                            value={
+                                                form.data
+                                                    .incense_virtual_account
+                                            }
+                                            onChange={(event) =>
+                                                form.setData(
+                                                    'incense_virtual_account',
+                                                    event.target.value,
+                                                )
+                                            }
+                                            className="w-full rounded-2xl border border-[var(--color-border)] bg-white px-4 py-3 text-base"
+                                        />
+                                    </label>
 
-                            <label className="block">
-                                <span className="mb-2 block text-sm font-medium">
-                                    Tambah VA combo
-                                </span>
-                                <textarea
-                                    rows={6}
-                                    value={form.data.combo_virtual_accounts}
-                                    onChange={(event) =>
-                                        form.setData(
-                                            'combo_virtual_accounts',
-                                            event.target.value,
-                                        )
-                                    }
-                                    placeholder="Satu nomor per baris"
-                                    className="w-full rounded-2xl border border-[var(--color-border)] bg-white px-4 py-3 text-base"
-                                />
-                            </label>
+                                    <label className="block">
+                                        <span className="mb-2 block text-sm font-medium">
+                                            Nomor VA combo
+                                        </span>
+                                        <input
+                                            type="text"
+                                            inputMode="numeric"
+                                            value={
+                                                form.data
+                                                    .combo_virtual_account
+                                            }
+                                            onChange={(event) =>
+                                                form.setData(
+                                                    'combo_virtual_account',
+                                                    event.target.value,
+                                                )
+                                            }
+                                            className="w-full rounded-2xl border border-[var(--color-border)] bg-white px-4 py-3 text-base"
+                                        />
+                                    </label>
+                                </>
+                            ) : (
+                                <>
+                                    <label className="block">
+                                        <span className="mb-2 block text-sm font-medium">
+                                            Daftar nomor VA sembahyang
+                                        </span>
+                                        <textarea
+                                            rows={5}
+                                            value={
+                                                form.data
+                                                    .prayer_virtual_accounts
+                                            }
+                                            onChange={(event) =>
+                                                form.setData(
+                                                    'prayer_virtual_accounts',
+                                                    event.target.value,
+                                                )
+                                            }
+                                            className="w-full rounded-2xl border border-[var(--color-border)] bg-white px-4 py-3 text-base"
+                                        />
+                                    </label>
+
+                                    <label className="block">
+                                        <span className="mb-2 block text-sm font-medium">
+                                            Daftar nomor VA hio
+                                        </span>
+                                        <textarea
+                                            rows={5}
+                                            value={
+                                                form.data
+                                                    .incense_virtual_accounts
+                                            }
+                                            onChange={(event) =>
+                                                form.setData(
+                                                    'incense_virtual_accounts',
+                                                    event.target.value,
+                                                )
+                                            }
+                                            className="w-full rounded-2xl border border-[var(--color-border)] bg-white px-4 py-3 text-base"
+                                        />
+                                    </label>
+
+                                    <label className="block">
+                                        <span className="mb-2 block text-sm font-medium">
+                                            Daftar nomor VA combo
+                                        </span>
+                                        <textarea
+                                            rows={5}
+                                            value={
+                                                form.data
+                                                    .combo_virtual_accounts
+                                            }
+                                            onChange={(event) =>
+                                                form.setData(
+                                                    'combo_virtual_accounts',
+                                                    event.target.value,
+                                                )
+                                            }
+                                            className="w-full rounded-2xl border border-[var(--color-border)] bg-white px-4 py-3 text-base"
+                                        />
+                                    </label>
+                                </>
+                            )}
 
                             {Object.values(form.errors).length > 0 ? (
                                 <div className="space-y-1 text-sm text-red-700">

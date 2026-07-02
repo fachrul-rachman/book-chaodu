@@ -2,9 +2,7 @@
 
 namespace App\Http\Requests\Public;
 
-use App\Enums\PackageCode;
 use Illuminate\Foundation\Http\FormRequest;
-use Illuminate\Validation\Rule;
 
 class ReserveVirtualAccountRequest extends FormRequest
 {
@@ -17,7 +15,7 @@ class ReserveVirtualAccountRequest extends FormRequest
     {
         return [
             'idempotency_key' => ['required', 'string', 'max:120'],
-            'package_code' => ['required', Rule::enum(PackageCode::class)],
+            'package_code' => ['required', 'in:PRAYER,INCENSE,COMBO'],
         ];
     }
 }

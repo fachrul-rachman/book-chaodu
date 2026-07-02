@@ -127,14 +127,6 @@ class Booking extends Model
     }
 
     /**
-     * @return HasOne<VirtualAccount, $this>
-     */
-    public function virtualAccount(): HasOne
-    {
-        return $this->hasOne(VirtualAccount::class);
-    }
-
-    /**
      * @return HasMany<TableSlot, $this>
      */
     public function tableSlots(): HasMany
