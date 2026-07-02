@@ -17,18 +17,21 @@
                 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:640px;">
                     <tr>
                         <td style="background:#981b1f; padding:28px 32px; border-radius:18px 18px 0 0; border-bottom:4px solid #d5a51d;">
-                            <div style="font-size:12px; line-height:18px; letter-spacing:1.6px; text-transform:uppercase; color:#f1c8c8; font-weight:bold;">
-                                CHAO DU
+                            <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:0 auto;">
+                                <tr>
+                                    <td align="center">
+                                        <img src="{{ asset('images/booking/headerlogo.png') }}" alt="Lestari Memorial Park Karawang Barat" width="180" style="display:block; max-width:180px; height:auto;">
+                                    </td>
+                                </tr>
+                            </table>
+                            <div style="font-size:28px; line-height:36px; color:#ffffff; font-weight:bold; margin-top:16px; text-align:center;">
+                                Booking Chao Du Anda sudah disetujui
                             </div>
-                            <div style="font-size:28px; line-height:36px; color:#ffffff; font-weight:bold; margin-top:4px;">
-                                Booking Anda sudah disetujui
-                            </div>
-                            <div style="font-size:15px; line-height:24px; color:#f8dddd; margin-top:8px;">
+                            <div style="font-size:15px; line-height:24px; color:#f8dddd; margin-top:8px; text-align:center;">
                                 Pembayaran telah diverifikasi. Berikut detail booking Anda.
                             </div>
                         </td>
                     </tr>
-
                     <tr>
                         <td style="background:#ffffff; padding:32px; border-radius:0 0 18px 18px; box-shadow:0 4px 14px rgba(67,40,24,0.08);">
                             <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
@@ -114,7 +117,7 @@
                                 <tr>
                                     <td style="background:#fff7e6; border:1px solid #efd89d; border-radius:12px; padding:16px; font-size:14px; line-height:22px; color:#5f4a35;">
                                         <strong>Simpan QR yang terlampir pada email ini.</strong><br>
-                                        QR tersebut akan digunakan saat proses gate-in.
+                                        QR tersebut akan digunakan saat registrasi.
                                     </td>
                                 </tr>
                             </table>

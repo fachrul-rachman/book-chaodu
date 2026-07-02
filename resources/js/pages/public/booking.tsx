@@ -408,6 +408,8 @@ function NameCard({
     mandarinError,
     photoError,
     maxUploadMb,
+    indonesianLocked,
+    mandarinLocked,
     onChangeName,
     onChangePhoto,
     onReadPhoto,
@@ -421,6 +423,8 @@ function NameCard({
     mandarinError?: string;
     photoError?: string;
     maxUploadMb: number;
+    indonesianLocked: boolean;
+    mandarinLocked: boolean;
     onChangeName: (
         key: 'indonesian_name' | 'mandarin_name',
         value: string,
@@ -441,10 +445,15 @@ function NameCard({
                         aria-label={indonesianLabel}
                         type="text"
                         value={entry.indonesian_name}
+                        disabled={indonesianLocked}
                         onChange={(event) =>
                             onChangeName('indonesian_name', event.target.value)
                         }
-                        className="w-full rounded-xl border-2 border-[#E8D5C0] bg-white px-4 py-3 text-base text-[#2C1810] outline-none focus:border-[#8B1A1A]"
+                        className={`w-full rounded-xl border-2 px-4 py-3 text-base text-[#2C1810] outline-none ${
+                            indonesianLocked
+                                ? 'cursor-not-allowed border-[#E8D5C0] bg-slate-100 text-slate-500'
+                                : 'border-[#E8D5C0] bg-white focus:border-[#8B1A1A]'
+                        }`}
                     />
                 </label>
 
@@ -456,11 +465,23 @@ function NameCard({
                         aria-label={mandarinLabel}
                         type="text"
                         value={entry.mandarin_name}
+                        disabled={mandarinLocked}
                         onChange={(event) =>
                             onChangeName('mandarin_name', event.target.value)
                         }
-                        className="w-full rounded-xl border-2 border-[#E8D5C0] bg-white px-4 py-3 text-base text-[#2C1810] outline-none focus:border-[#8B1A1A]"
+                        className={`w-full rounded-xl border-2 px-4 py-3 text-base text-[#2C1810] outline-none ${
+                            mandarinLocked
+                                ? 'cursor-not-allowed border-[#E8D5C0] bg-slate-100 text-slate-500'
+                                : 'border-[#E8D5C0] bg-white focus:border-[#8B1A1A]'
+                        }`}
                     />
+                    <p className="mt-2 text-sm text-[#5C3D2E]">
+                        {mandarinLocked
+                            ? 'Kolom ini dikunci karena Anda sedang memakai nama Indonesia.'
+                            : indonesianLocked
+                              ? 'Kolom ini aktif karena Anda sedang memakai nama Mandarin atau foto.'
+                              : 'Pilih salah satu: nama Indonesia atau nama Mandarin/foto.'}
+                    </p>
                     <ErrorText value={mandarinError} />
                 </label>
 
@@ -473,14 +494,21 @@ function NameCard({
                             aria-label={photoLabel}
                             type="file"
                             accept=".jpg,.jpeg,.png"
+                            disabled={mandarinLocked}
                             onChange={(event: ChangeEvent<HTMLInputElement>) =>
                                 onChangePhoto(event.target.files?.[0] ?? null)
                             }
-                            className="block w-full text-sm text-[#5C3D2E]"
+                            className={`block w-full text-sm ${
+                                mandarinLocked
+                                    ? 'cursor-not-allowed text-slate-400'
+                                    : 'text-[#5C3D2E]'
+                            }`}
                         />
                     </label>
                     <p className="mt-2 text-sm text-[#5C3D2E]">
-                        Format JPG atau PNG. Maksimal {maxUploadMb} MB.
+                        {mandarinLocked
+                            ? 'Foto dikunci karena Anda sedang memakai nama Indonesia.'
+                            : `Format JPG atau PNG. Maksimal ${maxUploadMb} MB.`}
                     </p>
                     {entry.source_image_preview && (
                         <div className="mt-3 overflow-hidden rounded-xl border border-[#E8D084]">
@@ -499,10 +527,12 @@ function NameCard({
                     <button
                         type="button"
                         onClick={onReadPhoto}
-                        disabled={entry.read_status === 'reading'}
+                        disabled={entry.read_status === 'reading' || mandarinLocked}
                         className="mt-3 rounded-full border-2 border-[#8B1A1A] px-4 py-2 text-sm font-semibold text-[#8B1A1A] transition hover:bg-[#FDF8F0] disabled:opacity-50"
                     >
-                        {entry.read_status === 'reading'
+                        {mandarinLocked
+                            ? 'Pakai nama Indonesia'
+                            : entry.read_status === 'reading'
                             ? 'Sedang membaca foto...'
                             : readButtonLabel}
                     </button>
@@ -799,9 +829,34 @@ export default function PublicBookingPage() {
     ) => {
         setForm((current) => ({
             ...current,
-            deceased_names: current.deceased_names.map((item, itemIndex) =>
-                itemIndex === index ? { ...item, [key]: value } : item,
-            ),
+            deceased_names: current.deceased_names.map((item, itemIndex) => {
+                if (itemIndex !== index) {
+                    return item;
+                }
+
+                if (key === 'indonesian_name') {
+                    if (item.source_image_preview) {
+                        URL.revokeObjectURL(item.source_image_preview);
+                    }
+
+                    return {
+                        ...item,
+                        indonesian_name: value,
+                        mandarin_name: value.trim() !== '' ? '' : item.mandarin_name,
+                        source_image: value.trim() !== '' ? null : item.source_image,
+                        source_image_preview:
+                            value.trim() !== '' ? null : item.source_image_preview,
+                        read_status: value.trim() !== '' ? 'idle' : item.read_status,
+                        read_message: value.trim() !== '' ? null : item.read_message,
+                    };
+                }
+
+                return {
+                    ...item,
+                    mandarin_name: value,
+                    indonesian_name: value.trim() !== '' ? '' : item.indonesian_name,
+                };
+            }),
         }));
         clearErrors(['deceased_names']);
         setGeneralError(null);
@@ -811,10 +866,45 @@ export default function PublicBookingPage() {
         key: 'indonesian_name' | 'mandarin_name',
         value: string,
     ) => {
-        setForm((current) => ({
-            ...current,
-            incense_name: { ...current.incense_name, [key]: value },
-        }));
+        setForm((current) => {
+            if (key === 'indonesian_name') {
+                if (value.trim() !== '' && current.incense_name.source_image_preview) {
+                    URL.revokeObjectURL(current.incense_name.source_image_preview);
+                }
+
+                return {
+                    ...current,
+                    incense_name: {
+                        ...current.incense_name,
+                        indonesian_name: value,
+                        mandarin_name:
+                            value.trim() !== '' ? '' : current.incense_name.mandarin_name,
+                        source_image:
+                            value.trim() !== '' ? null : current.incense_name.source_image,
+                        source_image_preview:
+                            value.trim() !== ''
+                                ? null
+                                : current.incense_name.source_image_preview,
+                        read_status:
+                            value.trim() !== '' ? 'idle' : current.incense_name.read_status,
+                        read_message:
+                            value.trim() !== '' ? null : current.incense_name.read_message,
+                    },
+                };
+            }
+
+            return {
+                ...current,
+                incense_name: {
+                    ...current.incense_name,
+                    mandarin_name: value,
+                    indonesian_name:
+                        value.trim() !== ''
+                            ? ''
+                            : current.incense_name.indonesian_name,
+                },
+            };
+        });
         clearErrors(['incense_name']);
         setGeneralError(null);
     };
@@ -836,6 +926,7 @@ export default function PublicBookingPage() {
                     ...item,
                     source_image: file,
                     source_image_preview: previewUrl,
+                    indonesian_name: file ? '' : item.indonesian_name,
                     read_status: 'idle',
                     read_message: null,
                 };
@@ -858,6 +949,7 @@ export default function PublicBookingPage() {
                     ...current.incense_name,
                     source_image: file,
                     source_image_preview: previewUrl,
+                    indonesian_name: file ? '' : current.incense_name.indonesian_name,
                     read_status: 'idle',
                     read_message: null,
                 },
@@ -1014,6 +1106,10 @@ export default function PublicBookingPage() {
                     ? {
                           ...item,
                           mandarin_name: mandarinName ?? item.mandarin_name,
+                          indonesian_name:
+                              mandarinName !== undefined
+                                  ? ''
+                                  : item.indonesian_name,
                           read_status: readStatus,
                           read_message: readMessage,
                       }
@@ -1034,6 +1130,10 @@ export default function PublicBookingPage() {
                 ...current.incense_name,
                 mandarin_name:
                     mandarinName ?? current.incense_name.mandarin_name,
+                indonesian_name:
+                    mandarinName !== undefined
+                        ? ''
+                        : current.incense_name.indonesian_name,
                 read_status: readStatus,
                 read_message: readMessage,
             },
@@ -1702,6 +1802,13 @@ export default function PublicBookingPage() {
                                                             maxUploadMb={
                                                                 limits.ocr_upload_max_mb
                                                             }
+                                                            indonesianLocked={
+                                                                item.mandarin_name.trim() !== '' ||
+                                                                item.source_image !== null
+                                                            }
+                                                            mandarinLocked={
+                                                                item.indonesian_name.trim() !== ''
+                                                            }
                                                             onChangeName={(
                                                                 key,
                                                                 value,
@@ -1779,6 +1886,13 @@ export default function PublicBookingPage() {
                                                     }
                                                     maxUploadMb={
                                                         limits.ocr_upload_max_mb
+                                                    }
+                                                    indonesianLocked={
+                                                        form.incense_name.mandarin_name.trim() !== '' ||
+                                                        form.incense_name.source_image !== null
+                                                    }
+                                                    mandarinLocked={
+                                                        form.incense_name.indonesian_name.trim() !== ''
                                                     }
                                                     onChangeName={
                                                         setIncenseName
@@ -2383,4 +2497,3 @@ export default function PublicBookingPage() {
         </>
     );
 }
-

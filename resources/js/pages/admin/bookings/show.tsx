@@ -89,6 +89,22 @@ function formatNominalInput(value: string): string {
     }).format(Number(digitsOnly));
 }
 
+function formatStoredNominalInput(value: string): string {
+    const numeric = Number(value);
+
+    if (!Number.isFinite(numeric) || numeric <= 0) {
+        return '';
+    }
+
+    return new Intl.NumberFormat('id-ID', {
+        maximumFractionDigits: 0,
+    }).format(numeric);
+}
+
+function prayerPaperLabel(type: string): string {
+    return type === 'A' ? 'Kertas Doa' : 'Kertas Hio';
+}
+
 export default function AdminBookingShowPage() {
     const { booking, slot_options, flash, errors } = usePage<Props>().props;
     const form = useForm({
@@ -98,7 +114,7 @@ export default function AdminBookingShowPage() {
         attendee_count: String(booking.attendee_count),
         sender_name: booking.sender_name ?? '',
         transferred_amount: booking.transferred_amount
-            ? formatNominalInput(booking.transferred_amount)
+            ? formatStoredNominalInput(booking.transferred_amount)
             : '',
         transfer_date: booking.transfer_date ?? '',
         referral_source: booking.referral_source,
@@ -237,7 +253,7 @@ export default function AdminBookingShowPage() {
                                             href={item.file_url}
                                             className="rounded-full border border-[var(--color-brand)] px-4 py-2 text-center text-sm font-semibold text-[var(--color-brand)]"
                                         >
-                                            Buka kertas {item.type}
+                                            Buka {prayerPaperLabel(item.type)}
                                             {item.type === 'A'
                                                 ? ` ${item.sequence}`
                                                 : ''}

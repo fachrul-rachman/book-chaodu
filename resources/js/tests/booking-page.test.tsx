@@ -142,7 +142,7 @@ it('shows both name sections when combo is selected', async () => {
 
     fireEvent.click(screen.getByRole('button', { name: /Combo/i }));
 
-    expect(screen.getByText('Nama untuk sembahyang')).toBeInTheDocument();
+    expect(screen.getByText('Nama Almarhum/ah')).toBeInTheDocument();
     expect(
         screen.getByText('Nama Orang atau Keluarga yang Ingin Didoakan'),
     ).toBeInTheDocument();
@@ -261,13 +261,6 @@ it('lets customer continue with manual input when photo reading fails', async ()
     fillStepOne();
     fireEvent.click(screen.getByRole('button', { name: /Lanjut/ }));
     fireEvent.click(screen.getByRole('button', { name: /Sembahyang/i }));
-    fireEvent.change(
-        screen.getByRole('textbox', { name: 'Nama Indonesia 1' }),
-        {
-            target: { value: 'Nama Manual' },
-        },
-    );
-
     const file = new File(['photo'], 'nama-1.jpg', { type: 'image/jpeg' });
     fireEvent.change(screen.getByLabelText('Foto nama 1'), {
         target: { files: [file] },
@@ -279,6 +272,10 @@ it('lets customer continue with manual input when photo reading fails', async ()
     await screen.findByText(
         'Tulisan pada foto belum bisa dibaca. Anda tetap bisa isi manual.',
     );
+
+    fireEvent.change(screen.getByRole('textbox', { name: 'Nama Mandarin 1' }), {
+        target: { value: '王小明' },
+    });
 
     await act(async () => {
         fireEvent.click(screen.getByRole('button', { name: /Lanjut/ }));
@@ -329,4 +326,35 @@ it('lets customer continue with 0 meal quantities', async () => {
     expect(
         screen.getByRole('heading', { name: 'Pembayaran' }),
     ).toBeInTheDocument();
+});
+
+it('locks mandarin and photo when Indonesian name is filled', () => {
+    render(<PublicBookingPage />);
+
+    fillStepOne();
+    fireEvent.click(screen.getByRole('button', { name: /Lanjut/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Sembahyang/i }));
+
+    fireEvent.change(screen.getByRole('textbox', { name: 'Nama Indonesia 1' }), {
+        target: { value: 'Nama Satu' },
+    });
+
+    expect(screen.getByRole('textbox', { name: 'Nama Mandarin 1' })).toBeDisabled();
+    expect(screen.getByLabelText('Foto nama 1')).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Pakai nama Indonesia' })).toBeDisabled();
+});
+
+it('locks Indonesian name when Mandarin name is filled', () => {
+    render(<PublicBookingPage />);
+
+    fillStepOne();
+    fireEvent.click(screen.getByRole('button', { name: /Lanjut/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Sembahyang/i }));
+
+    fireEvent.change(screen.getByRole('textbox', { name: 'Nama Mandarin 1' }), {
+        target: { value: '王小明' },
+    });
+
+    expect(screen.getByRole('textbox', { name: 'Nama Indonesia 1' })).toBeDisabled();
+    expect(screen.getByRole('textbox', { name: 'Nama Mandarin 1' })).not.toBeDisabled();
 });

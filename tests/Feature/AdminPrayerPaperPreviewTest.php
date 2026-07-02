@@ -10,8 +10,9 @@ it('shows the quick preview page for admin', function () {
     $this->actingAs($admin)
         ->get('/admin/kertas-doa/cek-cepat')
         ->assertOk()
-        ->assertSee('Cek cepat kertas')
-        ->assertSee('Lihat hasil');
+        ->assertSee('admin\\/prayer-paper-preview\\/index', false)
+        ->assertSee('Kertas Doa')
+        ->assertSee('Kertas Hio');
 });
 
 it('downloads prayer paper preview as png', function () {
