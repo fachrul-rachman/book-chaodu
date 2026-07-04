@@ -65,6 +65,7 @@ it('shows table layout with slot colors data and booking information', function 
     $rows = $response->viewData('page')['props']['rows'];
     $rowA = collect($rows)->firstWhere('row_code', 'A');
     $rowB = collect($rows)->firstWhere('row_code', 'B');
+    $slotA18 = collect($rowA['slots'])->firstWhere('code', 'A18');
     $slotA58 = collect($rowA['slots'])->firstWhere('code', 'A58');
     $slotB18 = collect($rowB['slots'])->firstWhere('code', 'B18');
 
@@ -78,6 +79,8 @@ it('shows table layout with slot colors data and booking information', function 
         'D',
         'E',
     ])
+        ->and($slotA18['is_internal_company'])->toBeTrue()
+        ->and($slotA18['booking_number'])->toBeNull()
         ->and($slotA58['status'])->toBe(SlotStatus::Reserved->value)
         ->and($slotA58['booking_number'])->toBe('CD-PENDING1')
         ->and($slotB18['status'])->toBe(SlotStatus::Assigned->value)

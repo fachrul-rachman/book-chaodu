@@ -83,6 +83,11 @@ class AdminReportService
             ->map(fn (Booking $booking): array => $this->checkInRow($booking))
             ->all();
 
+        $rows = [
+            ...$rows,
+            ...$this->internalCheckInRows($filters),
+        ];
+
         $this->sortCheckInRows($rows, (string) ($filters['sort'] ?? 'table_number'));
 
         return [
@@ -116,6 +121,9 @@ class AdminReportService
         $rows = $bookings
             ->map(fn (Booking $booking): array => $this->financeRow($booking))
             ->values();
+
+        $internalRows = collect($this->internalFinanceRows($filters));
+        $rows = $rows->concat($internalRows)->values();
 
         $byPackage = $rows
             ->groupBy('package_code')
@@ -459,5 +467,67 @@ class AdminReportService
         $trimmed = trim($value);
 
         return $trimmed === '' ? null : $trimmed;
+    }
+
+    /**
+     * @param  array<string, mixed>  $filters
+     * @return array<int, array<string, mixed>>
+     */
+    private function internalCheckInRows(array $filters): array
+    {
+        return array_map(
+            fn (array $row): array => [
+                'booking_number' => $row['booking_number'],
+                'customer_name' => $row['customer_name'],
+                'customer_phone' => $row['customer_phone'],
+                'package_name' => $row['package_name'],
+                'attendee_count' => $row['attendee_count'],
+                'vegetarian_quantity' => $row['vegetarian_quantity'],
+                'non_vegetarian_quantity' => $row['non_vegetarian_quantity'],
+                'table_number' => $row['table_number'],
+                'incense_number' => $row['incense_number'],
+                'agent_name' => $row['agent_name'],
+                'manual_check_in' => '',
+                'notes' => '',
+            ],
+            $this->filteredInternalRows($filters),
+        );
+    }
+
+    /**
+     * @param  array<string, mixed>  $filters
+     * @return array<int, array<string, mixed>>
+     */
+    private function internalFinanceRows(array $filters): array
+    {
+        return array_map(
+            fn (array $row): array => [
+                'booking_number' => $row['booking_number'],
+                'booking_date' => $row['booking_date'],
+                'approval_date' => $row['approval_date'],
+                'customer_name' => $row['customer_name'],
+                'package_code' => $row['package_code'],
+                'package_name' => $row['package_name'],
+                'amount' => $row['amount'],
+                'virtual_account_number' => $row['virtual_account_number'],
+                'referral_source' => $row['referral_source'],
+                'agent_name' => $row['agent_name'],
+            ],
+            $this->filteredInternalRows($filters),
+        );
+    }
+
+    /**
+     * @param  array<string, mixed>  $filters
+     * @return array<int, array<string, mixed>>
+     */
+    private function filteredInternalRows(array $filters): array
+    {
+        $packageCode = $filters['package_code'] ?? null;
+
+        return array_values(array_filter(
+            $this->internalCompanySlotService->reportRows(),
+            static fn (array $row): bool => blank($packageCode) || $row['package_code'] === $packageCode,
+        ));
     }
 }

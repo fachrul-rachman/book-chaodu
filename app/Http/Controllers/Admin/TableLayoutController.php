@@ -35,7 +35,7 @@ class TableLayoutController extends Controller
                             'booking_id' => $slot->booking_id,
                             'booking_number' => $slot->booking?->booking_number,
                             'customer_name' => $slot->booking?->customer_name,
-                            'is_internal_company' => $slot->booking?->referral_source === $internalCompanySlotService->sourceValue(),
+                            'is_internal_company' => $internalCompanySlotService->isInternalTableCode($slot->code),
                         ])
                         ->all(),
                 ])

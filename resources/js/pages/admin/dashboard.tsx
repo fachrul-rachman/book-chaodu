@@ -162,19 +162,6 @@ export default function AdminDashboard() {
                             </Link>
 
                             <Link
-                                href="/admin/booking/internal-perusahaan"
-                                className="rounded-[24px] border border-sky-200 bg-sky-50 p-6 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md"
-                            >
-                                <h3 className="text-lg font-semibold text-sky-950">
-                                    Booking Internal Perusahaan
-                                </h3>
-                                <p className="mt-2 text-sm leading-6 text-sky-900/80">
-                                    Pakai meja dan hio khusus kantor, langsung
-                                    jadi tanpa menunggu persetujuan.
-                                </p>
-                            </Link>
-
-                            <Link
                                 href="/admin/layout-meja"
                                 className="rounded-[24px] border border-[var(--color-border)] bg-white/90 p-6 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md"
                             >

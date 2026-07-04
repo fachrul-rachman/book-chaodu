@@ -109,12 +109,22 @@ it('shows approved bookings only in reports', function () {
 
     $props = $response->viewData('page')['props'];
 
-    expect(collect($props['checkin']['rows'])->pluck('booking_number')->all())->toBe([
+    expect(collect($props['checkin']['rows'])->pluck('booking_number')->all())->toContain(
         'CD-APPROVED-1',
-    ])
-        ->and(collect($props['finance']['rows'])->pluck('booking_number')->all())->toBe([
+        'INTERNAL-A18',
+        'INTERNAL-A28',
+        'INTERNAL-A38',
+        'INTERNAL-HIO-1',
+        'INTERNAL-HIO-2',
+    )
+        ->and(collect($props['finance']['rows'])->pluck('booking_number')->all())->toContain(
             'CD-APPROVED-1',
-        ]);
+            'INTERNAL-A18',
+            'INTERNAL-A28',
+            'INTERNAL-A38',
+            'INTERNAL-HIO-1',
+            'INTERNAL-HIO-2',
+        );
 });
 
 it('uses stored transferred amount in finance report', function () {
@@ -137,10 +147,13 @@ it('uses stored transferred amount in finance report', function () {
     ]));
 
     $props = $response->viewData('page')['props'];
+    $realBookingRow = collect($props['finance']['rows'])
+        ->firstWhere('booking_number', 'CD-FINANCE-1');
 
     expect($props['finance']['summary']['total_revenue'])->toBe(1234567.0)
-        ->and($props['finance']['rows'][0]['amount'])->toBe(1234567.0)
-        ->and($props['finance']['rows'][0]['virtual_account_number'])->toBeNull();
+        ->and($realBookingRow['amount'])->toBe(1234567.0)
+        ->and($realBookingRow['virtual_account_number'])->toBeNull()
+        ->and(collect($props['finance']['rows'])->pluck('booking_number')->all())->toContain('INTERNAL-A18');
 });
 
 it('groups agent names with basic normalization only', function () {

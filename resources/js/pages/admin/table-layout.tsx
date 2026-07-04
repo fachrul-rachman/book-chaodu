@@ -41,11 +41,15 @@ function slotClass(slot: TableSlotItem): string {
 }
 
 function slotTitle(slot: TableSlotItem): string {
+    if (slot.is_internal_company) {
+        return `${slot.code}: Internal Perusahaan`;
+    }
+
     if (!slot.booking_number) {
         return `${slot.code}: masih kosong`;
     }
 
-    return `${slot.code} | ${slot.booking_number}${slot.customer_name ? ` | ${slot.customer_name}` : ''}${slot.is_internal_company ? ' | Internal Perusahaan' : ''}`;
+    return `${slot.code} | ${slot.booking_number}${slot.customer_name ? ` | ${slot.customer_name}` : ''}`;
 }
 
 export default function AdminTableLayoutPage() {
