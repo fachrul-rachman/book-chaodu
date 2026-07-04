@@ -92,7 +92,7 @@ class BookingDiscordNotificationService
                 $this->field('🎫 Nomor Booking', $booking->booking_number),
             ],
             [
-               $this->field('👤 Nama Customer', $booking->customer_name),
+                $this->field('👤 Nama Customer', $booking->customer_name),
             ],
             [
                 $this->field('📦 Paket', $booking->package_name_snapshot),

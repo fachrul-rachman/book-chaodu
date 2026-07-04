@@ -12,6 +12,10 @@ use Illuminate\Support\Facades\DB;
 
 class SlotAllocator
 {
+    public function __construct(
+        private readonly InternalCompanySlotService $internalCompanySlotService,
+    ) {}
+
     /**
      * @return array{table_code:string|null, incense_number:int|null}
      */
@@ -44,6 +48,33 @@ class SlotAllocator
             return [
                 'table_code' => $tableSlot?->code,
                 'incense_number' => $incenseSlot?->number,
+            ];
+        });
+    }
+
+    /**
+     * @return array{table_code:string, incense_number:int}
+     */
+    public function assignInternalCompanySlots(int $bookingId): array
+    {
+        return DB::transaction(function () use ($bookingId): array {
+            $tableSlot = $this->lockFirstAvailableInternalTableSlot();
+            $incenseSlot = $this->lockFirstAvailableInternalIncenseSlot();
+
+            if (! $tableSlot) {
+                throw new SlotUnavailableException('Nomor meja khusus Internal Perusahaan sudah habis.');
+            }
+
+            if (! $incenseSlot) {
+                throw new SlotUnavailableException('Nomor hio khusus Internal Perusahaan sudah habis.');
+            }
+
+            $this->markAssigned($tableSlot, $bookingId);
+            $this->markAssigned($incenseSlot, $bookingId);
+
+            return [
+                'table_code' => $tableSlot->code,
+                'incense_number' => $incenseSlot->number,
             ];
         });
     }
@@ -160,6 +191,7 @@ class SlotAllocator
     {
         return TableSlot::query()
             ->where('status', SlotStatus::Available)
+            ->whereNotIn('code', $this->internalCompanySlotService->tableCodes())
             ->orderBy('allocation_order')
             ->lock('FOR UPDATE SKIP LOCKED')
             ->first();
@@ -169,6 +201,27 @@ class SlotAllocator
     {
         return IncenseSlot::query()
             ->where('status', SlotStatus::Available)
+            ->whereNotIn('number', $this->internalCompanySlotService->incenseNumbers())
+            ->orderBy('allocation_order')
+            ->lock('FOR UPDATE SKIP LOCKED')
+            ->first();
+    }
+
+    private function lockFirstAvailableInternalTableSlot(): ?TableSlot
+    {
+        return TableSlot::query()
+            ->where('status', SlotStatus::Available)
+            ->whereIn('code', $this->internalCompanySlotService->tableCodes())
+            ->orderBy('allocation_order')
+            ->lock('FOR UPDATE SKIP LOCKED')
+            ->first();
+    }
+
+    private function lockFirstAvailableInternalIncenseSlot(): ?IncenseSlot
+    {
+        return IncenseSlot::query()
+            ->where('status', SlotStatus::Available)
+            ->whereIn('number', $this->internalCompanySlotService->incenseNumbers())
             ->orderBy('allocation_order')
             ->lock('FOR UPDATE SKIP LOCKED')
             ->first();
@@ -178,6 +231,14 @@ class SlotAllocator
     {
         $slot->forceFill([
             'status' => SlotStatus::Reserved,
+            'booking_id' => $bookingId,
+        ])->save();
+    }
+
+    private function markAssigned(Model $slot, int $bookingId): void
+    {
+        $slot->forceFill([
+            'status' => SlotStatus::Assigned,
             'booking_id' => $bookingId,
         ])->save();
     }

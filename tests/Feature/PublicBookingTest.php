@@ -146,7 +146,7 @@ it('creates a prayer booking and reserves the first table slot', function () {
         ->and($booking->meal?->non_vegetarian_quantity)->toBe(1)
         ->and($booking->payment?->proof_path)->toStartWith('booking-files/booking-key-1/')
         ->and($booking->payment?->virtual_account_number)->toBe('900001')
-        ->and(TableSlot::query()->where('booking_id', $booking->id)->value('code'))->toBe('A18')
+        ->and(TableSlot::query()->where('booking_id', $booking->id)->value('code'))->toBe('F18')
         ->and(TableSlot::query()->where('booking_id', $booking->id)->value('status'))->toBe(SlotStatus::Reserved)
         ->and(IncenseSlot::query()->where('booking_id', $booking->id)->exists())->toBeFalse();
 
@@ -194,8 +194,8 @@ it('creates a combo booking with table, incense, and both name groups', function
             ->where('category', BookingNameCategory::Incense->value)
             ->count())->toBe(1)
         ->and($booking->payment?->virtual_account_number)->toBe('920001')
-        ->and(TableSlot::query()->where('booking_id', $booking->id)->value('code'))->toBe('A18')
-        ->and(IncenseSlot::query()->where('booking_id', $booking->id)->value('number'))->toBe(1);
+        ->and(TableSlot::query()->where('booking_id', $booking->id)->value('code'))->toBe('F18')
+        ->and(IncenseSlot::query()->where('booking_id', $booking->id)->value('number'))->toBe(3);
 });
 
 it('allows zero meal quantities in public booking', function () {

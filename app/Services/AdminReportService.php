@@ -10,6 +10,10 @@ use Illuminate\Support\Collection;
 
 class AdminReportService
 {
+    public function __construct(
+        private readonly InternalCompanySlotService $internalCompanySlotService,
+    ) {}
+
     /**
      * @param  array<string, mixed>  $input
      * @return array{
@@ -436,6 +440,7 @@ class AdminReportService
     private function referralSourceLabel(?string $value): string
     {
         return match ($value) {
+            'INTERNAL_PERUSAHAAN' => $this->internalCompanySlotService->sourceLabel(),
             'TEMAN' => 'Teman',
             'KELUARGA' => 'Keluarga',
             'MEDIA_SOSIAL' => 'Media sosial',

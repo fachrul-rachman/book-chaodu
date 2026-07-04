@@ -8,6 +8,7 @@ type TableSlotItem = {
     booking_id: number | null;
     booking_number: string | null;
     customer_name: string | null;
+    is_internal_company: boolean;
 };
 
 type RowItem = {
@@ -31,12 +32,20 @@ function slotTone(status: TableSlotItem['status']): string {
     return 'bg-white text-slate-800 border-slate-300';
 }
 
+function slotClass(slot: TableSlotItem): string {
+    if (slot.is_internal_company) {
+        return 'bg-sky-400 text-sky-950 border-sky-500';
+    }
+
+    return slotTone(slot.status);
+}
+
 function slotTitle(slot: TableSlotItem): string {
     if (!slot.booking_number) {
         return `${slot.code}: masih kosong`;
     }
 
-    return `${slot.code} | ${slot.booking_number}${slot.customer_name ? ` | ${slot.customer_name}` : ''}`;
+    return `${slot.code} | ${slot.booking_number}${slot.customer_name ? ` | ${slot.customer_name}` : ''}${slot.is_internal_company ? ' | Internal Perusahaan' : ''}`;
 }
 
 export default function AdminTableLayoutPage() {
@@ -87,6 +96,10 @@ export default function AdminTableLayoutPage() {
                                 <span className="h-4 w-4 rounded border border-emerald-600 bg-emerald-500" />
                                 <span>Sudah disetujui</span>
                             </div>
+                            <div className="flex items-center gap-2">
+                                <span className="h-4 w-4 rounded border border-sky-500 bg-sky-400" />
+                                <span>Internal Perusahaan</span>
+                            </div>
                         </div>
                     </section>
 
@@ -107,7 +120,7 @@ export default function AdminTableLayoutPage() {
                                                             key={slot.id}
                                                             href={`/admin/booking/${slot.booking_id}`}
                                                             title={slotTitle(slot)}
-                                                            className={`flex h-8 w-14 items-center justify-center rounded border text-xs font-medium transition hover:scale-[1.02] ${slotTone(slot.status)}`}
+                                                            className={`flex h-8 w-14 items-center justify-center rounded border text-xs font-medium transition hover:scale-[1.02] ${slotClass(slot)}`}
                                                         >
                                                             {slot.number}
                                                         </Link>
@@ -115,7 +128,7 @@ export default function AdminTableLayoutPage() {
                                                         <div
                                                             key={slot.id}
                                                             title={slotTitle(slot)}
-                                                            className={`flex h-8 w-14 items-center justify-center rounded border text-xs font-medium ${slotTone(slot.status)}`}
+                                                            className={`flex h-8 w-14 items-center justify-center rounded border text-xs font-medium ${slotClass(slot)}`}
                                                         >
                                                             {slot.number}
                                                         </div>
@@ -141,7 +154,7 @@ export default function AdminTableLayoutPage() {
                                                             key={slot.id}
                                                             href={`/admin/booking/${slot.booking_id}`}
                                                             title={slotTitle(slot)}
-                                                            className={`flex h-8 w-14 items-center justify-center rounded border text-xs font-medium transition hover:scale-[1.02] ${slotTone(slot.status)}`}
+                                                            className={`flex h-8 w-14 items-center justify-center rounded border text-xs font-medium transition hover:scale-[1.02] ${slotClass(slot)}`}
                                                         >
                                                             {slot.number}
                                                         </Link>
@@ -149,7 +162,7 @@ export default function AdminTableLayoutPage() {
                                                         <div
                                                             key={slot.id}
                                                             title={slotTitle(slot)}
-                                                            className={`flex h-8 w-14 items-center justify-center rounded border text-xs font-medium ${slotTone(slot.status)}`}
+                                                            className={`flex h-8 w-14 items-center justify-center rounded border text-xs font-medium ${slotClass(slot)}`}
                                                         >
                                                             {slot.number}
                                                         </div>

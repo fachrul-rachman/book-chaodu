@@ -11,6 +11,7 @@ use App\Models\Booking;
 use App\Models\IncenseSlot;
 use App\Models\TableSlot;
 use App\Services\AdminBookingUpdateService;
+use App\Services\InternalCompanySlotService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -18,6 +19,10 @@ use Inertia\Response;
 
 class BookingController extends Controller
 {
+    public function __construct(
+        private readonly InternalCompanySlotService $internalCompanySlotService,
+    ) {}
+
     public function index(Request $request): Response
     {
         $selectedStatus = $this->selectedStatus($request->query('status'));
@@ -105,6 +110,7 @@ class BookingController extends Controller
                 'customer_email' => $booking->customer_email,
                 'attendee_count' => $booking->attendee_count,
                 'referral_source' => $booking->referral_source,
+                'source_label' => $this->sourceLabel($booking),
                 'agent_name' => $booking->agent_name,
                 'rejection_reason' => $booking->rejection_reason,
                 'proof_path' => $payment?->proof_path,
@@ -172,8 +178,11 @@ class BookingController extends Controller
             ],
             'slot_options' => [
                 'tables' => TableSlot::query()
-                    ->whereNull('booking_id')
-                    ->orWhere('booking_id', $booking->id)
+                    ->where(function ($query) use ($booking): void {
+                        $query->whereNull('booking_id')
+                            ->orWhere('booking_id', $booking->id);
+                    })
+                    ->whereNotIn('code', $this->internalCompanySlotService->tableCodes())
                     ->orderBy('allocation_order')
                     ->get()
                     ->map(fn (TableSlot $slot): array => [
@@ -184,8 +193,11 @@ class BookingController extends Controller
                     ->values()
                     ->all(),
                 'incense' => IncenseSlot::query()
-                    ->whereNull('booking_id')
-                    ->orWhere('booking_id', $booking->id)
+                    ->where(function ($query) use ($booking): void {
+                        $query->whereNull('booking_id')
+                            ->orWhere('booking_id', $booking->id);
+                    })
+                    ->whereNotIn('number', $this->internalCompanySlotService->incenseNumbers())
                     ->orderBy('allocation_order')
                     ->get()
                     ->map(fn (IncenseSlot $slot): array => [
@@ -237,10 +249,24 @@ class BookingController extends Controller
             'customer_phone' => $booking->customer_phone,
             'package_name' => $booking->package_name_snapshot,
             'status' => $booking->status->value,
+            'source_label' => $this->sourceLabel($booking),
             'table_slot' => $booking->tableSlots->sortBy('allocation_order')->first()?->code,
             'incense_slot' => $booking->incenseSlots->sortBy('allocation_order')->first()?->number,
             'created_at' => optional($booking->created_at)->format('d M Y H:i'),
         ];
+    }
+
+    private function sourceLabel(Booking $booking): string
+    {
+        return match ($booking->referral_source) {
+            'TEMAN' => 'Teman',
+            'KELUARGA' => 'Keluarga',
+            'MEDIA_SOSIAL' => 'Media sosial',
+            'WEBSITE' => 'Website',
+            'AGENT' => 'Agent',
+            $this->internalCompanySlotService->sourceValue() => $this->internalCompanySlotService->sourceLabel(),
+            default => '-',
+        };
     }
 
     private function selectedStatus(mixed $value): ?BookingStatus

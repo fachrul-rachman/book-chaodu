@@ -7,6 +7,7 @@ type BookingItem = {
     customer_phone: string;
     package_name: string;
     status: string;
+    source_label: string;
     table_slot: string | null;
     incense_slot: number | null;
     created_at: string | null;
@@ -94,6 +95,9 @@ export default function AdminBookingIndexPage() {
                                                 </p>
                                                 <p className="text-sm text-slate-700">
                                                     {booking.package_name}
+                                                </p>
+                                                <p className="text-sm text-slate-500">
+                                                    {booking.source_label}
                                                 </p>
                                             </div>
 

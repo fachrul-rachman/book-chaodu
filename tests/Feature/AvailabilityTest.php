@@ -49,8 +49,8 @@ it('returns remaining counts and package availability', function () {
 
     $summary = app(AvailabilityService::class)->summary();
 
-    expect($summary['table_remaining'])->toBe(168)
-        ->and($summary['incense_remaining'])->toBe(44)
+    expect($summary['table_remaining'])->toBe(165)
+        ->and($summary['incense_remaining'])->toBe(42)
         ->and(collect($summary['packages'])->keyBy('code')->get(PackageCode::Combo->value)['available'])->toBeTrue();
 });
 
@@ -59,12 +59,12 @@ it('reserves the first table slot in order and can release it back', function ()
     $allocator = app(SlotAllocator::class);
 
     $first = $allocator->reserveForPackage(PackageCode::Prayer, 101);
-    expect($first['table_code'])->toBe('A18');
+    expect($first['table_code'])->toBe('F18');
 
     $allocator->releaseByBookingId(101);
 
     $second = $allocator->reserveForPackage(PackageCode::Prayer, 102);
-    expect($second['table_code'])->toBe('A18');
+    expect($second['table_code'])->toBe('F18');
 });
 
 it('reserves table and incense together for combo', function () {
@@ -74,8 +74,8 @@ it('reserves table and incense together for combo', function () {
     $result = $allocator->reserveForPackage(PackageCode::Combo, 201);
 
     expect($result)->toBe([
-        'table_code' => 'A18',
-        'incense_number' => 1,
+        'table_code' => 'F18',
+        'incense_number' => 3,
     ]);
 });
 
@@ -99,8 +99,8 @@ it('shows public availability data', function () {
 
     $this->getJson(route('api.public.availability.show'))
         ->assertOk()
-        ->assertJsonPath('table_remaining', 168)
-        ->assertJsonPath('incense_remaining', 44);
+        ->assertJsonPath('table_remaining', 165)
+        ->assertJsonPath('incense_remaining', 42);
 });
 
 it('shows remaining counts on the admin home page', function () {
@@ -110,6 +110,6 @@ it('shows remaining counts on the admin home page', function () {
     $this->actingAs($admin)
         ->get(route('admin.dashboard'))
         ->assertOk()
-        ->assertSee('"table_remaining":168', false)
-        ->assertSee('"incense_remaining":44', false);
+        ->assertSee('"table_remaining":165', false)
+        ->assertSee('"incense_remaining":42', false);
 });

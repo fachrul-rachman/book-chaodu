@@ -127,23 +127,30 @@ it('shows booking lists for all statuses to admin users', function () {
 
     $admin = User::factory()->admin()->create();
 
-    $this->actingAs($admin)
+    $allResponse = $this->actingAs($admin)
         ->get(route('admin.bookings.index'))
-        ->assertOk()
-        ->assertSeeText($pending->booking_number, false)
-        ->assertSeeText($approved->booking_number, false)
-        ->assertSeeText($rejected->booking_number, false)
-        ->assertSeeText('PENDING', false)
-        ->assertSeeText('APPROVED', false)
-        ->assertSeeText('REJECTED', false);
+        ->assertOk();
 
-    $this->actingAs($admin)
+    $allBookings = collect($allResponse->viewData('page')['props']['bookings'] ?? []);
+
+    expect($allBookings->pluck('booking_number')->all())
+        ->toContain($pending->booking_number, $approved->booking_number, $rejected->booking_number)
+        ->and($allBookings->pluck('status')->all())
+        ->toContain(
+            BookingStatus::Pending->value,
+            BookingStatus::Approved->value,
+            BookingStatus::Rejected->value,
+        );
+
+    $pendingResponse = $this->actingAs($admin)
         ->get(route('admin.bookings.index', ['status' => BookingStatus::Pending->value]))
-        ->assertOk()
-        ->assertSeeText($pending->booking_number, false)
-        ->assertDontSeeText($approved->booking_number, false)
-        ->assertDontSeeText($rejected->booking_number, false)
-        ->assertSeeText('PENDING', false);
+        ->assertOk();
+
+    $pendingBookings = collect($pendingResponse->viewData('page')['props']['bookings'] ?? []);
+
+    expect($pendingBookings)->toHaveCount(1)
+        ->and($pendingBookings->pluck('booking_number')->all())->toBe([$pending->booking_number])
+        ->and($pendingBookings->pluck('status')->all())->toBe([BookingStatus::Pending->value]);
 });
 
 it('shows booking detail including reserved slots and proof', function () {
@@ -154,7 +161,7 @@ it('shows booking detail including reserved slots and proof', function () {
         ->get(route('admin.bookings.show', $booking))
         ->assertOk()
         ->assertSee($booking->customer_name)
-        ->assertSee('A18')
+        ->assertSee('F18')
         ->assertSee('bukti-transfer.jpg');
 });
 
@@ -245,7 +252,7 @@ it('replaces a reserved table slot safely', function () {
             'agent_name' => $booking->agent_name,
             'vegetarian_quantity' => $booking->meal?->vegetarian_quantity,
             'non_vegetarian_quantity' => $booking->meal?->non_vegetarian_quantity,
-            'replace_table_slot_id' => TableSlot::query()->where('code', 'F18')->value('id'),
+            'replace_table_slot_id' => TableSlot::query()->where('code', 'B18')->value('id'),
             'deceased_names' => [
                 [
                     'position' => 1,
@@ -256,10 +263,10 @@ it('replaces a reserved table slot safely', function () {
         ])
         ->assertRedirect();
 
-    expect(TableSlot::query()->where('code', 'A18')->value('status'))->toBe(SlotStatus::Available)
-        ->and(TableSlot::query()->where('code', 'A18')->value('booking_id'))->toBeNull()
-        ->and(TableSlot::query()->where('code', 'F18')->value('status'))->toBe(SlotStatus::Reserved)
-        ->and(TableSlot::query()->where('code', 'F18')->value('booking_id'))->toBe($booking->id);
+    expect(TableSlot::query()->where('code', 'F18')->value('status'))->toBe(SlotStatus::Available)
+        ->and(TableSlot::query()->where('code', 'F18')->value('booking_id'))->toBeNull()
+        ->and(TableSlot::query()->where('code', 'B18')->value('status'))->toBe(SlotStatus::Reserved)
+        ->and(TableSlot::query()->where('code', 'B18')->value('booking_id'))->toBe($booking->id);
 });
 
 it('approves a booking and assigns reserved slots', function () {
@@ -302,8 +309,8 @@ it('rejects a booking with reason and releases reserved slots', function () {
 
     expect($booking->status)->toBe(BookingStatus::Rejected)
         ->and($booking->rejection_reason)->toBe('Bukti transfer belum sesuai.')
-        ->and(TableSlot::query()->where('code', 'A18')->value('status'))->toBe(SlotStatus::Available)
-        ->and(TableSlot::query()->where('code', 'A18')->value('booking_id'))->toBeNull();
+        ->and(TableSlot::query()->where('code', 'F18')->value('status'))->toBe(SlotStatus::Available)
+        ->and(TableSlot::query()->where('code', 'F18')->value('booking_id'))->toBeNull();
 });
 
 it('keeps rejection safe from double requests', function () {

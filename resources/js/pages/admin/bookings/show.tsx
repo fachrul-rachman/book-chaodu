@@ -24,6 +24,7 @@ type BookingDetail = {
     customer_email: string;
     attendee_count: number;
     referral_source: string;
+    source_label: string;
     agent_name: string | null;
     rejection_reason: string | null;
     proof_path: string | null;
@@ -183,7 +184,8 @@ export default function AdminBookingShowPage() {
                                 {booking.booking_number}
                             </h1>
                             <p className="mt-2 text-sm leading-6 text-slate-700">
-                                {booking.package_name} | {booking.status}
+                                {booking.package_name} | {booking.status} |{' '}
+                                {booking.source_label}
                             </p>
                         </div>
 
@@ -344,10 +346,11 @@ export default function AdminBookingShowPage() {
                         </section>
                     ) : null}
 
-                    <form
-                        onSubmit={submit}
-                        className="space-y-6 rounded-[24px] border border-[var(--color-border)] bg-white/90 p-6 shadow-sm"
-                    >
+                    {booking.status === 'PENDING' ? (
+                        <form
+                            onSubmit={submit}
+                            className="space-y-6 rounded-[24px] border border-[var(--color-border)] bg-white/90 p-6 shadow-sm"
+                        >
                         <div className="grid gap-4 sm:grid-cols-2">
                             <label className="block">
                                 <span className="mb-2 block text-sm font-medium">
@@ -709,48 +712,51 @@ export default function AdminBookingShowPage() {
                             </label>
                         ) : null}
 
-                        <button
-                            type="submit"
-                            disabled={form.processing}
-                            className="rounded-full bg-[var(--color-brand)] px-5 py-3 text-sm font-semibold text-white disabled:opacity-60"
-                        >
-                            {form.processing
-                                ? 'Menyimpan...'
-                                : 'Simpan perubahan'}
-                        </button>
-                    </form>
+                            <button
+                                type="submit"
+                                disabled={form.processing}
+                                className="rounded-full bg-[var(--color-brand)] px-5 py-3 text-sm font-semibold text-white disabled:opacity-60"
+                            >
+                                {form.processing
+                                    ? 'Menyimpan...'
+                                    : 'Simpan perubahan'}
+                            </button>
+                        </form>
+                    ) : null}
 
-                    <section className="space-y-4 rounded-[24px] border border-[var(--color-border)] bg-white/90 p-6 shadow-sm">
-                        <button
-                            type="button"
-                            onClick={approve}
-                            className="rounded-full bg-emerald-600 px-5 py-3 text-sm font-semibold text-white"
-                        >
-                            Setujui booking
-                        </button>
-
-                        <div className="space-y-3">
-                            <textarea
-                                value={rejectForm.data.reason}
-                                onChange={(event) =>
-                                    rejectForm.setData(
-                                        'reason',
-                                        event.target.value,
-                                    )
-                                }
-                                rows={4}
-                                placeholder="Alasan penolakan"
-                                className="w-full rounded-2xl border border-[var(--color-border)] bg-white px-4 py-3 text-base"
-                            />
+                    {booking.status === 'PENDING' ? (
+                        <section className="space-y-4 rounded-[24px] border border-[var(--color-border)] bg-white/90 p-6 shadow-sm">
                             <button
                                 type="button"
-                                onClick={reject}
-                                className="rounded-full border border-red-300 px-5 py-3 text-sm font-semibold text-red-700"
+                                onClick={approve}
+                                className="rounded-full bg-emerald-600 px-5 py-3 text-sm font-semibold text-white"
                             >
-                                Tolak booking
+                                Setujui booking
                             </button>
-                        </div>
-                    </section>
+
+                            <div className="space-y-3">
+                                <textarea
+                                    value={rejectForm.data.reason}
+                                    onChange={(event) =>
+                                        rejectForm.setData(
+                                            'reason',
+                                            event.target.value,
+                                        )
+                                    }
+                                    rows={4}
+                                    placeholder="Alasan penolakan"
+                                    className="w-full rounded-2xl border border-[var(--color-border)] bg-white px-4 py-3 text-base"
+                                />
+                                <button
+                                    type="button"
+                                    onClick={reject}
+                                    className="rounded-full border border-red-300 px-5 py-3 text-sm font-semibold text-red-700"
+                                >
+                                    Tolak booking
+                                </button>
+                            </div>
+                        </section>
+                    ) : null}
                 </div>
             </main>
         </>

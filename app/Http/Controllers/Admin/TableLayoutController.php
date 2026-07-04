@@ -4,16 +4,17 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\TableSlot;
+use App\Services\InternalCompanySlotService;
 use Inertia\Inertia;
 use Inertia\Response;
 
 class TableLayoutController extends Controller
 {
-    public function __invoke(): Response
+    public function __invoke(InternalCompanySlotService $internalCompanySlotService): Response
     {
         $rowOrder = ['J', 'H', 'G', 'F', 'A', 'B', 'D', 'E'];
         $slots = TableSlot::query()
-            ->with(['booking:id,booking_number,customer_name'])
+            ->with(['booking:id,booking_number,customer_name,referral_source'])
             ->orderBy('number', 'desc')
             ->orderBy('allocation_order')
             ->get()
@@ -34,6 +35,7 @@ class TableLayoutController extends Controller
                             'booking_id' => $slot->booking_id,
                             'booking_number' => $slot->booking?->booking_number,
                             'customer_name' => $slot->booking?->customer_name,
+                            'is_internal_company' => $slot->booking?->referral_source === $internalCompanySlotService->sourceValue(),
                         ])
                         ->all(),
                 ])

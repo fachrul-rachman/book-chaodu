@@ -94,7 +94,7 @@ it('shows approved bookings only in reports', function () {
         'rejected_at' => now(),
     ]);
 
-    TableSlot::query()->where('code', 'A18')->update([
+    TableSlot::query()->where('code', 'F18')->update([
         'status' => SlotStatus::Assigned,
         'booking_id' => $approved->id,
     ]);

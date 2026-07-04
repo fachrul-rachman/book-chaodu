@@ -46,7 +46,7 @@ it('shows table layout with slot colors data and booking information', function 
         'status' => BookingStatus::Approved,
     ]);
 
-    TableSlot::query()->where('code', 'A18')->update([
+    TableSlot::query()->where('code', 'A58')->update([
         'status' => SlotStatus::Reserved,
         'booking_id' => $pendingBooking->id,
     ]);
@@ -65,6 +65,8 @@ it('shows table layout with slot colors data and booking information', function 
     $rows = $response->viewData('page')['props']['rows'];
     $rowA = collect($rows)->firstWhere('row_code', 'A');
     $rowB = collect($rows)->firstWhere('row_code', 'B');
+    $slotA58 = collect($rowA['slots'])->firstWhere('code', 'A58');
+    $slotB18 = collect($rowB['slots'])->firstWhere('code', 'B18');
 
     expect(collect($rows)->pluck('row_code')->all())->toBe([
         'J',
@@ -76,10 +78,8 @@ it('shows table layout with slot colors data and booking information', function 
         'D',
         'E',
     ])
-        ->and($rowA['slots'][20]['code'])->toBe('A18')
-        ->and($rowA['slots'][20]['status'])->toBe(SlotStatus::Reserved->value)
-        ->and($rowA['slots'][20]['booking_number'])->toBe('CD-PENDING1')
-        ->and($rowB['slots'][20]['code'])->toBe('B18')
-        ->and($rowB['slots'][20]['status'])->toBe(SlotStatus::Assigned->value)
-        ->and($rowB['slots'][20]['booking_number'])->toBe('CD-APPROVED1');
+        ->and($slotA58['status'])->toBe(SlotStatus::Reserved->value)
+        ->and($slotA58['booking_number'])->toBe('CD-PENDING1')
+        ->and($slotB18['status'])->toBe(SlotStatus::Assigned->value)
+        ->and($slotB18['booking_number'])->toBe('CD-APPROVED1');
 });

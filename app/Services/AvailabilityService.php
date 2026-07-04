@@ -10,6 +10,10 @@ use App\Models\TableSlot;
 
 class AvailabilityService
 {
+    public function __construct(
+        private readonly InternalCompanySlotService $internalCompanySlotService,
+    ) {}
+
     /**
      * @return array{
      *     table_remaining:int,
@@ -25,10 +29,12 @@ class AvailabilityService
     {
         $tableRemaining = TableSlot::query()
             ->where('status', SlotStatus::Available)
+            ->whereNotIn('code', $this->internalCompanySlotService->tableCodes())
             ->count();
 
         $incenseRemaining = IncenseSlot::query()
             ->where('status', SlotStatus::Available)
+            ->whereNotIn('number', $this->internalCompanySlotService->incenseNumbers())
             ->count();
 
         $packages = Package::query()
@@ -65,9 +71,11 @@ class AvailabilityService
     ): bool {
         $tableRemaining ??= TableSlot::query()
             ->where('status', SlotStatus::Available)
+            ->whereNotIn('code', $this->internalCompanySlotService->tableCodes())
             ->count();
         $incenseRemaining ??= IncenseSlot::query()
             ->where('status', SlotStatus::Available)
+            ->whereNotIn('number', $this->internalCompanySlotService->incenseNumbers())
             ->count();
 
         return match ($packageCode) {
@@ -84,9 +92,11 @@ class AvailabilityService
     ): ?string {
         $tableRemaining ??= TableSlot::query()
             ->where('status', SlotStatus::Available)
+            ->whereNotIn('code', $this->internalCompanySlotService->tableCodes())
             ->count();
         $incenseRemaining ??= IncenseSlot::query()
             ->where('status', SlotStatus::Available)
+            ->whereNotIn('number', $this->internalCompanySlotService->incenseNumbers())
             ->count();
 
         return match ($packageCode) {
