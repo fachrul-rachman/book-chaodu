@@ -315,8 +315,8 @@ it('uses the print-only layout for Indonesian prayer paper text', function () {
 
     expect((string) $paper->file_path)->toEndWith('.png')
         ->and($png)->toStartWith("\x89PNG\r\n\x1a\n")
-        ->and($size[0] ?? null)->toBe(950)
-        ->and($size[1] ?? null)->toBe(2900)
+        ->and($size[0] ?? null)->toBe(1121)
+        ->and($size[1] ?? null)->toBe(3437)
         ->and($image)->not->toBeFalse();
     imagedestroy($image);
 });
@@ -374,10 +374,10 @@ it('creates two separate prayer papers when two prayer names are filled', functi
         ->and((string) $papers[1]->file_path)->toEndWith('.png')
         ->and($firstPng)->toStartWith("\x89PNG\r\n\x1a\n")
         ->and($secondPng)->toStartWith("\x89PNG\r\n\x1a\n")
-        ->and($firstSize[0] ?? null)->toBe(950)
-        ->and($firstSize[1] ?? null)->toBe(2900)
-        ->and($secondSize[0] ?? null)->toBe(950)
-        ->and($secondSize[1] ?? null)->toBe(2900);
+        ->and($firstSize[0] ?? null)->toBe(1121)
+        ->and($firstSize[1] ?? null)->toBe(3437)
+        ->and($secondSize[0] ?? null)->toBe(1121)
+        ->and($secondSize[1] ?? null)->toBe(3437);
 });
 
 it('uses the saved hio position for incense paper text', function () {
@@ -429,6 +429,6 @@ it('uses the saved hio position for incense paper text', function () {
 
     expect((string) $paper->file_path)->toEndWith('.png')
         ->and($png)->toStartWith("\x89PNG\r\n\x1a\n")
-        ->and($size[0] ?? null)->toBe(950)
-        ->and($size[1] ?? null)->toBe(2100);
+        ->and($size[0] ?? null)->toBe(1122)
+        ->and($size[1] ?? null)->toBe(2480);
 });

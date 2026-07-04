@@ -7,11 +7,13 @@ use App\Models\Booking;
 
 class PrayerPaperRenderer
 {
-    private const PRINT_WIDTH_PX = 950;
+    private const PRAYER_PRINT_WIDTH_PX = 1121;
 
-    private const PRAYER_PRINT_HEIGHT_PX = 2900;
+    private const PRAYER_PRINT_HEIGHT_PX = 3437;
 
-    private const INCENSE_PRINT_HEIGHT_PX = 2100;
+    private const INCENSE_PRINT_WIDTH_PX = 1122;
+
+    private const INCENSE_PRINT_HEIGHT_PX = 2480;
 
     /**
      * @var array<int, string>
@@ -70,7 +72,7 @@ class PrayerPaperRenderer
             $template['markers']['single'],
             (int) $template['canvas_width'],
             (int) $template['canvas_height'],
-            self::PRINT_WIDTH_PX,
+            self::PRAYER_PRINT_WIDTH_PX,
             self::PRAYER_PRINT_HEIGHT_PX,
         );
 
@@ -105,7 +107,7 @@ class PrayerPaperRenderer
             $template['markers']['single'],
             (int) $template['canvas_width'],
             (int) $template['canvas_height'],
-            self::PRINT_WIDTH_PX,
+            self::INCENSE_PRINT_WIDTH_PX,
             self::INCENSE_PRINT_HEIGHT_PX,
         );
         $entry = $names[0] ?? null;
@@ -326,6 +328,7 @@ class PrayerPaperRenderer
     private function createCanvasFromTemplate(array $template, PrayerPaperType $type)
     {
         $this->ensureGdIsAvailable();
+        $this->ensureMemoryLimit();
         $image = null;
 
         if (filled($template['image_data_uri'])) {
@@ -353,7 +356,9 @@ class PrayerPaperRenderer
 
         return $this->resizeCanvas(
             $image,
-            self::PRINT_WIDTH_PX,
+            $type === PrayerPaperType::A
+                ? self::PRAYER_PRINT_WIDTH_PX
+                : self::INCENSE_PRINT_WIDTH_PX,
             $type === PrayerPaperType::A
                 ? self::PRAYER_PRINT_HEIGHT_PX
                 : self::INCENSE_PRINT_HEIGHT_PX,
@@ -533,5 +538,43 @@ class PrayerPaperRenderer
                 throw new \RuntimeException('Fitur gambar PHP GD/Freetype belum aktif di server.');
             }
         }
+    }
+
+    private function ensureMemoryLimit(): void
+    {
+        $current = ini_get('memory_limit');
+
+        if (! is_string($current) || $current === '' || $current === '-1') {
+            return;
+        }
+
+        $bytes = $this->memoryToBytes($current);
+
+        if ($bytes !== null && $bytes < 268435456) {
+            ini_set('memory_limit', '256M');
+        }
+    }
+
+    private function memoryToBytes(string $value): ?int
+    {
+        $trimmed = trim($value);
+
+        if ($trimmed === '') {
+            return null;
+        }
+
+        if (! preg_match('/^(\d+)([KMG])?$/i', $trimmed, $matches)) {
+            return null;
+        }
+
+        $number = (int) $matches[1];
+        $unit = strtoupper($matches[2] ?? '');
+
+        return match ($unit) {
+            'G' => $number * 1024 * 1024 * 1024,
+            'M' => $number * 1024 * 1024,
+            'K' => $number * 1024,
+            default => $number,
+        };
     }
 }

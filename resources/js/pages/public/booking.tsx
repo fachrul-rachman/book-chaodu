@@ -46,6 +46,8 @@ type PrayerPreviewTemplate = PreviewTemplate & {
     };
 };
 
+type PreviewKind = 'prayer' | 'incense';
+
 type Props = {
     packages: PackageItem[];
     payment: {
@@ -201,46 +203,106 @@ function pickPrayerName(
     return { text, vertical: Boolean(mandarin) };
 }
 
+const PRAYER_PRINT_CANVAS = {
+    width: 1121,
+    height: 3437,
+} as const;
+
+const INCENSE_PRINT_CANVAS = {
+    width: 1122,
+    height: 2480,
+} as const;
+
+function printCanvasFor(kind: PreviewKind): { width: number; height: number } {
+    return kind === 'prayer' ? PRAYER_PRINT_CANVAS : INCENSE_PRINT_CANVAS;
+}
+
+function scaleMarkerToPrintCanvas(
+    template: PrayerPreviewTemplate,
+    marker: PrayerMarker,
+    kind: PreviewKind,
+): PrayerMarker {
+    const printCanvas = printCanvasFor(kind);
+
+    return {
+        x: (marker.x / Math.max(template.canvas_width, 1)) * printCanvas.width,
+        y: (marker.y / Math.max(template.canvas_height, 1)) * printCanvas.height,
+        width:
+            (marker.width / Math.max(template.canvas_width, 1)) *
+            printCanvas.width,
+        height:
+            (marker.height / Math.max(template.canvas_height, 1)) *
+            printCanvas.height,
+    };
+}
+
+function previewFontScale(
+    template: PrayerPreviewTemplate,
+    kind: PreviewKind,
+): number {
+    const printCanvas = printCanvasFor(kind);
+
+    return Math.min(
+        template.canvas_width / printCanvas.width,
+        template.canvas_height / printCanvas.height,
+    );
+}
+
 function estimateVerticalPreviewFont(
+    template: PrayerPreviewTemplate,
     marker: PrayerMarker,
     text: string,
+    kind: PreviewKind,
 ): number {
+    const scaledMarker = scaleMarkerToPrintCanvas(template, marker, kind);
     const count = Math.max(Array.from(text.trim()).length, 1);
-
-    return Math.max(
-        5,
-        Math.min(marker.width * 0.08, (marker.height * 0.35) / (count + 0.45)),
+    const printFont = Math.max(
+        12,
+        Math.min(
+            scaledMarker.width * 0.58,
+            scaledMarker.height / Math.max(count * 1.2, 1),
+        ),
     );
+
+    return printFont * previewFontScale(template, kind);
 }
 
 function estimateHorizontalPreviewFont(
+    template: PrayerPreviewTemplate,
     marker: PrayerMarker,
     text: string,
+    kind: PreviewKind,
 ): number {
+    const scaledMarker = scaleMarkerToPrintCanvas(template, marker, kind);
     const count = Math.max(text.trim().length, 1);
-
-    return Math.max(
-        5,
+    const printFont = Math.max(
+        22,
         Math.min(
-            marker.height * 0.08,
-            ((marker.width * 0.88) * 0.35) / (count * 0.74),
+            scaledMarker.height * 0.32,
+            (((scaledMarker.width * 0.88) * 1.12) / (count * 0.74)),
         ),
     );
+
+    return printFont * previewFontScale(template, kind);
 }
 
 function estimateRotatedPreviewFont(
+    template: PrayerPreviewTemplate,
     marker: PrayerMarker,
     text: string,
+    kind: PreviewKind,
 ): number {
+    const scaledMarker = scaleMarkerToPrintCanvas(template, marker, kind);
     const count = Math.max(text.trim().length, 1);
-
-    return Math.max(
-        8,
+    const printFont = Math.max(
+        26,
         Math.min(
-            marker.width * 0.08,
-            ((marker.height * 0.65) * 0.65) / (count * 0.78),
+            scaledMarker.width * 0.34,
+            (((scaledMarker.height * 1.05) * 1.05) / (count * 0.78)),
         ),
     );
+
+    return printFont * previewFontScale(template, kind);
 }
 
 function getStepFromErrors(errorBag: ErrorBag): number {
@@ -565,6 +627,24 @@ function PrayerPaperPreview({
 }) {
     const marker = template.markers.single;
     const textColor = kind === 'prayer' ? '#000000' : '#E82C2A';
+    const verticalFontSize = name
+        ? estimateVerticalPreviewFont(template, marker, name.text, kind)
+        : 0;
+    const horizontalFontSize = name
+        ? estimateHorizontalPreviewFont(template, marker, name.text, kind)
+        : 0;
+    const rotatedFontSize = name
+        ? estimateRotatedPreviewFont(template, marker, name.text, kind)
+        : 0;
+    const verticalCharacters = name ? Array.from(name.text) : [];
+    const verticalLineHeight = verticalFontSize * 1.38;
+    const verticalStackHeight =
+        (verticalLineHeight * Math.max(verticalCharacters.length - 1, 0)) +
+        verticalFontSize;
+    const verticalStartY =
+        marker.y + marker.height / 2 - verticalStackHeight / 2 + verticalFontSize / 2;
+    const markerCenterX = marker.x + marker.width / 2;
+    const markerCenterY = marker.y + marker.height / 2;
 
     if (!template.image_url) {
         return (
@@ -617,56 +697,55 @@ function PrayerPaperPreview({
                             className="block h-auto w-full"
                         />
                         {name ? (
-                            <div
-                                className="absolute flex items-center justify-center overflow-hidden"
-                                style={{
-                                    left: `${(marker.x / template.canvas_width) * 100}%`,
-                                    top: `${(marker.y / template.canvas_height) * 100}%`,
-                                    width: `${(marker.width / template.canvas_width) * 100}%`,
-                                    height: `${(marker.height / template.canvas_height) * 100}%`,
-                                }}
+                            <svg
+                                viewBox={`0 0 ${template.canvas_width} ${template.canvas_height}`}
+                                className="absolute inset-0 h-full w-full"
+                                aria-hidden="true"
                             >
                                 {name.vertical ? (
-                                    <div
-                                        className="flex h-full flex-col items-center justify-evenly text-center font-semibold"
-                                        style={{
-                                            color: textColor,
-                                            fontSize: `${estimateVerticalPreviewFont(marker, name.text)}px`,
-                                        }}
-                                    >
-                                        {Array.from(name.text).map(
-                                            (character, charIndex) => (
-                                                <span
-                                                    key={`${template.title}-${charIndex}`}
-                                                >
-                                                    {character}
-                                                </span>
-                                            ),
-                                        )}
-                                    </div>
+                                    <>
+                                        {verticalCharacters.map((character, charIndex) => (
+                                            <text
+                                                key={`${template.title}-${charIndex}`}
+                                                x={markerCenterX}
+                                                y={verticalStartY + verticalLineHeight * charIndex}
+                                                textAnchor="middle"
+                                                dominantBaseline="middle"
+                                                fontSize={verticalFontSize}
+                                                fontWeight="600"
+                                                fill={textColor}
+                                            >
+                                                {character}
+                                            </text>
+                                        ))}
+                                    </>
                                 ) : kind === 'prayer' ? (
-                                    <div
-                                        className="text-center font-semibold whitespace-nowrap"
-                                        style={{
-                                            color: textColor,
-                                            fontSize: `${estimateRotatedPreviewFont(marker, name.text)}px`,
-                                            transform: 'rotate(90deg)',
-                                        }}
+                                    <text
+                                        x={markerCenterX}
+                                        y={markerCenterY}
+                                        textAnchor="middle"
+                                        dominantBaseline="middle"
+                                        fontSize={rotatedFontSize}
+                                        fontWeight="600"
+                                        fill={textColor}
+                                        transform={`rotate(90 ${markerCenterX} ${markerCenterY})`}
                                     >
                                         {name.text}
-                                    </div>
+                                    </text>
                                 ) : (
-                                    <div
-                                        className="text-center font-semibold whitespace-nowrap"
-                                        style={{
-                                            color: textColor,
-                                            fontSize: `${estimateHorizontalPreviewFont(marker, name.text)}px`,
-                                        }}
+                                    <text
+                                        x={markerCenterX}
+                                        y={markerCenterY}
+                                        textAnchor="middle"
+                                        dominantBaseline="middle"
+                                        fontSize={horizontalFontSize}
+                                        fontWeight="600"
+                                        fill={textColor}
                                     >
                                         {name.text}
-                                    </div>
+                                    </text>
                                 )}
-                            </div>
+                            </svg>
                         ) : null}
                     </div>
                 </div>
