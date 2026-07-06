@@ -132,6 +132,10 @@ const steps = [
     'Periksa\nUlang',
 ] as const;
 
+const BOOKING_FLYER_PATH = '/images/booking/flyer chaodu.jpg';
+const BOOKING_FLYER_SRC = encodeURI(BOOKING_FLYER_PATH);
+const BOOKING_FLYER_DISMISS_KEY = `booking-flyer-dismissed:${BOOKING_FLYER_PATH}`;
+
 declare global {
     interface Window {
         turnstile?: TurnstileApi;
@@ -768,6 +772,7 @@ export default function PublicBookingPage() {
     const [processing, setProcessing] = useState(false);
     const [reservingVirtualAccount, setReservingVirtualAccount] =
         useState(false);
+    const [showFlyerModal, setShowFlyerModal] = useState(false);
     const [generalError, setGeneralError] = useState<string | null>(null);
     const [errors, setErrors] = useState<ErrorBag>({});
     const [copiedAccountNumber, setCopiedAccountNumber] = useState(false);
@@ -864,6 +869,32 @@ export default function PublicBookingPage() {
             script.remove();
         };
     }, [captcha.enabled, captcha.site_key]);
+
+    useEffect(() => {
+        if (typeof window === 'undefined') {
+            return;
+        }
+
+        if (!window.localStorage.getItem(BOOKING_FLYER_DISMISS_KEY)) {
+            setShowFlyerModal(true);
+        }
+    }, []);
+
+    useEffect(() => {
+        if (typeof document === 'undefined') {
+            return;
+        }
+
+        const previousOverflow = document.body.style.overflow;
+
+        if (showFlyerModal) {
+            document.body.style.overflow = 'hidden';
+        }
+
+        return () => {
+            document.body.style.overflow = previousOverflow;
+        };
+    }, [showFlyerModal]);
 
     useEffect(() => {
         if (!isPoolVirtualAccount || !virtualAccount?.expires_at) {
@@ -1607,11 +1638,48 @@ export default function PublicBookingPage() {
         )
         .slice(0, 2);
     const incensePreviewName = pickPrayerName(form.incense_name);
+    const closeFlyerModal = () => {
+        if (typeof window !== 'undefined') {
+            window.localStorage.setItem(BOOKING_FLYER_DISMISS_KEY, '1');
+        }
+
+        setShowFlyerModal(false);
+    };
 
     /* ── Render ─────────────────────────────────────────────────────────────── */
     return (
         <>
             <Head title="Booking" />
+
+            {showFlyerModal ? (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6">
+                    <button
+                        type="button"
+                        aria-label="Tutup flyer"
+                        onClick={closeFlyerModal}
+                        className="absolute inset-0 bg-black/70"
+                    />
+
+                    <div className="relative z-10 w-full max-w-5xl overflow-hidden rounded-3xl bg-white shadow-2xl">
+                        <button
+                            type="button"
+                            onClick={closeFlyerModal}
+                            aria-label="Tutup flyer"
+                            className="absolute right-3 top-3 z-20 flex h-11 w-11 items-center justify-center rounded-full bg-black/70 text-2xl leading-none text-white transition hover:bg-black"
+                        >
+                            ×
+                        </button>
+
+                        <div className="max-h-[85vh] overflow-y-auto bg-[#2C1810]">
+                            <img
+                                src={BOOKING_FLYER_SRC}
+                                alt="Flyer Chao Du"
+                                className="block h-auto w-full"
+                            />
+                        </div>
+                    </div>
+                </div>
+            ) : null}
 
             <main className="min-h-screen bg-[#FDF8F0]">
                 {/* ── Header ── */}
