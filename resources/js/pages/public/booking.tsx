@@ -293,12 +293,20 @@ function estimateHorizontalPreviewFont(
     kind: PreviewKind,
 ): number {
     const scaledMarker = scaleMarkerToPrintCanvas(template, marker, kind);
-    const count = Math.max(text.trim().length, 1);
+    const lines = splitDisplayLines(text);
+    const longestLine = lines.reduce(
+        (longest, line) => (line.length > longest.length ? line : longest),
+        '',
+    );
+    const longestCount = Math.max(longestLine.trim().length, 1);
+    const lineCount = Math.max(lines.length, 1);
+    const widthBasedFont = (((scaledMarker.width * 0.88) * 1.12) / (longestCount * 0.74));
+    const heightBasedFont = (scaledMarker.height * 0.84) / (lineCount * 1.28);
     const printFont = Math.max(
         22,
         Math.min(
-            scaledMarker.height * 0.32,
-            (((scaledMarker.width * 0.88) * 1.12) / (count * 0.74)),
+            widthBasedFont,
+            heightBasedFont,
         ),
     );
 

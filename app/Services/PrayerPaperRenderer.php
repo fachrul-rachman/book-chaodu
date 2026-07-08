@@ -248,10 +248,7 @@ class PrayerPaperRenderer
             return;
         }
 
-        $longestLine = collect($lines)
-            ->sortByDesc(fn (string $line): int => mb_strlen($line))
-            ->first() ?? '';
-        $fontSize = $this->estimateHorizontalPreviewFontSize($marker, $longestLine);
+        $fontSize = $this->estimateHorizontalMultilineFontSize($marker, $lines);
         $lineHeight = $fontSize * 1.28;
         $startY = (float) $marker['y']
             + ((float) $marker['height'] / 2)
@@ -500,6 +497,29 @@ class PrayerPaperRenderer
             min(
                 (float) $marker['height'] * 0.32,
                 ((((float) $marker['width'] * 0.88) * 1.12) / ($count * 0.74)),
+            ),
+        );
+    }
+
+    /**
+     * @param  array{x:float|int,y:float|int,width:float|int,height:float|int}  $marker
+     * @param  array<int, string>  $lines
+     */
+    private function estimateHorizontalMultilineFontSize(array $marker, array $lines): float
+    {
+        $longestLine = collect($lines)
+            ->sortByDesc(fn (string $line): int => mb_strlen($line))
+            ->first() ?? '';
+        $longestCount = max(mb_strlen(trim($longestLine)), 1);
+        $lineCount = max(count($lines), 1);
+        $widthBasedFont = ((((float) $marker['width'] * 0.88) * 1.12) / ($longestCount * 0.74));
+        $heightBasedFont = (((float) $marker['height'] * 0.84) / ($lineCount * 1.28));
+
+        return max(
+            22.0,
+            min(
+                $widthBasedFont,
+                $heightBasedFont,
             ),
         );
     }
