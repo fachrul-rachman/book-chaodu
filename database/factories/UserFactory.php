@@ -59,4 +59,11 @@ class UserFactory extends Factory
             'role' => UserRole::Checker,
         ]);
     }
+
+    public function printer(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'role' => UserRole::Printer,
+        ]);
+    }
 }

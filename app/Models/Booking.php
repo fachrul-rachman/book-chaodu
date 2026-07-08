@@ -28,6 +28,7 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
  * @property string|null $rejection_reason
  * @property int|null $approved_by
  * @property int|null $rejected_by
+ * @property bool $is_printed
  * @property PrayerPaperStatus|null $prayer_paper_status
  */
 #[Fillable([
@@ -45,6 +46,7 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
     'agent_name',
     'status',
     'rejection_reason',
+    'is_printed',
     'approved_at',
     'approved_by',
     'rejected_at',
@@ -65,6 +67,7 @@ class Booking extends Model
             'approved_by' => 'integer',
             'rejected_at' => 'datetime',
             'rejected_by' => 'integer',
+            'is_printed' => 'boolean',
             'prayer_paper_status' => PrayerPaperStatus::class,
             'latest_prayer_paper_generated_at' => 'datetime',
         ];

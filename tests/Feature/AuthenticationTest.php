@@ -37,6 +37,20 @@ it('allows a checker to log in from the single login page', function () {
     $this->assertAuthenticatedAs($checker);
 });
 
+it('allows a print staff to log in from the single login page', function () {
+    $printer = User::factory()->printer()->create([
+        'email' => 'printer-login@chaodu.test',
+        'password' => 'rahasia123',
+    ]);
+
+    $this->post('/masuk', [
+        'email' => $printer->email,
+        'password' => 'rahasia123',
+    ])->assertRedirect(route('printer.dashboard'));
+
+    $this->assertAuthenticatedAs($printer);
+});
+
 it('blocks checker users from the admin dashboard', function () {
     $checker = User::factory()->checker()->create();
 
@@ -50,5 +64,13 @@ it('blocks admin users from the checker dashboard', function () {
 
     $this->actingAs($admin)
         ->get(route('checker.dashboard'))
+        ->assertForbidden();
+});
+
+it('blocks admin users from the printer dashboard', function () {
+    $admin = User::factory()->admin()->create();
+
+    $this->actingAs($admin)
+        ->get(route('printer.dashboard'))
         ->assertForbidden();
 });

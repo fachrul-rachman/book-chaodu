@@ -22,6 +22,9 @@ use App\Http\Controllers\Checker\CheckInController;
 use App\Http\Controllers\Checker\DashboardController as CheckerDashboardController;
 use App\Http\Controllers\PackageImageController;
 use App\Http\Controllers\PrayerPaperTemplateImageController;
+use App\Http\Controllers\Printer\BookingPrintedController;
+use App\Http\Controllers\Printer\DashboardController as PrinterDashboardController;
+use App\Http\Controllers\Printer\PrayerPaperFileController as PrinterPrayerPaperFileController;
 use App\Http\Controllers\PublicBookingPageController;
 use App\Http\Controllers\PublicBookingSuccessController;
 use Illuminate\Support\Facades\Route;
@@ -99,6 +102,19 @@ Route::middleware('auth')->group(function () {
             ->name('checker.dashboard');
         Route::post('/checker/check-in/{booking}', CheckInController::class)
             ->name('checker.check-in');
+    });
+
+    Route::middleware('role:PRINTER')->group(function () {
+        Route::get('/printer', PrinterDashboardController::class)
+            ->name('printer.dashboard');
+        Route::put('/printer/booking/{booking}/print', BookingPrintedController::class)
+            ->name('printer.bookings.print');
+        Route::get('/printer/kertas-doa/cek-cepat', PrayerPaperPreviewController::class)
+            ->name('printer.prayer-paper-preview');
+        Route::get('/printer/kertas-doa/cek-cepat/download', PrayerPaperPreviewDownloadController::class)
+            ->name('printer.prayer-paper-preview.download');
+        Route::get('/printer/kertas-doa/{prayerPaper}', PrinterPrayerPaperFileController::class)
+            ->name('printer.prayer-papers.show');
     });
 });
 

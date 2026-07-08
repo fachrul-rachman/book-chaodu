@@ -12,5 +12,10 @@ return [
             'email' => env('DEFAULT_CHECKER_EMAIL', 'checker@x.com'),
             'password' => env('DEFAULT_CHECKER_PASSWORD', 'password'),
         ],
+        'printer' => [
+            'name' => env('DEFAULT_PRINTER_NAME', 'Petugas Print Chao Du'),
+            'email' => env('DEFAULT_PRINTER_EMAIL', 'printer@x.com'),
+            'password' => env('DEFAULT_PRINTER_PASSWORD', 'password'),
+        ],
     ],
 ];

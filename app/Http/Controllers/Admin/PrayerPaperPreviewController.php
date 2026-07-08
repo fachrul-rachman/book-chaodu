@@ -23,6 +23,8 @@ class PrayerPaperPreviewController extends Controller
 
         return Inertia::render('admin/prayer-paper-preview/index', [
             'paper_type' => $type->value,
+            'base_url' => $this->baseUrl($request),
+            'back_url' => $this->backUrl($request),
             'types' => [
                 ['value' => PrayerPaperType::A->value, 'label' => 'Kertas Doa'],
                 ['value' => PrayerPaperType::B->value, 'label' => 'Kertas Hio'],
@@ -86,7 +88,7 @@ class PrayerPaperPreviewController extends Controller
                     ? 'Kertas Doa '.($index + 1)
                     : 'Kertas Hio',
                 'image_url' => 'data:'.$rendered['content_type'].';base64,'.base64_encode($rendered['content']),
-                'download_url' => route('admin.prayer-paper-preview.download', array_merge(
+                'download_url' => route($this->downloadRouteName(request()), array_merge(
                     ['type' => $type->value, 'index' => $index + 1],
                     $inputs,
                 )),
@@ -138,5 +140,31 @@ class PrayerPaperPreviewController extends Controller
             'text' => $display,
             'vertical' => $mandarin !== '',
         ];
+    }
+
+    private function baseUrl(Request $request): string
+    {
+        return $this->isPrinterRoute($request)
+            ? route('printer.prayer-paper-preview')
+            : route('admin.prayer-paper-preview');
+    }
+
+    private function backUrl(Request $request): string
+    {
+        return $this->isPrinterRoute($request)
+            ? route('printer.dashboard')
+            : route('admin.dashboard');
+    }
+
+    private function downloadRouteName(Request $request): string
+    {
+        return $this->isPrinterRoute($request)
+            ? 'printer.prayer-paper-preview.download'
+            : 'admin.prayer-paper-preview.download';
+    }
+
+    private function isPrinterRoute(Request $request): bool
+    {
+        return $request->routeIs('printer.*');
     }
 }

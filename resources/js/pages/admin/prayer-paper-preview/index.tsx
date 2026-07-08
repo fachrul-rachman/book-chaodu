@@ -9,6 +9,8 @@ type PreviewRow = {
 
 type Props = {
     paper_type: 'A' | 'B';
+    base_url: string;
+    back_url: string;
     types: Array<{
         value: 'A' | 'B';
         label: string;
@@ -25,7 +27,8 @@ type Props = {
 };
 
 export default function PrayerPaperPreviewPage() {
-    const { paper_type, types, inputs, previews } = usePage<Props>().props;
+    const { paper_type, base_url, back_url, types, inputs, previews } =
+        usePage<Props>().props;
     const [form, setForm] = useState({
         type: paper_type,
         ...inputs,
@@ -35,7 +38,7 @@ export default function PrayerPaperPreviewPage() {
 
     const submit = () => {
         router.get(
-            '/admin/kertas-doa/cek-cepat',
+            base_url,
             {
                 type: form.type,
                 name_1_indonesian: form.name_1_indonesian,
@@ -63,7 +66,7 @@ export default function PrayerPaperPreviewPage() {
             incense_mandarin: '',
         });
         router.get(
-            '/admin/kertas-doa/cek-cepat',
+            base_url,
             { type: form.type },
             {
                 preserveScroll: true,
@@ -89,7 +92,7 @@ export default function PrayerPaperPreviewPage() {
                         </div>
 
                         <Link
-                            href="/admin"
+                            href={back_url}
                             className="rounded-full border border-[var(--color-brand)] px-4 py-2 text-sm font-semibold text-[var(--color-brand)]"
                         >
                             Kembali
