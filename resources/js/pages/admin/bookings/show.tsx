@@ -581,8 +581,8 @@ export default function AdminBookingShowPage() {
                                 <p className="text-sm font-semibold">
                                     Nama hio
                                 </p>
-                                <input
-                                    type="text"
+                                <textarea
+                                    rows={3}
                                     value={
                                         form.data.incense_name.indonesian_name
                                     }
@@ -595,8 +595,8 @@ export default function AdminBookingShowPage() {
                                     placeholder="Nama Indonesia"
                                     className="w-full rounded-2xl border border-[var(--color-border)] bg-white px-4 py-3 text-base"
                                 />
-                                <input
-                                    type="text"
+                                <textarea
+                                    rows={3}
                                     value={form.data.incense_name.mandarin_name}
                                     onChange={(event) =>
                                         form.setData('incense_name', {

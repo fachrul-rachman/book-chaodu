@@ -196,8 +196,8 @@ function labelReferralSource(value: FormState['referral_source']): string {
 function pickPrayerName(
     entry: NameEntry,
 ): { text: string; vertical: boolean } | null {
-    const mandarin = entry.mandarin_name.trim();
-    const indonesian = entry.indonesian_name.trim();
+    const mandarin = normalizeDisplayText(entry.mandarin_name);
+    const indonesian = normalizeDisplayText(entry.indonesian_name);
     const text = mandarin || indonesian.toUpperCase();
 
     if (!text) {
@@ -205,6 +205,21 @@ function pickPrayerName(
     }
 
     return { text, vertical: Boolean(mandarin) };
+}
+
+function normalizeDisplayText(value: string): string {
+    return value
+        .replace(/\r\n/g, '\n')
+        .split('\n')
+        .map((line) => line.trim())
+        .filter((line) => line !== '')
+        .join('\n');
+}
+
+function splitDisplayLines(value: string): string[] {
+    const normalized = normalizeDisplayText(value);
+
+    return normalized === '' ? [] : normalized.split('\n');
 }
 
 const PRAYER_PRINT_CANVAS = {
@@ -489,6 +504,7 @@ function NameCard({
     onChangeName,
     onChangePhoto,
     onReadPhoto,
+    multiline = false,
 }: {
     title: string;
     indonesianLabel: string;
@@ -507,6 +523,7 @@ function NameCard({
     ) => void;
     onChangePhoto: (file: File | null) => void;
     onReadPhoto: () => void;
+    multiline?: boolean;
 }) {
     return (
         <div className="rounded-xl border border-[#E8D084] bg-[#FDF6DC] p-4">
@@ -517,40 +534,74 @@ function NameCard({
                     <span className="mb-2 block text-sm font-medium text-[#2C1810]">
                         Nama Indonesia
                     </span>
-                    <input
-                        aria-label={indonesianLabel}
-                        type="text"
-                        value={entry.indonesian_name}
-                        disabled={indonesianLocked}
-                        onChange={(event) =>
-                            onChangeName('indonesian_name', event.target.value)
-                        }
-                        className={`w-full rounded-xl border-2 px-4 py-3 text-base text-[#2C1810] outline-none ${
-                            indonesianLocked
-                                ? 'cursor-not-allowed border-[#E8D5C0] bg-slate-100 text-slate-500'
-                                : 'border-[#E8D5C0] bg-white focus:border-[#8B1A1A]'
-                        }`}
-                    />
+                    {multiline ? (
+                        <textarea
+                            aria-label={indonesianLabel}
+                            rows={3}
+                            value={entry.indonesian_name}
+                            disabled={indonesianLocked}
+                            onChange={(event) =>
+                                onChangeName('indonesian_name', event.target.value)
+                            }
+                            className={`w-full rounded-xl border-2 px-4 py-3 text-base text-[#2C1810] outline-none ${
+                                indonesianLocked
+                                    ? 'cursor-not-allowed border-[#E8D5C0] bg-slate-100 text-slate-500'
+                                    : 'border-[#E8D5C0] bg-white focus:border-[#8B1A1A]'
+                            }`}
+                        />
+                    ) : (
+                        <input
+                            aria-label={indonesianLabel}
+                            type="text"
+                            value={entry.indonesian_name}
+                            disabled={indonesianLocked}
+                            onChange={(event) =>
+                                onChangeName('indonesian_name', event.target.value)
+                            }
+                            className={`w-full rounded-xl border-2 px-4 py-3 text-base text-[#2C1810] outline-none ${
+                                indonesianLocked
+                                    ? 'cursor-not-allowed border-[#E8D5C0] bg-slate-100 text-slate-500'
+                                    : 'border-[#E8D5C0] bg-white focus:border-[#8B1A1A]'
+                            }`}
+                        />
+                    )}
                 </label>
 
                 <label className="block">
                     <span className="mb-2 block text-sm font-medium text-[#2C1810]">
                         Nama Mandarin
                     </span>
-                    <input
-                        aria-label={mandarinLabel}
-                        type="text"
-                        value={entry.mandarin_name}
-                        disabled={mandarinLocked}
-                        onChange={(event) =>
-                            onChangeName('mandarin_name', event.target.value)
-                        }
-                        className={`w-full rounded-xl border-2 px-4 py-3 text-base text-[#2C1810] outline-none ${
-                            mandarinLocked
-                                ? 'cursor-not-allowed border-[#E8D5C0] bg-slate-100 text-slate-500'
-                                : 'border-[#E8D5C0] bg-white focus:border-[#8B1A1A]'
-                        }`}
-                    />
+                    {multiline ? (
+                        <textarea
+                            aria-label={mandarinLabel}
+                            rows={3}
+                            value={entry.mandarin_name}
+                            disabled={mandarinLocked}
+                            onChange={(event) =>
+                                onChangeName('mandarin_name', event.target.value)
+                            }
+                            className={`w-full rounded-xl border-2 px-4 py-3 text-base text-[#2C1810] outline-none ${
+                                mandarinLocked
+                                    ? 'cursor-not-allowed border-[#E8D5C0] bg-slate-100 text-slate-500'
+                                    : 'border-[#E8D5C0] bg-white focus:border-[#8B1A1A]'
+                            }`}
+                        />
+                    ) : (
+                        <input
+                            aria-label={mandarinLabel}
+                            type="text"
+                            value={entry.mandarin_name}
+                            disabled={mandarinLocked}
+                            onChange={(event) =>
+                                onChangeName('mandarin_name', event.target.value)
+                            }
+                            className={`w-full rounded-xl border-2 px-4 py-3 text-base text-[#2C1810] outline-none ${
+                                mandarinLocked
+                                    ? 'cursor-not-allowed border-[#E8D5C0] bg-slate-100 text-slate-500'
+                                    : 'border-[#E8D5C0] bg-white focus:border-[#8B1A1A]'
+                            }`}
+                        />
+                    )}
                     <p className="mt-2 text-sm text-[#5C3D2E]">
                         {mandarinLocked
                             ? 'Kolom ini dikunci karena Anda sedang memakai nama Indonesia.'
@@ -640,15 +691,32 @@ function PrayerPaperPreview({
     const rotatedFontSize = name
         ? estimateRotatedPreviewFont(template, marker, name.text, kind)
         : 0;
-    const verticalCharacters = name ? Array.from(name.text) : [];
+    const verticalLines = name ? splitDisplayLines(name.text) : [];
+    const verticalColumns = verticalLines.map((line) => Array.from(line));
+    const verticalMaxCount = Math.max(
+        ...verticalColumns.map((line) => line.length),
+        1,
+    );
+    const verticalCharacters = verticalColumns.flatMap((line) => line);
     const verticalLineHeight = verticalFontSize * 1.38;
     const verticalStackHeight =
-        (verticalLineHeight * Math.max(verticalCharacters.length - 1, 0)) +
+        (verticalLineHeight * Math.max(verticalMaxCount - 1, 0)) +
         verticalFontSize;
     const verticalStartY =
         marker.y + marker.height / 2 - verticalStackHeight / 2 + verticalFontSize / 2;
     const markerCenterX = marker.x + marker.width / 2;
     const markerCenterY = marker.y + marker.height / 2;
+    const verticalColumnGap = Math.max(verticalFontSize * 0.72, marker.width * 0.18);
+    const verticalTotalWidth =
+        verticalColumns.length > 0
+            ? verticalFontSize + verticalColumnGap * Math.max(verticalColumns.length - 1, 0)
+            : 0;
+    const verticalStartX = markerCenterX - verticalTotalWidth / 2 + verticalFontSize / 2;
+    const horizontalLines = name ? splitDisplayLines(name.text) : [];
+    const horizontalLineHeight = horizontalFontSize * 1.28;
+    const horizontalStartY =
+        markerCenterY -
+        ((horizontalLineHeight * Math.max(horizontalLines.length - 1, 0)) / 2);
 
     if (!template.image_url) {
         return (
@@ -708,20 +776,22 @@ function PrayerPaperPreview({
                             >
                                 {name.vertical ? (
                                     <>
-                                        {verticalCharacters.map((character, charIndex) => (
-                                            <text
-                                                key={`${template.title}-${charIndex}`}
-                                                x={markerCenterX}
-                                                y={verticalStartY + verticalLineHeight * charIndex}
-                                                textAnchor="middle"
-                                                dominantBaseline="middle"
-                                                fontSize={verticalFontSize}
-                                                fontWeight="600"
-                                                fill={textColor}
-                                            >
-                                                {character}
-                                            </text>
-                                        ))}
+                                        {verticalColumns.map((line, lineIndex) =>
+                                            line.map((character, charIndex) => (
+                                                <text
+                                                    key={`${template.title}-${lineIndex}-${charIndex}`}
+                                                    x={verticalStartX + verticalColumnGap * lineIndex}
+                                                    y={verticalStartY + verticalLineHeight * charIndex}
+                                                    textAnchor="middle"
+                                                    dominantBaseline="middle"
+                                                    fontSize={verticalFontSize}
+                                                    fontWeight="600"
+                                                    fill={textColor}
+                                                >
+                                                    {character}
+                                                </text>
+                                            )),
+                                        )}
                                     </>
                                 ) : kind === 'prayer' ? (
                                     <text
@@ -737,17 +807,22 @@ function PrayerPaperPreview({
                                         {name.text}
                                     </text>
                                 ) : (
-                                    <text
-                                        x={markerCenterX}
-                                        y={markerCenterY}
-                                        textAnchor="middle"
-                                        dominantBaseline="middle"
-                                        fontSize={horizontalFontSize}
-                                        fontWeight="600"
-                                        fill={textColor}
-                                    >
-                                        {name.text}
-                                    </text>
+                                    <>
+                                        {horizontalLines.map((line, lineIndex) => (
+                                            <text
+                                                key={`${template.title}-line-${lineIndex}`}
+                                                x={markerCenterX}
+                                                y={horizontalStartY + horizontalLineHeight * lineIndex}
+                                                textAnchor="middle"
+                                                dominantBaseline="middle"
+                                                fontSize={horizontalFontSize}
+                                                fontWeight="600"
+                                                fill={textColor}
+                                            >
+                                                {line}
+                                            </text>
+                                        ))}
+                                    </>
                                 )}
                             </svg>
                         ) : null}
@@ -2045,6 +2120,7 @@ export default function PublicBookingPage() {
                                                     photoLabel="Foto nama yang didoakan"
                                                     readButtonLabel="Baca foto nama yang didoakan"
                                                     entry={form.incense_name}
+                                                    multiline
                                                     mandarinError={
                                                         errors[
                                                             'incense_name.mandarin_name'

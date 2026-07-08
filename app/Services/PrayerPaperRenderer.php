@@ -165,39 +165,52 @@ class PrayerPaperRenderer
      */
     private function drawVerticalText($image, string $text, array $marker, string $fill): void
     {
-        $characters = preg_split('//u', trim($text), -1, PREG_SPLIT_NO_EMPTY);
+        $lines = $this->textLines($text);
 
-        if (! is_array($characters) || $characters === []) {
+        if ($lines === []) {
             return;
         }
 
         $font = $this->fontPath(true);
-        $count = count($characters);
         $width = (float) $marker['width'];
         $height = (float) $marker['height'];
+        $maxCount = max(array_map(
+            static fn (string $line): int => max(mb_strlen($line), 1),
+            $lines,
+        ));
         $fontSize = max(
             12.0,
             min(
                 $width * 0.58,
-                $height / max(($count * 1.2), 1),
+                $height / max(($maxCount * 1.2), 1),
             ),
         );
         $lineHeight = $fontSize * 1.38;
-        $stackHeight = ($lineHeight * max($count - 1, 0)) + $fontSize;
-        $centerX = (float) $marker['x'] + ($width / 2);
+        $stackHeight = ($lineHeight * max($maxCount - 1, 0)) + $fontSize;
+        $columnGap = max($fontSize * 0.72, $width * 0.18);
+        $totalWidth = $fontSize + ($columnGap * max(count($lines) - 1, 0));
+        $startX = (float) $marker['x'] + ($width / 2) - ($totalWidth / 2) + ($fontSize / 2);
         $startY = (float) $marker['y'] + ($height / 2) - ($stackHeight / 2) + ($fontSize / 2);
 
-        foreach ($characters as $index => $character) {
-            $this->drawCenteredText(
-                $image,
-                (string) $character,
-                $font,
-                0,
-                $fontSize,
-                $centerX,
-                $startY + ($lineHeight * $index),
-                $fill,
-            );
+        foreach ($lines as $lineIndex => $line) {
+            $characters = preg_split('//u', $line, -1, PREG_SPLIT_NO_EMPTY);
+
+            if (! is_array($characters) || $characters === []) {
+                continue;
+            }
+
+            foreach ($characters as $index => $character) {
+                $this->drawCenteredText(
+                    $image,
+                    (string) $character,
+                    $font,
+                    0,
+                    $fontSize,
+                    $startX + ($columnGap * $lineIndex),
+                    $startY + ($lineHeight * $index),
+                    $fill,
+                );
+            }
         }
     }
 
@@ -229,18 +242,33 @@ class PrayerPaperRenderer
     private function drawHorizontalText($image, string $text, array $marker, string $fill): void
     {
         $font = $this->fontPath(false);
-        $fontSize = $this->estimateHorizontalPreviewFontSize($marker, $text);
+        $lines = $this->textLines($text);
 
-        $this->drawCenteredText(
-            $image,
-            trim($text),
-            $font,
-            0,
-            $fontSize,
-            (float) $marker['x'] + ((float) $marker['width'] / 2),
-            (float) $marker['y'] + ((float) $marker['height'] / 2),
-            $fill,
-        );
+        if ($lines === []) {
+            return;
+        }
+
+        $longestLine = collect($lines)
+            ->sortByDesc(fn (string $line): int => mb_strlen($line))
+            ->first() ?? '';
+        $fontSize = $this->estimateHorizontalPreviewFontSize($marker, $longestLine);
+        $lineHeight = $fontSize * 1.28;
+        $startY = (float) $marker['y']
+            + ((float) $marker['height'] / 2)
+            - (($lineHeight * max(count($lines) - 1, 0)) / 2);
+
+        foreach ($lines as $index => $line) {
+            $this->drawCenteredText(
+                $image,
+                $line,
+                $font,
+                0,
+                $fontSize,
+                (float) $marker['x'] + ((float) $marker['width'] / 2),
+                $startY + ($lineHeight * $index),
+                $fill,
+            );
+        }
     }
 
     /**
@@ -576,5 +604,16 @@ class PrayerPaperRenderer
             'K' => $number * 1024,
             default => $number,
         };
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    private function textLines(string $value): array
+    {
+        return array_values(array_filter(array_map(
+            static fn (string $line): string => trim($line),
+            preg_split("/\r\n|\r|\n/", trim($value)) ?: [],
+        ), static fn (string $line): bool => $line !== ''));
     }
 }
