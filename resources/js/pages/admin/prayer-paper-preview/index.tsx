@@ -166,7 +166,9 @@ export default function PrayerPaperPreviewPage() {
                     line_height: Number(data.incense.horizontal.line_height),
                 },
             },
-        })).put('/admin/kertas-doa/cek-cepat/pengaturan-tulisan', {
+        }));
+
+        settingsForm.put('/admin/kertas-doa/cek-cepat/pengaturan-tulisan', {
             preserveScroll: true,
             preserveState: false,
         });
