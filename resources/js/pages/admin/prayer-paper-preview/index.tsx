@@ -168,6 +168,7 @@ export default function PrayerPaperPreviewPage() {
             },
         })).put('/admin/kertas-doa/cek-cepat/pengaturan-tulisan', {
             preserveScroll: true,
+            preserveState: false,
         });
     };
 
