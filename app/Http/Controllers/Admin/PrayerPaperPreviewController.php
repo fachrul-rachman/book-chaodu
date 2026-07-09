@@ -6,6 +6,7 @@ use App\Enums\PrayerPaperType;
 use App\Http\Controllers\Controller;
 use App\Models\Booking;
 use App\Services\PrayerPaperRenderer;
+use App\Services\PrayerPaperTextSettingService;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -14,6 +15,7 @@ class PrayerPaperPreviewController extends Controller
 {
     public function __construct(
         private readonly PrayerPaperRenderer $renderer,
+        private readonly PrayerPaperTextSettingService $textSettingService,
     ) {}
 
     public function __invoke(Request $request): Response
@@ -25,6 +27,8 @@ class PrayerPaperPreviewController extends Controller
             'paper_type' => $type->value,
             'base_url' => $this->baseUrl($request),
             'back_url' => $this->backUrl($request),
+            'can_manage_text_settings' => ! $this->isPrinterRoute($request),
+            'text_settings' => $this->textSettingService->values(),
             'types' => [
                 ['value' => PrayerPaperType::A->value, 'label' => 'Kertas Doa'],
                 ['value' => PrayerPaperType::B->value, 'label' => 'Kertas Hio'],

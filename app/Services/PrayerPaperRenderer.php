@@ -46,6 +46,7 @@ class PrayerPaperRenderer
 
     public function __construct(
         private readonly PrayerPaperTemplateService $templateService,
+        private readonly PrayerPaperTextSettingService $textSettingService,
     ) {}
 
     /**
@@ -645,17 +646,32 @@ class PrayerPaperRenderer
 
     private function fontScale(PrayerPaperType $type, string $style): float
     {
-        return max(0.1, (float) config($this->configPath($type, $style, 'font_scale'), 1.0));
+        return max(0.1, $this->textSettingService->value(
+            $type === PrayerPaperType::A ? 'prayer' : 'incense',
+            $style,
+            'font_scale',
+            (float) config($this->configPath($type, $style, 'font_scale'), 1.0),
+        ));
     }
 
     private function lineHeight(PrayerPaperType $type, string $style, float $default): float
     {
-        return max(0.5, (float) config($this->configPath($type, $style, 'line_height'), $default));
+        return max(0.5, $this->textSettingService->value(
+            $type === PrayerPaperType::A ? 'prayer' : 'incense',
+            $style,
+            'line_height',
+            (float) config($this->configPath($type, $style, 'line_height'), $default),
+        ));
     }
 
     private function columnGapScale(PrayerPaperType $type, string $style, float $default): float
     {
-        return max(0.1, (float) config($this->configPath($type, $style, 'column_gap_scale'), $default));
+        return max(0.1, $this->textSettingService->value(
+            $type === PrayerPaperType::A ? 'prayer' : 'incense',
+            $style,
+            'column_gap_scale',
+            (float) config($this->configPath($type, $style, 'column_gap_scale'), $default),
+        ));
     }
 
     private function configPath(PrayerPaperType $type, string $style, string $key): string

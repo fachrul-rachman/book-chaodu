@@ -13,6 +13,7 @@ use App\Http\Controllers\Admin\PrayerPaperMarkingController;
 use App\Http\Controllers\Admin\PrayerPaperMarkingImageController;
 use App\Http\Controllers\Admin\PrayerPaperPreviewController;
 use App\Http\Controllers\Admin\PrayerPaperPreviewDownloadController;
+use App\Http\Controllers\Admin\PrayerPaperTextSettingController;
 use App\Http\Controllers\Admin\ReportController;
 use App\Http\Controllers\Admin\ReportExportController;
 use App\Http\Controllers\Admin\SettingController;
@@ -94,6 +95,8 @@ Route::middleware('auth')->group(function () {
             ->name('admin.prayer-paper-marking.image.show');
         Route::get('/admin/kertas-doa/cek-cepat', PrayerPaperPreviewController::class)
             ->name('admin.prayer-paper-preview');
+        Route::put('/admin/kertas-doa/cek-cepat/pengaturan-tulisan', PrayerPaperTextSettingController::class)
+            ->name('admin.prayer-paper-preview.text-settings.update');
         Route::get('/admin/kertas-doa/cek-cepat/download', PrayerPaperPreviewDownloadController::class)
             ->name('admin.prayer-paper-preview.download');
         Route::get('/admin/kertas-doa/{prayerPaper}', PrayerPaperFileController::class)

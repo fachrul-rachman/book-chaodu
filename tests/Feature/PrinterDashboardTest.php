@@ -159,7 +159,8 @@ it('allows printer to open quick prayer paper preview', function () {
     $this->actingAs($printer)
         ->get(route('printer.prayer-paper-preview'))
         ->assertOk()
-        ->assertSee('admin\\/prayer-paper-preview\\/index', false);
+        ->assertSee('admin\\/prayer-paper-preview\\/index', false)
+        ->assertDontSee('Simpan ukuran tulisan');
 });
 
 it('blocks checker users from the printer page', function () {
@@ -167,6 +168,36 @@ it('blocks checker users from the printer page', function () {
 
     $this->actingAs($checker)
         ->get(route('printer.dashboard'))
+        ->assertForbidden();
+});
+
+it('blocks printer from updating prayer paper text settings', function () {
+    $printer = User::factory()->printer()->create();
+
+    $this->actingAs($printer)
+        ->put('/admin/kertas-doa/cek-cepat/pengaturan-tulisan', [
+            'prayer' => [
+                'vertical' => [
+                    'font_scale' => 1,
+                    'line_height' => 1.38,
+                    'column_gap_scale' => 0.72,
+                ],
+                'rotated' => [
+                    'font_scale' => 1,
+                ],
+            ],
+            'incense' => [
+                'vertical' => [
+                    'font_scale' => 1,
+                    'line_height' => 1.38,
+                    'column_gap_scale' => 0.72,
+                ],
+                'horizontal' => [
+                    'font_scale' => 1,
+                    'line_height' => 1.28,
+                ],
+            ],
+        ])
         ->assertForbidden();
 });
 
