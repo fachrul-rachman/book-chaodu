@@ -1,5 +1,4 @@
-import { Head, Link, router, usePage } from '@inertiajs/react';
-import { useForm } from '@inertiajs/react';
+import { Head, Link, router, useForm, usePage } from '@inertiajs/react';
 import { useMemo, useState } from 'react';
 
 type PreviewRow = {
@@ -97,6 +96,9 @@ export default function PrayerPaperPreviewPage() {
     });
 
     const isPrayerPaper = useMemo(() => form.type === 'A', [form.type]);
+    const layoutClass = can_manage_text_settings
+        ? 'grid gap-6 xl:grid-cols-[360px_minmax(0,1fr)_320px]'
+        : 'grid gap-6 lg:grid-cols-[360px_minmax(0,1fr)]';
 
     const submit = () => {
         router.get(
@@ -169,6 +171,24 @@ export default function PrayerPaperPreviewPage() {
         });
     };
 
+    const updateTextSetting = (
+        group: 'prayer' | 'incense',
+        style: 'vertical' | 'rotated' | 'horizontal',
+        field: 'font_scale' | 'line_height' | 'column_gap_scale',
+        value: string,
+    ) => {
+        settingsForm.setData((current) => ({
+            ...current,
+            [group]: {
+                ...current[group],
+                [style]: {
+                    ...current[group][style],
+                    [field]: value,
+                },
+            },
+        }));
+    };
+
     return (
         <>
             <Head title="Cek Cepat Kertas Doa" />
@@ -193,7 +213,7 @@ export default function PrayerPaperPreviewPage() {
                         </Link>
                     </div>
 
-                    <div className="grid gap-6 lg:grid-cols-[360px_minmax(0,1fr)]">
+                    <div className={layoutClass}>
                         <section className="space-y-5 rounded-[24px] border border-[var(--color-border)] bg-white/90 p-6 shadow-sm">
                             <div className="space-y-3">
                                 <p className="text-sm font-semibold text-slate-900">
@@ -379,263 +399,6 @@ export default function PrayerPaperPreviewPage() {
                                     Kosongkan
                                 </button>
                             </div>
-
-                            {can_manage_text_settings ? (
-                                <div className="space-y-4 rounded-2xl border border-[var(--color-border)] bg-slate-50 p-4">
-                                    <div>
-                                        <p className="text-sm font-semibold text-slate-900">
-                                            Ukuran tulisan
-                                        </p>
-                                        <p className="mt-1 text-sm leading-6 text-slate-700">
-                                            `1.00` normal. `0.90` lebih kecil.
-                                            `1.10` lebih besar.
-                                        </p>
-                                    </div>
-
-                                    <div className="space-y-4">
-                                        <div className="rounded-2xl border border-[var(--color-border)] bg-white p-4">
-                                            <p className="text-sm font-semibold text-slate-900">
-                                                Kertas Doa
-                                            </p>
-                                            <div className="mt-3 grid gap-3">
-                                                <label className="block">
-                                                    <span className="mb-2 block text-sm">
-                                                        Mandarin tegak
-                                                    </span>
-                                                    <input
-                                                        type="number"
-                                                        step="0.01"
-                                                        value={
-                                                            settingsForm.data
-                                                                .prayer.vertical
-                                                                .font_scale
-                                                        }
-                                                        onChange={(event) =>
-                                                            settingsForm.setData(
-                                                                'prayer.vertical.font_scale',
-                                                                event.target
-                                                                    .value,
-                                                            )
-                                                        }
-                                                        className="w-full rounded-2xl border border-[var(--color-border)] bg-white px-4 py-3 text-base"
-                                                    />
-                                                </label>
-                                                <label className="block">
-                                                    <span className="mb-2 block text-sm">
-                                                        Jarak baris Mandarin
-                                                    </span>
-                                                    <input
-                                                        type="number"
-                                                        step="0.01"
-                                                        value={
-                                                            settingsForm.data
-                                                                .prayer.vertical
-                                                                .line_height
-                                                        }
-                                                        onChange={(event) =>
-                                                            settingsForm.setData(
-                                                                'prayer.vertical.line_height',
-                                                                event.target
-                                                                    .value,
-                                                            )
-                                                        }
-                                                        className="w-full rounded-2xl border border-[var(--color-border)] bg-white px-4 py-3 text-base"
-                                                    />
-                                                </label>
-                                                <label className="block">
-                                                    <span className="mb-2 block text-sm">
-                                                        Jarak kolom Mandarin
-                                                    </span>
-                                                    <input
-                                                        type="number"
-                                                        step="0.01"
-                                                        value={
-                                                            settingsForm.data
-                                                                .prayer.vertical
-                                                                .column_gap_scale
-                                                        }
-                                                        onChange={(event) =>
-                                                            settingsForm.setData(
-                                                                'prayer.vertical.column_gap_scale',
-                                                                event.target
-                                                                    .value,
-                                                            )
-                                                        }
-                                                        className="w-full rounded-2xl border border-[var(--color-border)] bg-white px-4 py-3 text-base"
-                                                    />
-                                                </label>
-                                                <label className="block">
-                                                    <span className="mb-2 block text-sm">
-                                                        Indonesia putar 90 derajat
-                                                    </span>
-                                                    <input
-                                                        type="number"
-                                                        step="0.01"
-                                                        value={
-                                                            settingsForm.data
-                                                                .prayer.rotated
-                                                                .font_scale
-                                                        }
-                                                        onChange={(event) =>
-                                                            settingsForm.setData(
-                                                                'prayer.rotated.font_scale',
-                                                                event.target
-                                                                    .value,
-                                                            )
-                                                        }
-                                                        className="w-full rounded-2xl border border-[var(--color-border)] bg-white px-4 py-3 text-base"
-                                                    />
-                                                </label>
-                                            </div>
-                                        </div>
-
-                                        <div className="rounded-2xl border border-[var(--color-border)] bg-white p-4">
-                                            <p className="text-sm font-semibold text-slate-900">
-                                                Kertas Hio
-                                            </p>
-                                            <div className="mt-3 grid gap-3">
-                                                <label className="block">
-                                                    <span className="mb-2 block text-sm">
-                                                        Mandarin tegak
-                                                    </span>
-                                                    <input
-                                                        type="number"
-                                                        step="0.01"
-                                                        value={
-                                                            settingsForm.data
-                                                                .incense
-                                                                .vertical
-                                                                .font_scale
-                                                        }
-                                                        onChange={(event) =>
-                                                            settingsForm.setData(
-                                                                'incense.vertical.font_scale',
-                                                                event.target
-                                                                    .value,
-                                                            )
-                                                        }
-                                                        className="w-full rounded-2xl border border-[var(--color-border)] bg-white px-4 py-3 text-base"
-                                                    />
-                                                </label>
-                                                <label className="block">
-                                                    <span className="mb-2 block text-sm">
-                                                        Jarak baris Mandarin
-                                                    </span>
-                                                    <input
-                                                        type="number"
-                                                        step="0.01"
-                                                        value={
-                                                            settingsForm.data
-                                                                .incense
-                                                                .vertical
-                                                                .line_height
-                                                        }
-                                                        onChange={(event) =>
-                                                            settingsForm.setData(
-                                                                'incense.vertical.line_height',
-                                                                event.target
-                                                                    .value,
-                                                            )
-                                                        }
-                                                        className="w-full rounded-2xl border border-[var(--color-border)] bg-white px-4 py-3 text-base"
-                                                    />
-                                                </label>
-                                                <label className="block">
-                                                    <span className="mb-2 block text-sm">
-                                                        Jarak kolom Mandarin
-                                                    </span>
-                                                    <input
-                                                        type="number"
-                                                        step="0.01"
-                                                        value={
-                                                            settingsForm.data
-                                                                .incense
-                                                                .vertical
-                                                                .column_gap_scale
-                                                        }
-                                                        onChange={(event) =>
-                                                            settingsForm.setData(
-                                                                'incense.vertical.column_gap_scale',
-                                                                event.target
-                                                                    .value,
-                                                            )
-                                                        }
-                                                        className="w-full rounded-2xl border border-[var(--color-border)] bg-white px-4 py-3 text-base"
-                                                    />
-                                                </label>
-                                                <label className="block">
-                                                    <span className="mb-2 block text-sm">
-                                                        Indonesia mendatar
-                                                    </span>
-                                                    <input
-                                                        type="number"
-                                                        step="0.01"
-                                                        value={
-                                                            settingsForm.data
-                                                                .incense
-                                                                .horizontal
-                                                                .font_scale
-                                                        }
-                                                        onChange={(event) =>
-                                                            settingsForm.setData(
-                                                                'incense.horizontal.font_scale',
-                                                                event.target
-                                                                    .value,
-                                                            )
-                                                        }
-                                                        className="w-full rounded-2xl border border-[var(--color-border)] bg-white px-4 py-3 text-base"
-                                                    />
-                                                </label>
-                                                <label className="block">
-                                                    <span className="mb-2 block text-sm">
-                                                        Jarak baris Indonesia
-                                                    </span>
-                                                    <input
-                                                        type="number"
-                                                        step="0.01"
-                                                        value={
-                                                            settingsForm.data
-                                                                .incense
-                                                                .horizontal
-                                                                .line_height
-                                                        }
-                                                        onChange={(event) =>
-                                                            settingsForm.setData(
-                                                                'incense.horizontal.line_height',
-                                                                event.target
-                                                                    .value,
-                                                            )
-                                                        }
-                                                        className="w-full rounded-2xl border border-[var(--color-border)] bg-white px-4 py-3 text-base"
-                                                    />
-                                                </label>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    {Object.values(settingsForm.errors).length >
-                                    0 ? (
-                                        <div className="space-y-1 text-sm text-red-700">
-                                            {Object.values(
-                                                settingsForm.errors,
-                                            ).map((error) => (
-                                                <p key={error}>{error}</p>
-                                            ))}
-                                        </div>
-                                    ) : null}
-
-                                    <button
-                                        type="button"
-                                        onClick={saveTextSettings}
-                                        disabled={settingsForm.processing}
-                                        className="rounded-full bg-[var(--color-brand)] px-5 py-3 text-sm font-semibold text-white disabled:opacity-60"
-                                    >
-                                        {settingsForm.processing
-                                            ? 'Menyimpan...'
-                                            : 'Simpan ukuran tulisan'}
-                                    </button>
-                                </div>
-                            ) : null}
                         </section>
 
                         <section className="rounded-[24px] border border-[var(--color-border)] bg-white/90 p-6 shadow-sm">
@@ -674,6 +437,283 @@ export default function PrayerPaperPreviewPage() {
                                 </div>
                             )}
                         </section>
+
+                        {can_manage_text_settings ? (
+                            <aside className="xl:sticky xl:top-8 xl:self-start">
+                                <section className="space-y-4 rounded-[24px] border border-[var(--color-border)] bg-white/90 p-6 shadow-sm">
+                                    <div>
+                                        <p className="text-sm font-semibold text-slate-900">
+                                            Ukuran tulisan
+                                        </p>
+                                        <p className="mt-1 text-sm leading-6 text-slate-700">
+                                            `1.00` normal. `0.90` lebih kecil.
+                                            `1.10` lebih besar.
+                                        </p>
+                                    </div>
+
+                                    <div className="space-y-4">
+                                        <div className="rounded-2xl border border-[var(--color-border)] bg-slate-50 p-4">
+                                            <p className="text-sm font-semibold text-slate-900">
+                                                Kertas Doa
+                                            </p>
+                                            <div className="mt-3 grid gap-3">
+                                                <label className="block">
+                                                    <span className="mb-2 block text-sm">
+                                                        Mandarin tegak
+                                                    </span>
+                                                    <input
+                                                        type="number"
+                                                        step="0.01"
+                                                        value={
+                                                            settingsForm.data
+                                                                .prayer.vertical
+                                                                .font_scale
+                                                        }
+                                                        onChange={(event) =>
+                                                            updateTextSetting(
+                                                                'prayer',
+                                                                'vertical',
+                                                                'font_scale',
+                                                                event.target
+                                                                    .value,
+                                                            )
+                                                        }
+                                                        className="w-full rounded-2xl border border-[var(--color-border)] bg-white px-4 py-3 text-base"
+                                                    />
+                                                </label>
+                                                <label className="block">
+                                                    <span className="mb-2 block text-sm">
+                                                        Jarak baris Mandarin
+                                                    </span>
+                                                    <input
+                                                        type="number"
+                                                        step="0.01"
+                                                        value={
+                                                            settingsForm.data
+                                                                .prayer.vertical
+                                                                .line_height
+                                                        }
+                                                        onChange={(event) =>
+                                                            updateTextSetting(
+                                                                'prayer',
+                                                                'vertical',
+                                                                'line_height',
+                                                                event.target
+                                                                    .value,
+                                                            )
+                                                        }
+                                                        className="w-full rounded-2xl border border-[var(--color-border)] bg-white px-4 py-3 text-base"
+                                                    />
+                                                </label>
+                                                <label className="block">
+                                                    <span className="mb-2 block text-sm">
+                                                        Jarak kolom Mandarin
+                                                    </span>
+                                                    <input
+                                                        type="number"
+                                                        step="0.01"
+                                                        value={
+                                                            settingsForm.data
+                                                                .prayer.vertical
+                                                                .column_gap_scale
+                                                        }
+                                                        onChange={(event) =>
+                                                            updateTextSetting(
+                                                                'prayer',
+                                                                'vertical',
+                                                                'column_gap_scale',
+                                                                event.target
+                                                                    .value,
+                                                            )
+                                                        }
+                                                        className="w-full rounded-2xl border border-[var(--color-border)] bg-white px-4 py-3 text-base"
+                                                    />
+                                                </label>
+                                                <label className="block">
+                                                    <span className="mb-2 block text-sm">
+                                                        Indonesia putar 90 derajat
+                                                    </span>
+                                                    <input
+                                                        type="number"
+                                                        step="0.01"
+                                                        value={
+                                                            settingsForm.data
+                                                                .prayer.rotated
+                                                                .font_scale
+                                                        }
+                                                        onChange={(event) =>
+                                                            updateTextSetting(
+                                                                'prayer',
+                                                                'rotated',
+                                                                'font_scale',
+                                                                event.target
+                                                                    .value,
+                                                            )
+                                                        }
+                                                        className="w-full rounded-2xl border border-[var(--color-border)] bg-white px-4 py-3 text-base"
+                                                    />
+                                                </label>
+                                            </div>
+                                        </div>
+
+                                        <div className="rounded-2xl border border-[var(--color-border)] bg-slate-50 p-4">
+                                            <p className="text-sm font-semibold text-slate-900">
+                                                Kertas Hio
+                                            </p>
+                                            <div className="mt-3 grid gap-3">
+                                                <label className="block">
+                                                    <span className="mb-2 block text-sm">
+                                                        Mandarin tegak
+                                                    </span>
+                                                    <input
+                                                        type="number"
+                                                        step="0.01"
+                                                        value={
+                                                            settingsForm.data
+                                                                .incense
+                                                                .vertical
+                                                                .font_scale
+                                                        }
+                                                        onChange={(event) =>
+                                                            updateTextSetting(
+                                                                'incense',
+                                                                'vertical',
+                                                                'font_scale',
+                                                                event.target
+                                                                    .value,
+                                                            )
+                                                        }
+                                                        className="w-full rounded-2xl border border-[var(--color-border)] bg-white px-4 py-3 text-base"
+                                                    />
+                                                </label>
+                                                <label className="block">
+                                                    <span className="mb-2 block text-sm">
+                                                        Jarak baris Mandarin
+                                                    </span>
+                                                    <input
+                                                        type="number"
+                                                        step="0.01"
+                                                        value={
+                                                            settingsForm.data
+                                                                .incense
+                                                                .vertical
+                                                                .line_height
+                                                        }
+                                                        onChange={(event) =>
+                                                            updateTextSetting(
+                                                                'incense',
+                                                                'vertical',
+                                                                'line_height',
+                                                                event.target
+                                                                    .value,
+                                                            )
+                                                        }
+                                                        className="w-full rounded-2xl border border-[var(--color-border)] bg-white px-4 py-3 text-base"
+                                                    />
+                                                </label>
+                                                <label className="block">
+                                                    <span className="mb-2 block text-sm">
+                                                        Jarak kolom Mandarin
+                                                    </span>
+                                                    <input
+                                                        type="number"
+                                                        step="0.01"
+                                                        value={
+                                                            settingsForm.data
+                                                                .incense
+                                                                .vertical
+                                                                .column_gap_scale
+                                                        }
+                                                        onChange={(event) =>
+                                                            updateTextSetting(
+                                                                'incense',
+                                                                'vertical',
+                                                                'column_gap_scale',
+                                                                event.target
+                                                                    .value,
+                                                            )
+                                                        }
+                                                        className="w-full rounded-2xl border border-[var(--color-border)] bg-white px-4 py-3 text-base"
+                                                    />
+                                                </label>
+                                                <label className="block">
+                                                    <span className="mb-2 block text-sm">
+                                                        Indonesia mendatar
+                                                    </span>
+                                                    <input
+                                                        type="number"
+                                                        step="0.01"
+                                                        value={
+                                                            settingsForm.data
+                                                                .incense
+                                                                .horizontal
+                                                                .font_scale
+                                                        }
+                                                        onChange={(event) =>
+                                                            updateTextSetting(
+                                                                'incense',
+                                                                'horizontal',
+                                                                'font_scale',
+                                                                event.target
+                                                                    .value,
+                                                            )
+                                                        }
+                                                        className="w-full rounded-2xl border border-[var(--color-border)] bg-white px-4 py-3 text-base"
+                                                    />
+                                                </label>
+                                                <label className="block">
+                                                    <span className="mb-2 block text-sm">
+                                                        Jarak baris Indonesia
+                                                    </span>
+                                                    <input
+                                                        type="number"
+                                                        step="0.01"
+                                                        value={
+                                                            settingsForm.data
+                                                                .incense
+                                                                .horizontal
+                                                                .line_height
+                                                        }
+                                                        onChange={(event) =>
+                                                            updateTextSetting(
+                                                                'incense',
+                                                                'horizontal',
+                                                                'line_height',
+                                                                event.target
+                                                                    .value,
+                                                            )
+                                                        }
+                                                        className="w-full rounded-2xl border border-[var(--color-border)] bg-white px-4 py-3 text-base"
+                                                    />
+                                                </label>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {Object.values(settingsForm.errors).length >
+                                    0 ? (
+                                        <div className="space-y-1 text-sm text-red-700">
+                                            {Object.values(
+                                                settingsForm.errors,
+                                            ).map((error) => (
+                                                <p key={error}>{error}</p>
+                                            ))}
+                                        </div>
+                                    ) : null}
+
+                                    <button
+                                        type="button"
+                                        onClick={saveTextSettings}
+                                        disabled={settingsForm.processing}
+                                        className="w-full rounded-full bg-[var(--color-brand)] px-5 py-3 text-sm font-semibold text-white disabled:opacity-60"
+                                    >
+                                        {settingsForm.processing
+                                            ? 'Menyimpan...'
+                                            : 'Simpan ukuran tulisan'}
+                                    </button>
+                                </section>
+                            </aside>
+                        ) : null}
                     </div>
                 </div>
             </main>
