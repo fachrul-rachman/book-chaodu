@@ -21,6 +21,7 @@ use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\Checker\CheckInController;
 use App\Http\Controllers\Checker\DashboardController as CheckerDashboardController;
 use App\Http\Controllers\PackageImageController;
+use App\Http\Controllers\PrayerPaperPreviewImageController;
 use App\Http\Controllers\PrayerPaperTemplateImageController;
 use App\Http\Controllers\Printer\BookingPrintedController;
 use App\Http\Controllers\Printer\DashboardController as PrinterDashboardController;
@@ -33,6 +34,8 @@ Route::get('/', PublicBookingPageController::class)->name('home');
 Route::get('/media/kertas-doa/{type}', PrayerPaperTemplateImageController::class)
     ->whereIn('type', ['A', 'B'])
     ->name('public.prayer-paper-template.image.show');
+Route::get('/preview/kertas/render', PrayerPaperPreviewImageController::class)
+    ->name('prayer-paper-preview.image');
 Route::get('/booking/berhasil/{bookingNumber}', PublicBookingSuccessController::class)
     ->name('public.booking.success');
 

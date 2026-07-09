@@ -66,6 +66,7 @@ class PublicBookingCatalog
             ],
             'preview' => [
                 ...config('phase4.preview'),
+                'render_url' => route('prayer-paper-preview.image'),
                 'prayer' => [
                     ...config('phase4.preview.prayer'),
                     'image_url' => $prayerTemplate['image_url'],

@@ -80,6 +80,7 @@ class PrayerPaperRenderer
         if ($entry) {
             $this->drawMarkerText(
                 $image,
+                PrayerPaperType::A,
                 $entry['text'],
                 $entry['vertical'],
                 $marker,
@@ -115,6 +116,7 @@ class PrayerPaperRenderer
         if ($entry) {
             $this->drawMarkerText(
                 $image,
+                PrayerPaperType::B,
                 $entry['text'],
                 $entry['vertical'],
                 $marker,
@@ -136,6 +138,7 @@ class PrayerPaperRenderer
      */
     private function drawMarkerText(
         $image,
+        PrayerPaperType $type,
         string $text,
         bool $vertical,
         array $marker,
@@ -145,25 +148,25 @@ class PrayerPaperRenderer
         $displayText = $vertical ? $text : mb_strtoupper($text);
 
         if ($vertical) {
-            $this->drawVerticalText($image, $displayText, $marker, $fill);
+            $this->drawVerticalText($image, $type, $displayText, $marker, $fill);
 
             return;
         }
 
         if ($rotateIndonesian) {
-            $this->drawRotatedText($image, $displayText, $marker, $fill);
+            $this->drawRotatedText($image, $type, $displayText, $marker, $fill);
 
             return;
         }
 
-        $this->drawHorizontalText($image, $displayText, $marker, $fill);
+        $this->drawHorizontalText($image, $type, $displayText, $marker, $fill);
     }
 
     /**
      * @param  resource|\GdImage  $image
      * @param  array{x:float|int,y:float|int,width:float|int,height:float|int}  $marker
      */
-    private function drawVerticalText($image, string $text, array $marker, string $fill): void
+    private function drawVerticalText($image, PrayerPaperType $type, string $text, array $marker, string $fill): void
     {
         $lines = $this->textLines($text);
 
@@ -184,10 +187,13 @@ class PrayerPaperRenderer
                 $width * 0.58,
                 $height / max(($maxCount * 1.2), 1),
             ),
-        );
-        $lineHeight = $fontSize * 1.38;
+        ) * $this->fontScale($type, 'vertical');
+        $lineHeight = $fontSize * $this->lineHeight($type, 'vertical', 1.38);
         $stackHeight = ($lineHeight * max($maxCount - 1, 0)) + $fontSize;
-        $columnGap = max($fontSize * 0.72, $width * 0.18);
+        $columnGap = max(
+            $fontSize * $this->columnGapScale($type, 'vertical', 0.72),
+            $width * 0.18,
+        );
         $totalWidth = $fontSize + ($columnGap * max(count($lines) - 1, 0));
         $startX = (float) $marker['x'] + ($width / 2) - ($totalWidth / 2) + ($fontSize / 2);
         $startY = (float) $marker['y'] + ($height / 2) - ($stackHeight / 2) + ($fontSize / 2);
@@ -218,10 +224,10 @@ class PrayerPaperRenderer
      * @param  resource|\GdImage  $image
      * @param  array{x:float|int,y:float|int,width:float|int,height:float|int}  $marker
      */
-    private function drawRotatedText($image, string $text, array $marker, string $fill): void
+    private function drawRotatedText($image, PrayerPaperType $type, string $text, array $marker, string $fill): void
     {
         $font = $this->fontPath(false);
-        $fontSize = $this->estimateRotatedPreviewFontSize($marker, $text);
+        $fontSize = $this->estimateRotatedPreviewFontSize($type, $marker, $text);
 
         $this->drawCenteredText(
             $image,
@@ -239,7 +245,7 @@ class PrayerPaperRenderer
      * @param  resource|\GdImage  $image
      * @param  array{x:float|int,y:float|int,width:float|int,height:float|int}  $marker
      */
-    private function drawHorizontalText($image, string $text, array $marker, string $fill): void
+    private function drawHorizontalText($image, PrayerPaperType $type, string $text, array $marker, string $fill): void
     {
         $font = $this->fontPath(false);
         $lines = $this->textLines($text);
@@ -248,8 +254,8 @@ class PrayerPaperRenderer
             return;
         }
 
-        $fontSize = $this->estimateHorizontalMultilineFontSize($marker, $lines);
-        $lineHeight = $fontSize * 1.28;
+        $fontSize = $this->estimateHorizontalMultilineFontSize($type, $marker, $lines);
+        $lineHeight = $fontSize * $this->lineHeight($type, 'horizontal', 1.28);
         $startY = (float) $marker['y']
             + ((float) $marker['height'] / 2)
             - (($lineHeight * max(count($lines) - 1, 0)) / 2);
@@ -505,7 +511,7 @@ class PrayerPaperRenderer
      * @param  array{x:float|int,y:float|int,width:float|int,height:float|int}  $marker
      * @param  array<int, string>  $lines
      */
-    private function estimateHorizontalMultilineFontSize(array $marker, array $lines): float
+    private function estimateHorizontalMultilineFontSize(PrayerPaperType $type, array $marker, array $lines): float
     {
         $longestLine = collect($lines)
             ->sortByDesc(fn (string $line): int => mb_strlen($line))
@@ -521,13 +527,13 @@ class PrayerPaperRenderer
                 $widthBasedFont,
                 $heightBasedFont,
             ),
-        );
+        ) * $this->fontScale($type, 'horizontal');
     }
 
     /**
      * @param  array{x:float|int,y:float|int,width:float|int,height:float|int}  $marker
      */
-    private function estimateRotatedPreviewFontSize(array $marker, string $text): float
+    private function estimateRotatedPreviewFontSize(PrayerPaperType $type, array $marker, string $text): float
     {
         $count = max(mb_strlen(trim($text)), 1);
 
@@ -537,7 +543,7 @@ class PrayerPaperRenderer
                 (float) $marker['width'] * 0.34,
                 ((((float) $marker['height'] * 1.05) * 1.05) / ($count * 0.78)),
             ),
-        );
+        ) * $this->fontScale($type, 'rotated');
     }
 
     /**
@@ -635,5 +641,27 @@ class PrayerPaperRenderer
             static fn (string $line): string => trim($line),
             preg_split("/\r\n|\r|\n/", trim($value)) ?: [],
         ), static fn (string $line): bool => $line !== ''));
+    }
+
+    private function fontScale(PrayerPaperType $type, string $style): float
+    {
+        return max(0.1, (float) config($this->configPath($type, $style, 'font_scale'), 1.0));
+    }
+
+    private function lineHeight(PrayerPaperType $type, string $style, float $default): float
+    {
+        return max(0.5, (float) config($this->configPath($type, $style, 'line_height'), $default));
+    }
+
+    private function columnGapScale(PrayerPaperType $type, string $style, float $default): float
+    {
+        return max(0.1, (float) config($this->configPath($type, $style, 'column_gap_scale'), $default));
+    }
+
+    private function configPath(PrayerPaperType $type, string $style, string $key): string
+    {
+        $group = $type === PrayerPaperType::A ? 'prayer' : 'incense';
+
+        return sprintf('prayer_paper_text.%s.%s.%s', $group, $style, $key);
     }
 }

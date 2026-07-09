@@ -46,8 +46,6 @@ type PrayerPreviewTemplate = PreviewTemplate & {
     };
 };
 
-type PreviewKind = 'prayer' | 'incense';
-
 type Props = {
     packages: PackageItem[];
     payment: {
@@ -66,6 +64,7 @@ type Props = {
         site_key: string | null;
     };
     preview: {
+        render_url: string;
         prayer: PrayerPreviewTemplate;
         incense: PrayerPreviewTemplate;
     };
@@ -216,120 +215,34 @@ function normalizeDisplayText(value: string): string {
         .join('\n');
 }
 
-function splitDisplayLines(value: string): string[] {
-    const normalized = normalizeDisplayText(value);
+function buildPreviewImageUrl(
+    baseUrl: string,
+    type: 'A' | 'B',
+    index: number,
+    name: { text: string; vertical: boolean } | null,
+    rawNames?: {
+        indonesian?: string;
+        mandarin?: string;
+    },
+): string | null {
+    if (!name) {
+        return null;
+    }
 
-    return normalized === '' ? [] : normalized.split('\n');
-}
+    const params = new URLSearchParams({
+        type,
+        index: String(index),
+    });
 
-const PRAYER_PRINT_CANVAS = {
-    width: 1121,
-    height: 3437,
-} as const;
+    if (type === 'A') {
+        params.set('name_1_indonesian', rawNames?.indonesian ?? '');
+        params.set('name_1_mandarin', rawNames?.mandarin ?? '');
+    } else {
+        params.set('incense_indonesian', rawNames?.indonesian ?? '');
+        params.set('incense_mandarin', rawNames?.mandarin ?? '');
+    }
 
-const INCENSE_PRINT_CANVAS = {
-    width: 1122,
-    height: 2480,
-} as const;
-
-function printCanvasFor(kind: PreviewKind): { width: number; height: number } {
-    return kind === 'prayer' ? PRAYER_PRINT_CANVAS : INCENSE_PRINT_CANVAS;
-}
-
-function scaleMarkerToPrintCanvas(
-    template: PrayerPreviewTemplate,
-    marker: PrayerMarker,
-    kind: PreviewKind,
-): PrayerMarker {
-    const printCanvas = printCanvasFor(kind);
-
-    return {
-        x: (marker.x / Math.max(template.canvas_width, 1)) * printCanvas.width,
-        y: (marker.y / Math.max(template.canvas_height, 1)) * printCanvas.height,
-        width:
-            (marker.width / Math.max(template.canvas_width, 1)) *
-            printCanvas.width,
-        height:
-            (marker.height / Math.max(template.canvas_height, 1)) *
-            printCanvas.height,
-    };
-}
-
-function previewFontScale(
-    template: PrayerPreviewTemplate,
-    kind: PreviewKind,
-): number {
-    const printCanvas = printCanvasFor(kind);
-
-    return Math.min(
-        template.canvas_width / printCanvas.width,
-        template.canvas_height / printCanvas.height,
-    );
-}
-
-function estimateVerticalPreviewFont(
-    template: PrayerPreviewTemplate,
-    marker: PrayerMarker,
-    text: string,
-    kind: PreviewKind,
-): number {
-    const scaledMarker = scaleMarkerToPrintCanvas(template, marker, kind);
-    const count = Math.max(Array.from(text.trim()).length, 1);
-    const printFont = Math.max(
-        12,
-        Math.min(
-            scaledMarker.width * 0.58,
-            scaledMarker.height / Math.max(count * 1.2, 1),
-        ),
-    );
-
-    return printFont * previewFontScale(template, kind);
-}
-
-function estimateHorizontalPreviewFont(
-    template: PrayerPreviewTemplate,
-    marker: PrayerMarker,
-    text: string,
-    kind: PreviewKind,
-): number {
-    const scaledMarker = scaleMarkerToPrintCanvas(template, marker, kind);
-    const lines = splitDisplayLines(text);
-    const longestLine = lines.reduce(
-        (longest, line) => (line.length > longest.length ? line : longest),
-        '',
-    );
-    const longestCount = Math.max(longestLine.trim().length, 1);
-    const lineCount = Math.max(lines.length, 1);
-    const widthBasedFont = (((scaledMarker.width * 0.88) * 1.12) / (longestCount * 0.74));
-    const heightBasedFont = (scaledMarker.height * 0.84) / (lineCount * 1.28);
-    const printFont = Math.max(
-        22,
-        Math.min(
-            widthBasedFont,
-            heightBasedFont,
-        ),
-    );
-
-    return printFont * previewFontScale(template, kind);
-}
-
-function estimateRotatedPreviewFont(
-    template: PrayerPreviewTemplate,
-    marker: PrayerMarker,
-    text: string,
-    kind: PreviewKind,
-): number {
-    const scaledMarker = scaleMarkerToPrintCanvas(template, marker, kind);
-    const count = Math.max(text.trim().length, 1);
-    const printFont = Math.max(
-        26,
-        Math.min(
-            scaledMarker.width * 0.34,
-            (((scaledMarker.height * 1.05) * 1.05) / (count * 0.78)),
-        ),
-    );
-
-    return printFont * previewFontScale(template, kind);
+    return `${baseUrl}?${params.toString()}`;
 }
 
 function getStepFromErrors(errorBag: ErrorBag): number {
@@ -682,49 +595,15 @@ function NameCard({
 function PrayerPaperPreview({
     template,
     name,
+    imageUrl,
     kind,
 }: {
     template: PrayerPreviewTemplate;
     name: { text: string; vertical: boolean } | null;
+    imageUrl: string | null;
     kind: 'prayer' | 'incense';
 }) {
-    const marker = template.markers.single;
     const textColor = kind === 'prayer' ? '#000000' : '#E82C2A';
-    const verticalFontSize = name
-        ? estimateVerticalPreviewFont(template, marker, name.text, kind)
-        : 0;
-    const horizontalFontSize = name
-        ? estimateHorizontalPreviewFont(template, marker, name.text, kind)
-        : 0;
-    const rotatedFontSize = name
-        ? estimateRotatedPreviewFont(template, marker, name.text, kind)
-        : 0;
-    const verticalLines = name ? splitDisplayLines(name.text) : [];
-    const verticalColumns = verticalLines.map((line) => Array.from(line));
-    const verticalMaxCount = Math.max(
-        ...verticalColumns.map((line) => line.length),
-        1,
-    );
-    const verticalCharacters = verticalColumns.flatMap((line) => line);
-    const verticalLineHeight = verticalFontSize * 1.38;
-    const verticalStackHeight =
-        (verticalLineHeight * Math.max(verticalMaxCount - 1, 0)) +
-        verticalFontSize;
-    const verticalStartY =
-        marker.y + marker.height / 2 - verticalStackHeight / 2 + verticalFontSize / 2;
-    const markerCenterX = marker.x + marker.width / 2;
-    const markerCenterY = marker.y + marker.height / 2;
-    const verticalColumnGap = Math.max(verticalFontSize * 0.72, marker.width * 0.18);
-    const verticalTotalWidth =
-        verticalColumns.length > 0
-            ? verticalFontSize + verticalColumnGap * Math.max(verticalColumns.length - 1, 0)
-            : 0;
-    const verticalStartX = markerCenterX - verticalTotalWidth / 2 + verticalFontSize / 2;
-    const horizontalLines = name ? splitDisplayLines(name.text) : [];
-    const horizontalLineHeight = horizontalFontSize * 1.28;
-    const horizontalStartY =
-        markerCenterY -
-        ((horizontalLineHeight * Math.max(horizontalLines.length - 1, 0)) / 2);
 
     if (!template.image_url) {
         return (
@@ -770,70 +649,12 @@ function PrayerPaperPreview({
                     <p className="text-right">{template.bottom_label}</p>
                 </div>
                 <div className="mx-auto w-full max-w-[220px]">
-                    <div className="relative overflow-hidden rounded-xl">
+                    <div className="overflow-hidden rounded-xl">
                         <img
-                            src={template.image_url}
+                            src={imageUrl ?? template.image_url}
                             alt={template.title}
                             className="block h-auto w-full"
                         />
-                        {name ? (
-                            <svg
-                                viewBox={`0 0 ${template.canvas_width} ${template.canvas_height}`}
-                                className="absolute inset-0 h-full w-full"
-                                aria-hidden="true"
-                            >
-                                {name.vertical ? (
-                                    <>
-                                        {verticalColumns.map((line, lineIndex) =>
-                                            line.map((character, charIndex) => (
-                                                <text
-                                                    key={`${template.title}-${lineIndex}-${charIndex}`}
-                                                    x={verticalStartX + verticalColumnGap * lineIndex}
-                                                    y={verticalStartY + verticalLineHeight * charIndex}
-                                                    textAnchor="middle"
-                                                    dominantBaseline="middle"
-                                                    fontSize={verticalFontSize}
-                                                    fontWeight="600"
-                                                    fill={textColor}
-                                                >
-                                                    {character}
-                                                </text>
-                                            )),
-                                        )}
-                                    </>
-                                ) : kind === 'prayer' ? (
-                                    <text
-                                        x={markerCenterX}
-                                        y={markerCenterY}
-                                        textAnchor="middle"
-                                        dominantBaseline="middle"
-                                        fontSize={rotatedFontSize}
-                                        fontWeight="600"
-                                        fill={textColor}
-                                        transform={`rotate(90 ${markerCenterX} ${markerCenterY})`}
-                                    >
-                                        {name.text}
-                                    </text>
-                                ) : (
-                                    <>
-                                        {horizontalLines.map((line, lineIndex) => (
-                                            <text
-                                                key={`${template.title}-line-${lineIndex}`}
-                                                x={markerCenterX}
-                                                y={horizontalStartY + horizontalLineHeight * lineIndex}
-                                                textAnchor="middle"
-                                                dominantBaseline="middle"
-                                                fontSize={horizontalFontSize}
-                                                fontWeight="600"
-                                                fill={textColor}
-                                            >
-                                                {line}
-                                            </text>
-                                        ))}
-                                    </>
-                                )}
-                            </svg>
-                        ) : null}
                     </div>
                 </div>
             </div>
@@ -1721,6 +1542,24 @@ export default function PublicBookingPage() {
         )
         .slice(0, 2);
     const incensePreviewName = pickPrayerName(form.incense_name);
+    const prayerPreviewImageUrls = form.deceased_names
+        .slice(0, 2)
+        .map((entry) =>
+            buildPreviewImageUrl(preview.render_url, 'A', 1, pickPrayerName(entry), {
+                indonesian: entry.indonesian_name,
+                mandarin: entry.mandarin_name,
+            }),
+        );
+    const incensePreviewImageUrl = buildPreviewImageUrl(
+        preview.render_url,
+        'B',
+        1,
+        incensePreviewName,
+        {
+            indonesian: form.incense_name.indonesian_name,
+            mandarin: form.incense_name.mandarin_name,
+        },
+    );
     const closeFlyerModal = () => {
         if (typeof window !== 'undefined') {
             window.localStorage.setItem(BOOKING_FLYER_DISMISS_KEY, '1');
@@ -2752,6 +2591,10 @@ export default function PublicBookingPage() {
                                                         : preview.prayer.title,
                                             }}
                                             name={name}
+                                            imageUrl={
+                                                prayerPreviewImageUrls[index] ??
+                                                null
+                                            }
                                             kind="prayer"
                                         />
                                     ))}
@@ -2763,6 +2606,7 @@ export default function PublicBookingPage() {
                                 <PrayerPaperPreview
                                     template={preview.incense}
                                     name={incensePreviewName}
+                                    imageUrl={incensePreviewImageUrl}
                                     kind="incense"
                                 />
                             )}

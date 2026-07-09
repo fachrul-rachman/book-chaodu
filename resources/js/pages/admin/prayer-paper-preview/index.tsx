@@ -233,8 +233,8 @@ export default function PrayerPaperPreviewPage() {
                                             <span className="mb-2 block text-sm">
                                                 Nama Indonesia
                                             </span>
-                                            <input
-                                                type="text"
+                                            <textarea
+                                                rows={3}
                                                 value={
                                                     form.incense_indonesian
                                                 }
@@ -252,8 +252,8 @@ export default function PrayerPaperPreviewPage() {
                                             <span className="mb-2 block text-sm">
                                                 Nama Mandarin
                                             </span>
-                                            <input
-                                                type="text"
+                                            <textarea
+                                                rows={3}
                                                 value={form.incense_mandarin}
                                                 onChange={(event) =>
                                                     setForm((current) => ({
