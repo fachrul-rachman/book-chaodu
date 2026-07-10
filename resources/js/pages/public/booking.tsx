@@ -128,7 +128,6 @@ const steps = [
     'Data\nPemesan',
     'Pilih\nPaket',
     'Atur\nMakanan',
-    'Isi\nBayaran',
     'Info\nTambahan',
     'Periksa\nUlang',
 ] as const;
@@ -282,23 +281,11 @@ function getStepFromErrors(errorBag: ErrorBag): number {
         return 3;
     }
 
-    if (
-        keys.some((key) =>
-            [
-                'sender_name',
-                'transfer_date',
-                'proof',
-            ].includes(key),
-        )
-    ) {
+    if (keys.some((key) => ['referral_source', 'agent_name'].includes(key))) {
         return 4;
     }
 
-    if (keys.some((key) => ['referral_source', 'agent_name'].includes(key))) {
-        return 5;
-    }
-
-    return 6;
+    return 5;
 }
 
 /* ─── Sub-components ──────────────────────────────────────────────────────── */
@@ -732,7 +719,6 @@ export default function PublicBookingPage() {
         isPoolVirtualAccount &&
         reservationRemainingSeconds !== null &&
         reservationRemainingSeconds <= 0;
-
     /* ── Captcha (unchanged) ── */
     useEffect(() => {
         if (
@@ -806,28 +792,6 @@ export default function PublicBookingPage() {
         };
     }, [showFlyerModal]);
 
-    useEffect(() => {
-        if (!isPoolVirtualAccount || !virtualAccount?.expires_at) {
-            return;
-        }
-
-        const updateRemaining = () => {
-            const expiresAt = new Date(virtualAccount.expires_at as string);
-            const nextValue = Math.max(
-                0,
-                Math.floor((expiresAt.getTime() - Date.now()) / 1000),
-            );
-
-            setReservationRemainingSeconds(nextValue);
-        };
-
-        updateRemaining();
-        const timer = window.setInterval(updateRemaining, 1000);
-
-        return () => {
-            window.clearInterval(timer);
-        };
-    }, [isPoolVirtualAccount, virtualAccount]);
 
     /* ── Form helpers (unchanged logic) ── */
     const clearErrors = (prefixes: string[]) => {
@@ -991,138 +955,9 @@ export default function PublicBookingPage() {
     };
 
     const choosePackage = (item: PackageItem) => {
-        if (reservingVirtualAccount) {
-            return;
-        }
-
-        if (form.package_code && form.package_code !== item.code) {
-            setCopiedAccountNumber(false);
-            setCopiedAmount(false);
-            setVirtualAccount(null);
-            setReservationRemainingSeconds(null);
-        }
-
         setField('package_code', item.code);
         setField('vegetarian_quantity', '0');
         setField('non_vegetarian_quantity', '0');
-    };
-
-    const reserveVirtualAccount = async () => {
-        if (reservingVirtualAccount) {
-            return false;
-        }
-
-        if (!selectedPackage) {
-            setErrors({
-                package_code: 'Silakan pilih paket terlebih dahulu.',
-            });
-            setGeneralError('Silakan pilih paket terlebih dahulu.');
-
-            return false;
-        }
-
-        if (!isPoolVirtualAccount) {
-            return true;
-        }
-
-        if (
-            virtualAccount?.package_code === selectedPackage.code &&
-            virtualAccount.account_number &&
-            !reservationExpired
-        ) {
-            return true;
-        }
-
-        setReservingVirtualAccount(true);
-        setGeneralError(null);
-
-        try {
-            const response = await fetch('/api/public/virtual-accounts/reserve', {
-                method: 'POST',
-                headers: {
-                    Accept: 'application/json',
-                    'Content-Type': 'application/json',
-                    'X-Requested-With': 'XMLHttpRequest',
-                },
-                body: JSON.stringify({
-                    idempotency_key: form.idempotency_key,
-                    package_code: selectedPackage.code,
-                }),
-            });
-            const data = (await response.json().catch(() => ({}))) as
-                | VirtualAccountReservation
-                | { message?: string; errors?: Record<string, string[]> };
-
-            if (
-                response.ok &&
-                'account_number' in data &&
-                typeof data.account_number === 'string'
-            ) {
-                setVirtualAccount(data);
-                clearErrors(['package_code']);
-
-                return true;
-            }
-
-            const packageError =
-                'errors' in data && data.errors?.package_code?.[0]
-                    ? data.errors.package_code[0]
-                    : ('message' in data && data.message) ||
-                      'Nomor pembayaran untuk paket ini belum tersedia. Silakan coba lagi nanti.';
-
-            setErrors({
-                package_code: packageError,
-            });
-            setGeneralError(packageError);
-
-            return false;
-        } catch {
-            const fallbackMessage =
-                'Nomor pembayaran untuk paket ini belum tersedia. Silakan coba lagi nanti.';
-
-            setErrors({
-                package_code: fallbackMessage,
-            });
-            setGeneralError(fallbackMessage);
-
-            return false;
-        } finally {
-            setReservingVirtualAccount(false);
-        }
-    };
-
-    const ensurePackageAccountExists = () => {
-        if (step < 3 || form.use_manual_virtual_account) {
-            return true;
-        }
-
-        if (reservationExpired) {
-            setErrors({
-                package_code:
-                    'Nomor pembayaran sudah lewat waktu. Silakan pilih paket lagi.',
-            });
-            setGeneralError(
-                'Nomor pembayaran sudah lewat waktu. Silakan pilih paket lagi.',
-            );
-            setStep(2);
-
-            return false;
-        }
-
-        if (!selectedPackage || !packageAccountNumber) {
-            setErrors({
-                package_code:
-                    'Nomor pembayaran untuk paket ini belum tersedia. Silakan coba lagi nanti.',
-            });
-            setGeneralError(
-                'Nomor pembayaran untuk paket ini belum tersedia. Silakan coba lagi nanti.',
-            );
-            setStep(2);
-
-            return false;
-        }
-
-        return true;
     };
 
     const applyDeceasedReadState = (
@@ -1311,30 +1146,6 @@ export default function PublicBookingPage() {
             }
         }
 
-        if (currentStep === 4) {
-            if (form.use_manual_virtual_account) {
-                if (!onlyDigits(form.manual_virtual_account_number)) {
-                    nextErrors.manual_virtual_account_number =
-                        'Nomor VA wajib diisi.';
-                }
-            } else if (!packageAccountNumber) {
-                nextErrors.package_code =
-                    'Nomor pembayaran untuk paket ini belum tersedia. Silakan coba lagi nanti.';
-            }
-
-            if (!form.sender_name.trim()) {
-                nextErrors.sender_name = 'Nama pengirim wajib diisi.';
-            }
-
-            if (!form.transfer_date) {
-                nextErrors.transfer_date = 'Tanggal transfer wajib diisi.';
-            }
-
-            if (!form.proof) {
-                nextErrors.proof = 'Bukti transfer wajib diunggah.';
-            }
-        }
-
         if (currentStep === 3 && selectedPackage) {
             const mealTotal =
                 Number(form.vegetarian_quantity || 0) +
@@ -1348,7 +1159,7 @@ export default function PublicBookingPage() {
             }
         }
 
-        if (currentStep === 5) {
+        if (currentStep === 4) {
             if (!form.referral_source) {
                 nextErrors.referral_source = 'Silakan pilih sumber informasi.';
             }
@@ -1358,7 +1169,7 @@ export default function PublicBookingPage() {
             }
         }
 
-        if (currentStep === 6) {
+        if (currentStep === 5) {
             if (!form.confirmation_checked) {
                 nextErrors.confirmation_checked = 'Silakan centang konfirmasi.';
             }
@@ -1379,18 +1190,6 @@ export default function PublicBookingPage() {
             return;
         }
 
-        if (step >= 3 && !ensurePackageAccountExists()) {
-            return;
-        }
-
-        if (step === 2 && isPoolVirtualAccount && !form.use_manual_virtual_account) {
-            const reserved = await reserveVirtualAccount();
-
-            if (!reserved) {
-                return;
-            }
-        }
-
         setStep((current) => Math.min(current + 1, steps.length));
     };
 
@@ -1398,33 +1197,12 @@ export default function PublicBookingPage() {
         setStep((current) => Math.max(current - 1, 1));
     };
 
-    const copyAccountNumber = async () => {
-        if (!packageAccountNumber) {
-            return;
-        }
-
-        await navigator.clipboard.writeText(packageAccountNumber);
-        setCopiedAccountNumber(true);
-        window.setTimeout(() => setCopiedAccountNumber(false), 2000);
-    };
-
-    const copyPaymentAmount = async () => {
-        if (!selectedPackage) {
-            return;
-        }
-
-        await navigator.clipboard.writeText(
-            normalizePaymentAmount(selectedPackage.price),
-        );
-        setCopiedAmount(true);
-        window.setTimeout(() => setCopiedAmount(false), 2000);
-    };
 
     /* ── Submit (unchanged) ── */
     const submit = async (event: FormEvent<HTMLFormElement>) => {
         event.preventDefault();
 
-        if (!ensurePackageAccountExists() || !validateStep(6)) {
+        if (!validateStep(5)) {
             return;
         }
 
@@ -1440,16 +1218,6 @@ export default function PublicBookingPage() {
         payload.append('package_code', form.package_code);
         payload.append('vegetarian_quantity', form.vegetarian_quantity);
         payload.append('non_vegetarian_quantity', form.non_vegetarian_quantity);
-        payload.append('sender_name', form.sender_name);
-        payload.append(
-            'use_manual_virtual_account',
-            form.use_manual_virtual_account ? '1' : '0',
-        );
-        payload.append(
-            'manual_virtual_account_number',
-            onlyDigits(form.manual_virtual_account_number),
-        );
-        payload.append('transfer_date', form.transfer_date);
         payload.append('referral_source', form.referral_source);
         payload.append('agent_name', form.agent_name);
         payload.append(
@@ -1492,10 +1260,6 @@ export default function PublicBookingPage() {
             );
         }
 
-        if (form.proof) {
-            payload.append('proof', form.proof);
-        }
-
         try {
             const response = await fetch('/api/public/bookings', {
                 method: 'POST',
@@ -1505,12 +1269,13 @@ export default function PublicBookingPage() {
                 },
                 body: payload,
             });
+            const data = (await response.json().catch(() => ({}))) as {
+                success_url?: string;
+                message?: string;
+                errors?: Record<string, string[]>;
+            };
 
             if (response.status === 422) {
-                const data = (await response.json()) as {
-                    errors?: Record<string, string[]>;
-                    message?: string;
-                };
                 const nextErrors = Object.fromEntries(
                     Object.entries(data.errors ?? {}).map(([key, value]) => [
                         key,
@@ -1536,14 +1301,26 @@ export default function PublicBookingPage() {
 
             if (!response.ok) {
                 setGeneralError(
-                    'Booking belum berhasil dikirim. Silakan coba lagi.',
+                    data.message?.trim() ||
+                        'Booking belum berhasil dikirim. Silakan coba lagi.',
                 );
 
                 return;
             }
 
-            const data = (await response.json()) as { success_url: string };
+            if (!data.success_url) {
+                setGeneralError(
+                    'Booking sudah masuk, tetapi halaman berikutnya belum bisa dibuka. Silakan coba lagi.',
+                );
+
+                return;
+            }
+
             window.location.href = data.success_url;
+        } catch {
+            setGeneralError(
+                'Booking belum berhasil dikirim. Silakan coba lagi.',
+            );
         } finally {
             setProcessing(false);
         }
@@ -2104,7 +1881,7 @@ export default function PublicBookingPage() {
                             )}
 
                             {/* ── Step 4: Pembayaran ── */}
-                            {step === 4 && (
+                            {false && step === 4 && (
                                 <section className="rounded-2xl border border-[#E8D5C0] bg-white p-5 shadow-sm sm:p-6">
                                     <h2 className="text-2xl font-semibold text-[#2C1810]">
                                         Pembayaran
@@ -2343,7 +2120,7 @@ export default function PublicBookingPage() {
                             )}
 
                             {/* ── Step 5: Info Tambahan ── */}
-                            {step === 5 && (
+                            {step === 4 && (
                                 <section className="rounded-2xl border border-[#E8D5C0] bg-white p-5 shadow-sm sm:p-6">
                                     <h2 className="text-2xl font-semibold text-[#2C1810]">
                                         Informasi tambahan
@@ -2419,7 +2196,7 @@ export default function PublicBookingPage() {
                             )}
 
                             {/* ── Step 6: Periksa Ulang ── */}
-                            {step === 6 && (
+                            {step === 5 && (
                                 <section className="rounded-2xl border border-[#E8D5C0] bg-white p-5 shadow-sm sm:p-6">
                                     <h2 className="text-2xl font-semibold text-[#2C1810]">
                                         Periksa kembali
@@ -2524,7 +2301,7 @@ export default function PublicBookingPage() {
                                                 Pembayaran
                                             </p>
                                             <p className="text-base leading-7 text-[#2C1810]">
-                                                {form.sender_name || '-'}
+                                                Link pembayaran akan dikirim ke email
                                                 <br />
                                                 {selectedPackage
                                                     ? formatCurrency(
@@ -2532,9 +2309,7 @@ export default function PublicBookingPage() {
                                                       )
                                                     : '-'}
                                                 <br />
-                                                {form.transfer_date || '-'}
-                                                <br />
-                                                {form.proof?.name ?? '-'}
+                                                {form.customer_email || '-'}
                                             </p>
                                         </div>
 

@@ -90,6 +90,11 @@ class VirtualAccountService
         return max(1, (int) config('phase3.virtual_account_hold_minutes', 60));
     }
 
+    public function paymentLinkExpiryHours(): int
+    {
+        return max(1, (int) config('phase3.payment_link_expiry_hours', 24));
+    }
+
     /**
      * @return array<string, string|null>
      */
@@ -151,6 +156,13 @@ class VirtualAccountService
         return VirtualAccount::query()
             ->where('package_code', $packageCode)
             ->where('account_number', $normalized)
+            ->first();
+    }
+
+    public function findByBooking(Booking $booking): ?VirtualAccount
+    {
+        return VirtualAccount::query()
+            ->where('booking_id', $booking->id)
             ->first();
     }
 
@@ -251,6 +263,37 @@ class VirtualAccountService
             ) {
                 throw ValidationException::withMessages([
                     'package_code' => 'Nomor pembayaran sudah lewat waktu. Silakan pilih paket lagi.',
+                ]);
+            }
+
+            $account->forceFill([
+                'status' => VirtualAccountStatus::Assigned,
+                'hold_reference' => null,
+                'hold_expires_at' => null,
+                'booking_id' => $booking->id,
+            ])->save();
+
+            return $account;
+        });
+    }
+
+    public function assignAvailableToBooking(Booking $booking, PackageCode $packageCode): VirtualAccount
+    {
+        if ($this->isFixedMode()) {
+            return $this->requirePackageAccount($packageCode);
+        }
+
+        return DB::transaction(function () use ($booking, $packageCode): VirtualAccount {
+            $account = VirtualAccount::query()
+                ->where('package_code', $packageCode)
+                ->where('status', VirtualAccountStatus::Available)
+                ->orderBy('id')
+                ->lock('FOR UPDATE SKIP LOCKED')
+                ->first();
+
+            if (! $account) {
+                throw ValidationException::withMessages([
+                    'package_code' => 'Sistem pembayaran sedang tidak tersedia. Silakan coba lagi nanti.',
                 ]);
             }
 

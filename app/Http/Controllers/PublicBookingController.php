@@ -25,7 +25,9 @@ class PublicBookingController extends Controller
 
         return response()->json([
             'booking_number' => $booking->booking_number,
-            'success_url' => route('public.booking.success', $booking->booking_number),
+            'success_url' => route('public.booking.success', [
+                'bookingNumber' => $booking->booking_number,
+            ]),
         ], 201);
     }
 }

@@ -3,6 +3,7 @@
 use App\Enums\ApprovalIntegrationComponent;
 use App\Models\Booking;
 use App\Services\ApprovalIntegrationService;
+use App\Services\BookingExpiryService;
 use App\Services\PrayerPaperGenerationService;
 use App\Services\VirtualAccountService;
 use Illuminate\Console\Command;
@@ -125,3 +126,12 @@ Artisan::command('virtual-accounts:release-expired', function (
 
     return Command::SUCCESS;
 })->purpose('Melepas nomor VA yang lewat batas waktu.');
+
+Artisan::command('bookings:expire-unpaid', function (
+    BookingExpiryService $bookingExpiryService,
+) {
+    $count = $bookingExpiryService->expireUnpaidBookings();
+    $this->line("Booking hangus: {$count}");
+
+    return Command::SUCCESS;
+})->purpose('Menghanguskan booking yang belum kirim pembayaran setelah batas waktu.');

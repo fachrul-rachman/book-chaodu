@@ -28,6 +28,18 @@ class BookingController extends Controller
         $selectedStatus = $this->selectedStatus($request->query('status'));
         $query = Booking::query()
             ->with(['tableSlots', 'incenseSlots'])
+            ->where(function ($builder): void {
+                $builder
+                    ->where(function ($pending): void {
+                        $pending->where('status', BookingStatus::Pending)
+                            ->whereHas('payment');
+                    })
+                    ->orWhere('status', BookingStatus::Approved)
+                    ->orWhere(function ($rejected): void {
+                        $rejected->where('status', BookingStatus::Rejected)
+                            ->whereHas('payment');
+                    });
+            })
             ->latest('id');
 
         if ($selectedStatus) {
@@ -43,10 +55,23 @@ class BookingController extends Controller
                 ['value' => BookingStatus::Rejected->value, 'label' => 'Reject'],
             ],
             'status_counts' => [
-                'ALL' => Booking::query()->count(),
-                BookingStatus::Pending->value => Booking::query()->where('status', BookingStatus::Pending)->count(),
+                'ALL' => Booking::query()
+                    ->where(function ($builder): void {
+                        $builder
+                            ->where(function ($pending): void {
+                                $pending->where('status', BookingStatus::Pending)
+                                    ->whereHas('payment');
+                            })
+                            ->orWhere('status', BookingStatus::Approved)
+                            ->orWhere(function ($rejected): void {
+                                $rejected->where('status', BookingStatus::Rejected)
+                                    ->whereHas('payment');
+                            });
+                    })
+                    ->count(),
+                BookingStatus::Pending->value => Booking::query()->where('status', BookingStatus::Pending)->whereHas('payment')->count(),
                 BookingStatus::Approved->value => Booking::query()->where('status', BookingStatus::Approved)->count(),
-                BookingStatus::Rejected->value => Booking::query()->where('status', BookingStatus::Rejected)->count(),
+                BookingStatus::Rejected->value => Booking::query()->where('status', BookingStatus::Rejected)->whereHas('payment')->count(),
             ],
             'bookings' => $query
                 ->get()

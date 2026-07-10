@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\PublicAvailabilityController;
 use App\Http\Controllers\PublicBookingController;
+use App\Http\Controllers\PublicBookingPaymentController;
 use App\Http\Controllers\PublicOcrController;
 use App\Http\Controllers\PublicPackageController;
 use App\Http\Controllers\PublicVirtualAccountReservationController;
@@ -23,3 +24,6 @@ Route::delete('/public/virtual-accounts/release', [PublicVirtualAccountReservati
 Route::post('/public/bookings', [PublicBookingController::class, 'store'])
     ->middleware('throttle:booking-submit')
     ->name('api.public.bookings.store');
+Route::post('/public/bookings/{booking}/payment', [PublicBookingPaymentController::class, 'store'])
+    ->middleware('throttle:booking-submit')
+    ->name('public.booking.payment.store');

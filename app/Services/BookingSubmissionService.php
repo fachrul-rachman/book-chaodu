@@ -23,7 +23,8 @@ class BookingSubmissionService
         private readonly SlotAllocator $slotAllocator,
         private readonly PrayerPaperGenerationService $prayerPaperGenerationService,
         private readonly VirtualAccountService $virtualAccountService,
-        private readonly BookingDiscordNotificationService $bookingDiscordNotificationService,
+        private readonly BookingPaymentEmailService $bookingPaymentEmailService,
+        private readonly BookingPaymentSubmissionService $bookingPaymentSubmissionService,
     ) {}
 
     /**
@@ -58,15 +59,10 @@ class BookingSubmissionService
         }
 
         $nameImagePaths = $this->storeNameImages($package->code, $payload);
-        $proofPath = $this->storeProof(
-            $payload['proof'],
-            $payload['idempotency_key'],
-        );
-
         $booking = null;
 
         try {
-            $booking = DB::transaction(function () use ($payload, $package, $proofPath, $nameImagePaths): Booking {
+            $booking = DB::transaction(function () use ($payload, $package, $nameImagePaths): Booking {
                 $booking = Booking::query()->create([
                     'booking_number' => $this->generateBookingNumber(),
                     'idempotency_key' => $payload['idempotency_key'],
@@ -91,62 +87,67 @@ class BookingSubmissionService
                     'non_vegetarian_quantity' => $payload['non_vegetarian_quantity'],
                 ]);
 
-                $paymentIdentity = $this->virtualAccountService->paymentIdentity();
-                $packageAccount = ! empty($payload['use_manual_virtual_account'])
-                    ? $this->virtualAccountService->useManualAccountForBooking(
-                        $booking,
-                        (string) $payload['idempotency_key'],
-                        $package->code,
-                        (string) $payload['manual_virtual_account_number'],
-                    )
-                    : $this->virtualAccountService->assignToBooking(
-                        $booking,
-                        (string) $payload['idempotency_key'],
-                        $package->code,
-                    );
-
-                $booking->payment()->create([
-                    'expected_amount' => $package->price,
-                    'sender_name' => $payload['sender_name'],
-                    'transferred_amount' => $package->price,
-                    'transfer_date' => $payload['transfer_date'],
-                    'proof_path' => $proofPath,
-                    'virtual_account_bank_name' => $paymentIdentity['bank_name'],
-                    'virtual_account_number' => $packageAccount->account_number,
-                    'virtual_account_holder' => $paymentIdentity['bank_account_holder'],
-                ]);
+                $this->virtualAccountService->assignAvailableToBooking(
+                    $booking,
+                    $package->code,
+                );
 
                 $this->slotAllocator->reserveForPackage($package->code, $booking->id);
                 $this->prayerPaperGenerationService->createPendingRows($booking);
 
-                return $booking->fresh(['meal', 'payment', 'names', 'prayerPapers']) ?? $booking;
+                return $booking->fresh(['meal', 'names', 'prayerPapers']) ?? $booking;
             });
         } catch (QueryException $exception) {
             if ($this->isIdempotencyConflict($exception)) {
-                $this->cleanupFiles($proofPath, $nameImagePaths);
+                $this->cleanupFiles($nameImagePaths);
 
                 return Booking::query()
                     ->where('idempotency_key', $payload['idempotency_key'])
                     ->firstOrFail();
             }
 
-            $this->cleanupFiles($proofPath, $nameImagePaths);
+            $this->cleanupFiles($nameImagePaths);
 
             throw $exception;
         } catch (SlotUnavailableException $exception) {
-            $this->cleanupFiles($proofPath, $nameImagePaths);
+            $this->cleanupFiles($nameImagePaths);
 
             throw ValidationException::withMessages([
                 'package_code' => $exception->getMessage(),
             ]);
         } catch (\Throwable $exception) {
-            $this->cleanupFiles($proofPath, $nameImagePaths);
+            $this->cleanupFiles($nameImagePaths);
 
             throw $exception;
         }
 
         $this->prayerPaperGenerationService->generateForBooking($booking);
-        $this->bookingDiscordNotificationService->notifySubmitted($booking);
+
+        if (($payload['proof'] ?? null) instanceof UploadedFile) {
+            $virtualAccount = $this->virtualAccountService->isFixedMode()
+                ? $this->virtualAccountService->requirePackageAccount(
+                    PackageCode::from($booking->package_code_snapshot),
+                )
+                : $this->virtualAccountService->findByBooking($booking);
+            $paymentIdentity = $this->virtualAccountService->paymentIdentity();
+
+            if (! $virtualAccount) {
+                throw ValidationException::withMessages([
+                    'package_code' => 'Nomor VA untuk booking ini tidak ditemukan. Silakan coba lagi.',
+                ]);
+            }
+
+            return $this->bookingPaymentSubmissionService->submit($booking, [
+                'sender_name' => $payload['sender_name'],
+                'transfer_date' => $payload['transfer_date'],
+                'proof' => $payload['proof'],
+                'virtual_account_bank_name' => $paymentIdentity['bank_name'],
+                'virtual_account_number' => $virtualAccount->account_number,
+                'virtual_account_holder' => $paymentIdentity['bank_account_holder'],
+            ]);
+        }
+
+        $this->bookingPaymentEmailService->sendPaymentLink($booking);
 
         return $booking->fresh(['meal', 'payment', 'names', 'prayerPapers']) ?? $booking;
     }
@@ -248,20 +249,6 @@ class BookingSubmissionService
         return $paths;
     }
 
-    private function storeProof(UploadedFile $proof, string $idempotencyKey): string
-    {
-        $extension = strtolower($proof->getClientOriginalExtension()) ?: $proof->extension() ?: 'bin';
-        $path = 'booking-files/'.trim($idempotencyKey).'/bukti-transfer.'.$extension;
-
-        Storage::disk((string) config('phase3.private_upload_disk'))->putFileAs(
-            dirname($path),
-            $proof,
-            basename($path),
-        );
-
-        return $path;
-    }
-
     private function storeNameImage(
         UploadedFile $sourceImage,
         string $idempotencyKey,
@@ -289,10 +276,8 @@ class BookingSubmissionService
     /**
      * @param  array<string, array<int, string>>  $nameImagePaths
      */
-    private function cleanupFiles(string $proofPath, array $nameImagePaths): void
+    private function cleanupFiles(array $nameImagePaths): void
     {
-        Storage::disk((string) config('phase3.private_upload_disk'))->delete($proofPath);
-
         foreach ($nameImagePaths as $group) {
             foreach ($group as $path) {
                 Storage::disk((string) config('phase4.private_upload_disk'))->delete($path);

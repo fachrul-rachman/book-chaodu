@@ -28,6 +28,7 @@ use App\Http\Controllers\Printer\BookingPrintedController;
 use App\Http\Controllers\Printer\DashboardController as PrinterDashboardController;
 use App\Http\Controllers\Printer\PrayerPaperFileController as PrinterPrayerPaperFileController;
 use App\Http\Controllers\PublicBookingPageController;
+use App\Http\Controllers\PublicBookingPaymentPageController;
 use App\Http\Controllers\PublicBookingSuccessController;
 use Illuminate\Support\Facades\Route;
 
@@ -39,6 +40,8 @@ Route::get('/preview/kertas/render', PrayerPaperPreviewImageController::class)
     ->name('prayer-paper-preview.image');
 Route::get('/booking/berhasil/{bookingNumber}', PublicBookingSuccessController::class)
     ->name('public.booking.success');
+Route::get('/booking/pembayaran/{bookingNumber}', PublicBookingPaymentPageController::class)
+    ->name('public.booking.payment.show');
 
 Route::redirect('/login', '/masuk');
 

@@ -12,6 +12,7 @@ use App\Models\IncenseSlot;
 use App\Models\Package;
 use App\Models\TableSlot;
 use App\Models\VirtualAccount;
+use App\Services\BookingPaymentLinkService;
 use App\Services\VirtualAccountService;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Http;
@@ -124,6 +125,16 @@ function reserveVirtualAccountForPayload(array $payload): void
         PackageCode::from((string) $payload['package_code']),
         (string) $payload['idempotency_key'],
     );
+}
+
+function paymentTokenForBooking(Booking $booking): string
+{
+    $url = app(BookingPaymentLinkService::class)->paymentUrl($booking);
+    $query = parse_url($url, PHP_URL_QUERY);
+
+    parse_str(is_string($query) ? $query : '', $params);
+
+    return (string) ($params['token'] ?? '');
 }
 
 it('creates a prayer booking and reserves the first table slot', function () {
@@ -491,36 +502,15 @@ it('releases the old virtual account when the package changes in many-number mod
         ->assertJsonPath('account_number', '920001');
 });
 
-it('rejects booking submit when the virtual account has expired in many-number mode', function () {
+it('hangs booking after payment link expires and releases reserved data', function () {
     setVirtualAccountMode(VirtualAccountService::MODE_POOL);
     activatePackage(PackageCode::Prayer);
 
     $payload = bookingPayload([
         'idempotency_key' => 'expired-va-key',
-    ]);
-    reserveVirtualAccountForPayload($payload);
-
-    VirtualAccount::query()
-        ->where('hold_reference', 'expired-va-key')
-        ->update([
-            'hold_expires_at' => now()->subMinute(),
-        ]);
-
-    $this->post(route('api.public.bookings.store'), $payload, [
-        'Accept' => 'application/json',
-    ])
-        ->assertStatus(422)
-        ->assertJsonValidationErrors('package_code');
-});
-
-it('allows booking submit with a manually entered virtual account for the selected package', function () {
-    setVirtualAccountMode(VirtualAccountService::MODE_POOL);
-    activatePackage(PackageCode::Prayer);
-
-    $payload = bookingPayload([
-        'idempotency_key' => 'manual-va-key-1',
-        'use_manual_virtual_account' => '1',
-        'manual_virtual_account_number' => '900002',
+        'sender_name' => null,
+        'transfer_date' => null,
+        'proof' => null,
     ]);
 
     $this->post(route('api.public.bookings.store'), $payload, [
@@ -528,23 +518,79 @@ it('allows booking submit with a manually entered virtual account for the select
     ])->assertCreated();
 
     $booking = Booking::query()->latest('id')->firstOrFail();
+    $booking->forceFill([
+        'created_at' => now()->subHours(25),
+    ])->save();
 
-    expect($booking->payment?->virtual_account_number)->toBe('900002');
+    $this->artisan('bookings:expire-unpaid')->assertExitCode(0);
+
+    expect($booking->fresh()?->status)->toBe(BookingStatus::Rejected)
+        ->and($booking->fresh()?->rejection_reason)->toBe(App\Services\BookingExpiryService::EXPIRED_REASON)
+        ->and(TableSlot::query()->where('booking_id', $booking->id)->exists())->toBeFalse()
+        ->and(VirtualAccount::query()->where('booking_id', $booking->id)->exists())->toBeFalse();
 });
 
-it('rejects manually entered virtual account from another package', function () {
+it('accepts payment from the unique payment link and changes booking to pending', function () {
     setVirtualAccountMode(VirtualAccountService::MODE_POOL);
     activatePackage(PackageCode::Prayer);
 
     $payload = bookingPayload([
-        'idempotency_key' => 'manual-va-key-2',
-        'use_manual_virtual_account' => '1',
-        'manual_virtual_account_number' => '910001',
+        'idempotency_key' => 'payment-link-key-1',
+        'sender_name' => null,
+        'transfer_date' => null,
+        'proof' => null,
     ]);
 
     $this->post(route('api.public.bookings.store'), $payload, [
         'Accept' => 'application/json',
+    ])->assertCreated();
+
+    $booking = Booking::query()->latest('id')->firstOrFail();
+    $token = paymentTokenForBooking($booking);
+
+    $this->post(route('public.booking.payment.store', $booking).'?token='.$token, [
+        'token' => $token,
+        'sender_name' => 'Budi',
+        'transfer_date' => now()->toDateString(),
+        'proof' => UploadedFile::fake()->image('bukti-baru.jpg'),
+    ], [
+        'Accept' => 'application/json',
+    ])->assertOk();
+
+    expect($booking->fresh()?->status)->toBe(BookingStatus::Pending)
+        ->and($booking->fresh()?->payment?->virtual_account_number)->toBe('900001');
+});
+
+it('rejects payment submit when the unique payment link has expired', function () {
+    setVirtualAccountMode(VirtualAccountService::MODE_POOL);
+    activatePackage(PackageCode::Prayer);
+
+    $payload = bookingPayload([
+        'idempotency_key' => 'payment-link-key-2',
+        'sender_name' => null,
+        'transfer_date' => null,
+        'proof' => null,
+    ]);
+
+    $this->post(route('api.public.bookings.store'), $payload, [
+        'Accept' => 'application/json',
+    ])->assertCreated();
+
+    $booking = Booking::query()->latest('id')->firstOrFail();
+    $booking->forceFill([
+        'created_at' => now()->subHours(25),
+    ])->save();
+
+    $token = paymentTokenForBooking($booking);
+
+    $this->post(route('public.booking.payment.store', $booking).'?token='.$token, [
+        'token' => $token,
+        'sender_name' => 'Budi',
+        'transfer_date' => now()->toDateString(),
+        'proof' => UploadedFile::fake()->image('bukti-expired.jpg'),
+    ], [
+        'Accept' => 'application/json',
     ])
         ->assertStatus(422)
-        ->assertJsonValidationErrors('manual_virtual_account_number');
+        ->assertJsonValidationErrors('booking');
 });

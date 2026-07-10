@@ -7,6 +7,7 @@ return [
     'submit_rate_limit_max_attempts' => (int) env('BOOKING_SUBMIT_RATE_LIMIT_MAX_ATTEMPTS', 6),
     'submit_rate_limit_decay_seconds' => (int) env('BOOKING_SUBMIT_RATE_LIMIT_DECAY_SECONDS', 60),
     'virtual_account_hold_minutes' => (int) env('BOOKING_VIRTUAL_ACCOUNT_HOLD_MINUTES', 60),
+    'payment_link_expiry_hours' => (int) env('BOOKING_PAYMENT_LINK_EXPIRY_HOURS', 24),
     'virtual_account_rate_limit_max_attempts' => (int) env('BOOKING_VIRTUAL_ACCOUNT_RATE_LIMIT_MAX_ATTEMPTS', 10),
     'virtual_account_rate_limit_decay_seconds' => (int) env('BOOKING_VIRTUAL_ACCOUNT_RATE_LIMIT_DECAY_SECONDS', 60),
     'captcha' => [

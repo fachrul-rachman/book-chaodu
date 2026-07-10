@@ -25,11 +25,11 @@ class BookingApprovalService
 
             $currentStatus = BookingStatus::from((string) $booking->getRawOriginal('status'));
 
-            if ($currentStatus === BookingStatus::Approved) {
+            if ($currentStatus !== BookingStatus::Pending) {
                 return;
             }
 
-            if ($currentStatus === BookingStatus::Rejected) {
+            if (! $booking->payment()->exists()) {
                 return;
             }
 

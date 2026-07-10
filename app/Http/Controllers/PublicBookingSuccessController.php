@@ -16,6 +16,9 @@ class PublicBookingSuccessController extends Controller
 
         return Inertia::render('public/success', [
             'booking_number' => $booking->booking_number,
+            'customer_email' => $booking->customer_email,
+            'package_name' => $booking->package_name_snapshot,
+            'package_price' => $booking->package_price_snapshot,
         ]);
     }
 }

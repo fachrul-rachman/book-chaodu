@@ -3,10 +3,9 @@
 namespace App\Http\Requests\Public;
 
 use App\Enums\PackageCode;
-use App\Models\AppSetting;
 use App\Models\Package;
-use App\Services\VirtualAccountService;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules\File;
 use Illuminate\Validation\Validator;
@@ -23,7 +22,6 @@ class SubmitBookingRequest extends FormRequest
      */
     public function rules(): array
     {
-        $uploadMaxKb = $this->uploadMaxKb();
         $ocrUploadMaxKb = max(1024, (int) config('phase4.ocr_upload_max_mb') * 1024);
 
         return [
@@ -44,14 +42,9 @@ class SubmitBookingRequest extends FormRequest
             'incense_name.source_image' => ['nullable', File::image()->types(['jpg', 'jpeg', 'png'])->max($ocrUploadMaxKb)],
             'vegetarian_quantity' => ['required', 'integer', 'min:0'],
             'non_vegetarian_quantity' => ['required', 'integer', 'min:0'],
-            'sender_name' => ['required', 'string', 'max:120'],
-            'transfer_date' => ['required', 'date', 'before_or_equal:today'],
-            'use_manual_virtual_account' => ['nullable', 'boolean'],
-            'manual_virtual_account_number' => ['nullable', 'string', 'max:50'],
-            'proof' => [
-                'required',
-                File::types(['jpg', 'jpeg', 'png', 'pdf'])->max($uploadMaxKb),
-            ],
+            'sender_name' => ['nullable', 'string', 'max:120'],
+            'transfer_date' => ['nullable', 'date', 'before_or_equal:today'],
+            'proof' => ['nullable', File::types(['jpg', 'jpeg', 'png', 'pdf'])->max(max(1024, (int) config('phase3.upload_max_mb', 5) * 1024))],
             'referral_source' => ['required', Rule::in([
                 'TEMAN',
                 'KELUARGA',
@@ -93,14 +86,21 @@ class SubmitBookingRequest extends FormRequest
                     $validator->errors()->add('agent_name', 'Nama agent wajib diisi.');
                 }
 
-                if ($this->boolean('use_manual_virtual_account')) {
-                    if (blank($this->input('manual_virtual_account_number'))) {
-                        $validator->errors()->add('manual_virtual_account_number', 'Nomor VA wajib diisi.');
-                    } elseif (! app(VirtualAccountService::class)->findPackageAccountByNumber(
-                        $packageCode,
-                        (string) $this->input('manual_virtual_account_number'),
-                    )) {
-                        $validator->errors()->add('manual_virtual_account_number', 'Nomor VA tidak valid untuk paket yang dipilih.');
+                $hasAnyPaymentField = filled($this->input('sender_name'))
+                    || filled($this->input('transfer_date'))
+                    || $this->file('proof') instanceof UploadedFile;
+
+                if ($hasAnyPaymentField) {
+                    if (blank($this->input('sender_name'))) {
+                        $validator->errors()->add('sender_name', 'Nama pengirim wajib diisi.');
+                    }
+
+                    if (blank($this->input('transfer_date'))) {
+                        $validator->errors()->add('transfer_date', 'Tanggal transfer wajib diisi.');
+                    }
+
+                    if (! $this->file('proof') instanceof UploadedFile) {
+                        $validator->errors()->add('proof', 'Bukti transfer wajib diunggah.');
                     }
                 }
 
@@ -147,10 +147,8 @@ class SubmitBookingRequest extends FormRequest
             'customer_phone_local' => $localPhone,
             'customer_phone' => $localPhone !== '' ? '+62'.$localPhone : null,
             'customer_email' => strtolower(trim((string) $this->input('customer_email'))),
-            'sender_name' => $this->trimString('sender_name'),
+            'sender_name' => $this->trimNullable('sender_name'),
             'agent_name' => $this->trimNullable('agent_name'),
-            'use_manual_virtual_account' => $this->boolean('use_manual_virtual_account'),
-            'manual_virtual_account_number' => preg_replace('/\D+/', '', (string) $this->input('manual_virtual_account_number')) ?: null,
             'deceased_names' => $normalizedDeceasedNames,
             'incense_name' => [
                 'indonesian_name' => $this->trimNullableFromArray($this->input('incense_name', []), 'indonesian_name'),
@@ -167,7 +165,6 @@ class SubmitBookingRequest extends FormRequest
     {
         return [
             'customer_phone_local.regex' => 'Nomor telepon harus dimulai dengan angka 1 sampai 9 dan panjangnya benar.',
-            'proof.max' => 'Ukuran bukti transfer melebihi batas.',
             'confirmation_checked.accepted' => 'Silakan centang konfirmasi sebelum kirim.',
         ];
     }
@@ -192,13 +189,6 @@ class SubmitBookingRequest extends FormRequest
                 $validator->errors()->add('incense_name', 'Isi nama untuk hio jumbo.');
             }
         }
-    }
-
-    private function uploadMaxKb(): int
-    {
-        $settings = AppSetting::getMany(['upload_max_mb']);
-
-        return max(1024, (int) ($settings['upload_max_mb'] ?? config('phase3.upload_max_mb')) * 1024);
     }
 
     private function trimString(string $key): string

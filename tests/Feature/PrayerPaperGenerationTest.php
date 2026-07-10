@@ -342,6 +342,9 @@ it('creates two separate prayer papers when two prayer names are filled', functi
 
     $this->post(route('api.public.bookings.store'), prayerPaperBookingPayload([
         'idempotency_key' => 'paper-layout-2',
+        'sender_name' => null,
+        'transfer_date' => null,
+        'proof' => null,
         'deceased_names' => [
             [
                 'indonesian_name' => 'Nama Satu',

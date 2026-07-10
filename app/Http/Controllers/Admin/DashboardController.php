@@ -16,9 +16,23 @@ class DashboardController extends Controller
         return Inertia::render('admin/dashboard', [
             'availability' => $availabilityService->summary(),
             'booking_counts' => [
-                'pending' => Booking::query()->where('status', BookingStatus::Pending)->count(),
+                'pending' => Booking::query()->where('status', BookingStatus::Pending)->whereHas('payment')->count(),
                 'approved' => Booking::query()->where('status', BookingStatus::Approved)->count(),
-                'rejected' => Booking::query()->where('status', BookingStatus::Rejected)->count(),
+                'rejected' => Booking::query()->where('status', BookingStatus::Rejected)->whereHas('payment')->count(),
+                'all' => Booking::query()
+                    ->where(function ($builder): void {
+                        $builder
+                            ->where(function ($pending): void {
+                                $pending->where('status', BookingStatus::Pending)
+                                    ->whereHas('payment');
+                            })
+                            ->orWhere('status', BookingStatus::Approved)
+                            ->orWhere(function ($rejected): void {
+                                $rejected->where('status', BookingStatus::Rejected)
+                                    ->whereHas('payment');
+                            });
+                    })
+                    ->count(),
             ],
         ]);
     }
