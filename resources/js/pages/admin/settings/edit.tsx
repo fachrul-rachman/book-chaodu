@@ -6,6 +6,7 @@ type Props = {
         bank_name: string | null;
         bank_account_holder: string | null;
         virtual_account_mode: 'FIXED' | 'POOL' | null;
+        virtual_account_hold_minutes: number | null;
         prayer_virtual_account: string | null;
         incense_virtual_account: string | null;
         combo_virtual_account: string | null;
@@ -33,6 +34,9 @@ export default function PaymentSettingsPage() {
         bank_name: payment_settings.bank_name ?? '',
         bank_account_holder: payment_settings.bank_account_holder ?? '',
         virtual_account_mode: payment_settings.virtual_account_mode ?? 'FIXED',
+        virtual_account_hold_minutes: String(
+            payment_settings.virtual_account_hold_minutes ?? 60,
+        ),
         prayer_virtual_account: payment_settings.prayer_virtual_account ?? '',
         incense_virtual_account: payment_settings.incense_virtual_account ?? '',
         combo_virtual_account: payment_settings.combo_virtual_account ?? '',
@@ -141,6 +145,25 @@ export default function PaymentSettingsPage() {
                                         Satu paket banyak nomor
                                     </option>
                                 </select>
+                            </label>
+
+                            <label className="block">
+                                <span className="mb-2 block text-sm font-medium">
+                                    Lama tahan nomor VA (menit)
+                                </span>
+                                <input
+                                    type="number"
+                                    min={1}
+                                    max={1440}
+                                    value={form.data.virtual_account_hold_minutes}
+                                    onChange={(event) =>
+                                        form.setData(
+                                            'virtual_account_hold_minutes',
+                                            event.target.value,
+                                        )
+                                    }
+                                    className="w-full rounded-2xl border border-[var(--color-border)] bg-white px-4 py-3 text-base"
+                                />
                             </label>
 
                             <div className="grid gap-4 rounded-2xl border border-[var(--color-border)] bg-[#F8F4EE] p-4 sm:grid-cols-3">

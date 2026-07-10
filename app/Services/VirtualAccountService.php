@@ -78,6 +78,18 @@ class VirtualAccountService
         ];
     }
 
+    public function holdMinutes(): int
+    {
+        $settings = AppSetting::getMany(['virtual_account_hold_minutes']);
+        $stored = $settings['virtual_account_hold_minutes'] ?? null;
+
+        if (is_numeric($stored)) {
+            return max(1, (int) $stored);
+        }
+
+        return max(1, (int) config('phase3.virtual_account_hold_minutes', 60));
+    }
+
     /**
      * @return array<string, string|null>
      */
@@ -126,6 +138,20 @@ class VirtualAccountService
         }
 
         return $account;
+    }
+
+    public function findPackageAccountByNumber(PackageCode $packageCode, string $accountNumber): ?VirtualAccount
+    {
+        $normalized = preg_replace('/\D+/', '', $accountNumber) ?? '';
+
+        if ($normalized === '') {
+            return null;
+        }
+
+        return VirtualAccount::query()
+            ->where('package_code', $packageCode)
+            ->where('account_number', $normalized)
+            ->first();
     }
 
     public function reserve(PackageCode $packageCode, string $reference): array
@@ -355,11 +381,6 @@ class VirtualAccountService
             ->groupBy(fn (VirtualAccount $account): string => $account->package_code->value);
     }
 
-    private function holdMinutes(): int
-    {
-        return max(1, (int) config('phase3.virtual_account_hold_minutes', 60));
-    }
-
     private function detectModeFromAccounts(): string
     {
         $hasMultipleAccounts = VirtualAccount::query()
@@ -413,5 +434,52 @@ class VirtualAccountService
             'account_holder' => $paymentIdentity['bank_account_holder'],
             'expires_at' => $expiresAt?->toIso8601String(),
         ];
+    }
+
+    public function useManualAccountForBooking(
+        Booking $booking,
+        string $reference,
+        PackageCode $packageCode,
+        string $accountNumber,
+    ): VirtualAccount {
+        $account = $this->findPackageAccountByNumber($packageCode, $accountNumber);
+
+        if (! $account) {
+            throw ValidationException::withMessages([
+                'manual_virtual_account_number' => 'Nomor VA tidak valid untuk paket yang dipilih.',
+            ]);
+        }
+
+        if ($this->isPoolMode()) {
+            DB::transaction(function () use ($reference, $booking, $account): void {
+                $this->releaseReservation($reference);
+
+                $locked = VirtualAccount::query()
+                    ->whereKey($account->id)
+                    ->lockForUpdate()
+                    ->first();
+
+                if (! $locked) {
+                    return;
+                }
+
+                if (
+                    $locked->status === VirtualAccountStatus::Available
+                    || (
+                        $locked->status === VirtualAccountStatus::Held
+                        && $locked->hold_reference === trim($reference)
+                    )
+                ) {
+                    $locked->forceFill([
+                        'status' => VirtualAccountStatus::Assigned,
+                        'hold_reference' => null,
+                        'hold_expires_at' => null,
+                        'booking_id' => $booking->id,
+                    ])->save();
+                }
+            });
+        }
+
+        return $account->fresh() ?? $account;
     }
 }

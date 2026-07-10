@@ -21,6 +21,7 @@ class UpdatePaymentSettingsRequest extends FormRequest
             'bank_name' => ['nullable', 'string', 'max:120'],
             'bank_account_holder' => ['nullable', 'string', 'max:120'],
             'virtual_account_mode' => ['required', 'in:FIXED,POOL'],
+            'virtual_account_hold_minutes' => ['required', 'integer', 'min:1', 'max:1440'],
             'prayer_virtual_account' => ['nullable', 'string', 'max:50'],
             'incense_virtual_account' => ['nullable', 'string', 'max:50'],
             'combo_virtual_account' => ['nullable', 'string', 'max:50'],

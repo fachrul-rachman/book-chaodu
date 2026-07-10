@@ -92,11 +92,18 @@ class BookingSubmissionService
                 ]);
 
                 $paymentIdentity = $this->virtualAccountService->paymentIdentity();
-                $packageAccount = $this->virtualAccountService->assignToBooking(
-                    $booking,
-                    (string) $payload['idempotency_key'],
-                    $package->code,
-                );
+                $packageAccount = ! empty($payload['use_manual_virtual_account'])
+                    ? $this->virtualAccountService->useManualAccountForBooking(
+                        $booking,
+                        (string) $payload['idempotency_key'],
+                        $package->code,
+                        (string) $payload['manual_virtual_account_number'],
+                    )
+                    : $this->virtualAccountService->assignToBooking(
+                        $booking,
+                        (string) $payload['idempotency_key'],
+                        $package->code,
+                    );
 
                 $booking->payment()->create([
                     'expected_amount' => $package->price,

@@ -24,6 +24,7 @@ class SettingController extends Controller
                 'bank_account_holder',
             ]) + [
                 'virtual_account_mode' => $virtualAccountService->mode(),
+                'virtual_account_hold_minutes' => $virtualAccountService->holdMinutes(),
                 'prayer_virtual_account' => $virtualAccountSummary['PRAYER']['account_number'],
                 'incense_virtual_account' => $virtualAccountSummary['INCENSE']['account_number'],
                 'combo_virtual_account' => $virtualAccountSummary['COMBO']['account_number'],
@@ -45,6 +46,7 @@ class SettingController extends Controller
             'bank_name' => $validated['bank_name'] ?? null,
             'bank_account_holder' => $validated['bank_account_holder'] ?? null,
             'virtual_account_mode' => $validated['virtual_account_mode'],
+            'virtual_account_hold_minutes' => (string) $validated['virtual_account_hold_minutes'],
         ]);
 
         if (($validated['virtual_account_mode'] ?? VirtualAccountService::MODE_FIXED) === VirtualAccountService::MODE_POOL) {

@@ -103,6 +103,8 @@ function bookingPayload(array $overrides = []): array
         'vegetarian_quantity' => '1',
         'non_vegetarian_quantity' => '1',
         'sender_name' => 'Budi',
+        'use_manual_virtual_account' => '0',
+        'manual_virtual_account_number' => '',
         'transfer_date' => now()->toDateString(),
         'proof' => UploadedFile::fake()->image('bukti.jpg'),
         'referral_source' => 'TEMAN',
@@ -509,4 +511,40 @@ it('rejects booking submit when the virtual account has expired in many-number m
     ])
         ->assertStatus(422)
         ->assertJsonValidationErrors('package_code');
+});
+
+it('allows booking submit with a manually entered virtual account for the selected package', function () {
+    setVirtualAccountMode(VirtualAccountService::MODE_POOL);
+    activatePackage(PackageCode::Prayer);
+
+    $payload = bookingPayload([
+        'idempotency_key' => 'manual-va-key-1',
+        'use_manual_virtual_account' => '1',
+        'manual_virtual_account_number' => '900002',
+    ]);
+
+    $this->post(route('api.public.bookings.store'), $payload, [
+        'Accept' => 'application/json',
+    ])->assertCreated();
+
+    $booking = Booking::query()->latest('id')->firstOrFail();
+
+    expect($booking->payment?->virtual_account_number)->toBe('900002');
+});
+
+it('rejects manually entered virtual account from another package', function () {
+    setVirtualAccountMode(VirtualAccountService::MODE_POOL);
+    activatePackage(PackageCode::Prayer);
+
+    $payload = bookingPayload([
+        'idempotency_key' => 'manual-va-key-2',
+        'use_manual_virtual_account' => '1',
+        'manual_virtual_account_number' => '910001',
+    ]);
+
+    $this->post(route('api.public.bookings.store'), $payload, [
+        'Accept' => 'application/json',
+    ])
+        ->assertStatus(422)
+        ->assertJsonValidationErrors('manual_virtual_account_number');
 });

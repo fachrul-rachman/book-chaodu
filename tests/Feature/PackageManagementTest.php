@@ -80,6 +80,7 @@ it('allows an admin to update payment information', function () {
             'bank_name' => 'BCA',
             'bank_account_holder' => 'PT Chao Du',
             'virtual_account_mode' => 'FIXED',
+            'virtual_account_hold_minutes' => 180,
             'prayer_virtual_account' => '900001',
             'incense_virtual_account' => '910001',
             'combo_virtual_account' => '920001',
@@ -89,9 +90,11 @@ it('allows an admin to update payment information', function () {
     expect(AppSetting::getMany([
         'bank_name',
         'bank_account_holder',
+        'virtual_account_hold_minutes',
     ]))->toMatchArray([
         'bank_name' => 'BCA',
         'bank_account_holder' => 'PT Chao Du',
+        'virtual_account_hold_minutes' => '180',
     ]);
 });
 

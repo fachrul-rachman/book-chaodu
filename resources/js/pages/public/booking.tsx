@@ -91,6 +91,8 @@ type FormState = {
     vegetarian_quantity: string;
     non_vegetarian_quantity: string;
     sender_name: string;
+    use_manual_virtual_account: boolean;
+    manual_virtual_account_number: string;
     transfer_date: string;
     proof: File | null;
     referral_source:
@@ -699,6 +701,8 @@ export default function PublicBookingPage() {
         vegetarian_quantity: '0',
         non_vegetarian_quantity: '0',
         sender_name: '',
+        use_manual_virtual_account: false,
+        manual_virtual_account_number: '',
         transfer_date: '',
         proof: null,
         referral_source: '',
@@ -718,9 +722,11 @@ export default function PublicBookingPage() {
     const [headerBannerMissing, setHeaderBannerMissing] = useState(false);
     const isPoolVirtualAccount = payment.virtual_account_mode === 'POOL';
     const packageAccountNumber = selectedPackage
-        ? (isPoolVirtualAccount
+        ? form.use_manual_virtual_account
+            ? onlyDigits(form.manual_virtual_account_number) || null
+            : isPoolVirtualAccount
               ? virtualAccount?.account_number ?? null
-              : payment.accounts_by_package[selectedPackage.code] ?? null)
+              : payment.accounts_by_package[selectedPackage.code] ?? null
         : null;
     const reservationExpired =
         isPoolVirtualAccount &&
@@ -1086,7 +1092,7 @@ export default function PublicBookingPage() {
     };
 
     const ensurePackageAccountExists = () => {
-        if (step < 3) {
+        if (step < 3 || form.use_manual_virtual_account) {
             return true;
         }
 
@@ -1306,7 +1312,12 @@ export default function PublicBookingPage() {
         }
 
         if (currentStep === 4) {
-            if (!packageAccountNumber) {
+            if (form.use_manual_virtual_account) {
+                if (!onlyDigits(form.manual_virtual_account_number)) {
+                    nextErrors.manual_virtual_account_number =
+                        'Nomor VA wajib diisi.';
+                }
+            } else if (!packageAccountNumber) {
                 nextErrors.package_code =
                     'Nomor pembayaran untuk paket ini belum tersedia. Silakan coba lagi nanti.';
             }
@@ -1372,7 +1383,7 @@ export default function PublicBookingPage() {
             return;
         }
 
-        if (step === 2 && isPoolVirtualAccount) {
+        if (step === 2 && isPoolVirtualAccount && !form.use_manual_virtual_account) {
             const reserved = await reserveVirtualAccount();
 
             if (!reserved) {
@@ -1430,6 +1441,14 @@ export default function PublicBookingPage() {
         payload.append('vegetarian_quantity', form.vegetarian_quantity);
         payload.append('non_vegetarian_quantity', form.non_vegetarian_quantity);
         payload.append('sender_name', form.sender_name);
+        payload.append(
+            'use_manual_virtual_account',
+            form.use_manual_virtual_account ? '1' : '0',
+        );
+        payload.append(
+            'manual_virtual_account_number',
+            onlyDigits(form.manual_virtual_account_number),
+        );
         payload.append('transfer_date', form.transfer_date);
         payload.append('referral_source', form.referral_source);
         payload.append('agent_name', form.agent_name);
@@ -2160,6 +2179,61 @@ export default function PublicBookingPage() {
                                                 </p>
                                             ) : null}
                                         </div>
+                                        <label className="mt-4 flex cursor-pointer items-start gap-3 rounded-xl border border-[#E8D084] bg-[#FDF6DC] px-4 py-4">
+                                            <input
+                                                type="checkbox"
+                                                checked={
+                                                    form.use_manual_virtual_account
+                                                }
+                                                onChange={(event) =>
+                                                    setForm((current) => ({
+                                                        ...current,
+                                                        use_manual_virtual_account:
+                                                            event.target.checked,
+                                                        manual_virtual_account_number:
+                                                            event.target.checked
+                                                                ? current.manual_virtual_account_number
+                                                                : '',
+                                                    }))
+                                                }
+                                                className="mt-1 h-5 w-5 accent-[#8B1A1A]"
+                                            />
+                                            <span className="text-base leading-6 text-[#2C1810]">
+                                                Saya sudah transfer sebelumnya
+                                            </span>
+                                        </label>
+                                        {form.use_manual_virtual_account ? (
+                                            <label className="mt-4 block">
+                                                <span className="mb-2 block text-base font-medium text-[#2C1810]">
+                                                    Nomor VA yang sudah saya transfer
+                                                </span>
+                                                <input
+                                                    type="text"
+                                                    inputMode="numeric"
+                                                    value={
+                                                        form.manual_virtual_account_number
+                                                    }
+                                                    onChange={(e) =>
+                                                        setField(
+                                                            'manual_virtual_account_number',
+                                                            onlyDigits(
+                                                                e.target.value,
+                                                            ),
+                                                        )
+                                                    }
+                                                    placeholder="Masukkan nomor VA"
+                                                    className={inputCls}
+                                                />
+                                                <p className="mt-2 text-sm leading-6 text-[#5C3D2E]">
+                                                    Isi nomor VA yang tadi Anda pakai saat transfer. Sistem akan cek apakah nomor ini cocok dengan paket yang dipilih.
+                                                </p>
+                                                <ErrorText
+                                                    value={
+                                                        errors.manual_virtual_account_number
+                                                    }
+                                                />
+                                            </label>
+                                        ) : null}
                                         {reservationExpired ? (
                                             <p className="mt-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
                                                 Nomor pembayaran sudah lewat

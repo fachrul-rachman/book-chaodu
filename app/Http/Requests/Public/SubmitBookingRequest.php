@@ -5,6 +5,7 @@ namespace App\Http\Requests\Public;
 use App\Enums\PackageCode;
 use App\Models\AppSetting;
 use App\Models\Package;
+use App\Services\VirtualAccountService;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules\File;
@@ -45,6 +46,8 @@ class SubmitBookingRequest extends FormRequest
             'non_vegetarian_quantity' => ['required', 'integer', 'min:0'],
             'sender_name' => ['required', 'string', 'max:120'],
             'transfer_date' => ['required', 'date', 'before_or_equal:today'],
+            'use_manual_virtual_account' => ['nullable', 'boolean'],
+            'manual_virtual_account_number' => ['nullable', 'string', 'max:50'],
             'proof' => [
                 'required',
                 File::types(['jpg', 'jpeg', 'png', 'pdf'])->max($uploadMaxKb),
@@ -88,6 +91,17 @@ class SubmitBookingRequest extends FormRequest
 
                 if ($this->input('referral_source') === 'AGENT' && blank($this->input('agent_name'))) {
                     $validator->errors()->add('agent_name', 'Nama agent wajib diisi.');
+                }
+
+                if ($this->boolean('use_manual_virtual_account')) {
+                    if (blank($this->input('manual_virtual_account_number'))) {
+                        $validator->errors()->add('manual_virtual_account_number', 'Nomor VA wajib diisi.');
+                    } elseif (! app(VirtualAccountService::class)->findPackageAccountByNumber(
+                        $packageCode,
+                        (string) $this->input('manual_virtual_account_number'),
+                    )) {
+                        $validator->errors()->add('manual_virtual_account_number', 'Nomor VA tidak valid untuk paket yang dipilih.');
+                    }
                 }
 
                 $mealTotal = (int) $this->input('vegetarian_quantity', 0)
@@ -135,6 +149,8 @@ class SubmitBookingRequest extends FormRequest
             'customer_email' => strtolower(trim((string) $this->input('customer_email'))),
             'sender_name' => $this->trimString('sender_name'),
             'agent_name' => $this->trimNullable('agent_name'),
+            'use_manual_virtual_account' => $this->boolean('use_manual_virtual_account'),
+            'manual_virtual_account_number' => preg_replace('/\D+/', '', (string) $this->input('manual_virtual_account_number')) ?: null,
             'deceased_names' => $normalizedDeceasedNames,
             'incense_name' => [
                 'indonesian_name' => $this->trimNullableFromArray($this->input('incense_name', []), 'indonesian_name'),
