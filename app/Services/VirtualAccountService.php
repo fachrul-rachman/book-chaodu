@@ -482,4 +482,71 @@ class VirtualAccountService
 
         return $account->fresh() ?? $account;
     }
+
+    public function reassignPendingBookingAccount(
+        Booking $booking,
+        PackageCode $packageCode,
+        string $accountNumber,
+    ): VirtualAccount {
+        $account = $this->findPackageAccountByNumber($packageCode, $accountNumber);
+
+        if (! $account) {
+            throw ValidationException::withMessages([
+                'virtual_account_number' => 'Nomor VA tidak valid untuk paket ini.',
+            ]);
+        }
+
+        if ($this->isFixedMode()) {
+            return $account;
+        }
+
+        return DB::transaction(function () use ($booking, $account): VirtualAccount {
+            $this->releaseExpiredRows(now());
+
+            $current = VirtualAccount::query()
+                ->where('booking_id', $booking->id)
+                ->lockForUpdate()
+                ->first();
+
+            $target = VirtualAccount::query()
+                ->whereKey($account->id)
+                ->lockForUpdate()
+                ->first();
+
+            if (! $target) {
+                throw ValidationException::withMessages([
+                    'virtual_account_number' => 'Nomor VA tidak ditemukan.',
+                ]);
+            }
+
+            if ($current && $current->id === $target->id) {
+                return $target;
+            }
+
+            if ($target->status === VirtualAccountStatus::Assigned && $target->booking_id !== $booking->id) {
+                throw ValidationException::withMessages([
+                    'virtual_account_number' => 'Nomor VA ini sedang dipakai booking lain.',
+                ]);
+            }
+
+            if ($target->status === VirtualAccountStatus::Held) {
+                throw ValidationException::withMessages([
+                    'virtual_account_number' => 'Nomor VA ini sedang dipakai customer lain.',
+                ]);
+            }
+
+            if ($current && $current->id !== $target->id) {
+                $this->releaseRow($current);
+            }
+
+            $target->forceFill([
+                'status' => VirtualAccountStatus::Assigned,
+                'hold_reference' => null,
+                'hold_expires_at' => null,
+                'booking_id' => $booking->id,
+            ])->save();
+
+            return $target;
+        });
+    }
 }

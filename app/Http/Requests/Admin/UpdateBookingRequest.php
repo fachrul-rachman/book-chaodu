@@ -6,6 +6,7 @@ use App\Enums\BookingStatus;
 use App\Enums\PackageCode;
 use App\Models\Booking;
 use App\Models\Package;
+use App\Services\VirtualAccountService;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Validator;
@@ -29,6 +30,7 @@ class UpdateBookingRequest extends FormRequest
             'customer_email' => ['required', 'email:rfc,dns', 'max:120'],
             'attendee_count' => ['required', 'integer', 'min:1'],
             'sender_name' => ['required', 'string', 'max:120'],
+            'virtual_account_number' => ['required', 'string', 'max:50'],
             'transferred_amount' => ['required', 'regex:/^[0-9]+$/'],
             'transfer_date' => ['required', 'date', 'before_or_equal:today'],
             'referral_source' => ['required', Rule::in([
@@ -82,6 +84,15 @@ class UpdateBookingRequest extends FormRequest
                 }
 
                 $packageCode = PackageCode::from($booking->package_code_snapshot);
+                $virtualAccountNumber = preg_replace('/\D+/', '', (string) $this->input('virtual_account_number'));
+
+                if (
+                    $virtualAccountNumber === ''
+                    || ! app(VirtualAccountService::class)->findPackageAccountByNumber($packageCode, $virtualAccountNumber)
+                ) {
+                    $validator->errors()->add('virtual_account_number', 'Nomor VA tidak valid untuk paket ini.');
+                }
+
                 $filledDeceasedNames = 0;
 
                 foreach ($this->input('deceased_names', []) as $name) {
@@ -175,6 +186,7 @@ class UpdateBookingRequest extends FormRequest
             'customer_phone' => preg_replace('/\s+/', '', (string) $this->input('customer_phone')),
             'customer_email' => strtolower(trim((string) $this->input('customer_email'))),
             'sender_name' => trim((string) $this->input('sender_name')),
+            'virtual_account_number' => preg_replace('/\D+/', '', (string) $this->input('virtual_account_number')),
             'transferred_amount' => preg_replace('/\D+/', '', (string) $this->input('transferred_amount')),
             'agent_name' => $this->trimNullable('agent_name'),
             'deceased_names' => $deceasedNames,

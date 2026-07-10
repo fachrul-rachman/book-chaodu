@@ -114,6 +114,7 @@ export default function AdminBookingShowPage() {
         customer_email: booking.customer_email,
         attendee_count: String(booking.attendee_count),
         sender_name: booking.sender_name ?? '',
+        virtual_account_number: booking.virtual_account_number ?? '',
         transferred_amount: booking.transferred_amount
             ? formatStoredNominalInput(booking.transferred_amount)
             : '',
@@ -432,6 +433,27 @@ export default function AdminBookingShowPage() {
                                         form.setData(
                                             'sender_name',
                                             event.target.value,
+                                        )
+                                    }
+                                    className="w-full rounded-2xl border border-[var(--color-border)] bg-white px-4 py-3 text-base"
+                                />
+                            </label>
+
+                            <label className="block">
+                                <span className="mb-2 block text-sm font-medium">
+                                    Nomor VA
+                                </span>
+                                <input
+                                    type="text"
+                                    inputMode="numeric"
+                                    value={form.data.virtual_account_number}
+                                    onChange={(event) =>
+                                        form.setData(
+                                            'virtual_account_number',
+                                            event.target.value.replace(
+                                                /\D/g,
+                                                '',
+                                            ),
                                         )
                                     }
                                     className="w-full rounded-2xl border border-[var(--color-border)] bg-white px-4 py-3 text-base"

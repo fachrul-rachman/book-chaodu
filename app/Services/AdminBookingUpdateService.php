@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Enums\BookingNameCategory;
 use App\Enums\BookingStatus;
+use App\Enums\PackageCode;
 use App\Exceptions\SlotUnavailableException;
 use App\Models\Booking;
 use App\Models\BookingName;
@@ -15,6 +16,7 @@ class AdminBookingUpdateService
     public function __construct(
         private readonly SlotAllocator $slotAllocator,
         private readonly PrayerPaperGenerationService $prayerPaperGenerationService,
+        private readonly VirtualAccountService $virtualAccountService,
     ) {}
 
     /**
@@ -54,10 +56,21 @@ class AdminBookingUpdateService
                     ],
                 );
 
+                $virtualAccount = $this->virtualAccountService->reassignPendingBookingAccount(
+                    $booking,
+                    PackageCode::from($booking->package_code_snapshot),
+                    (string) $payload['virtual_account_number'],
+                );
+
+                $paymentIdentity = $this->virtualAccountService->paymentIdentity();
+
                 $booking->payment()->updateOrCreate(
                     ['booking_id' => $booking->id],
                     [
                         'expected_amount' => $booking->package_price_snapshot,
+                        'virtual_account_bank_name' => $paymentIdentity['bank_name'],
+                        'virtual_account_number' => $virtualAccount->account_number,
+                        'virtual_account_holder' => $paymentIdentity['bank_account_holder'],
                         'sender_name' => $payload['sender_name'],
                         'transferred_amount' => $payload['transferred_amount'],
                         'transfer_date' => $payload['transfer_date'],

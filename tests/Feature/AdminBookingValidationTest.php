@@ -6,6 +6,8 @@ use App\Enums\BookingStatus;
 use App\Enums\PackageCode;
 use App\Enums\PrayerPaperStatus;
 use App\Enums\SlotStatus;
+use App\Enums\VirtualAccountStatus;
+use App\Models\AppSetting;
 use App\Models\Booking;
 use App\Models\Package;
 use App\Models\PrayerPaper;
@@ -177,6 +179,7 @@ it('allows admin to update allowed booking fields and regenerate final file afte
             'customer_email' => 'revisi@gmail.com',
             'attendee_count' => 3,
             'sender_name' => 'Pengirim Baru',
+            'virtual_account_number' => $booking->payment?->virtual_account_number,
             'transferred_amount' => '2100000',
             'transfer_date' => now()->toDateString(),
             'referral_source' => 'KELUARGA',
@@ -217,6 +220,7 @@ it('does not allow admin to change package on an existing booking', function () 
             'customer_email' => $booking->customer_email,
             'attendee_count' => $booking->attendee_count,
             'sender_name' => $booking->payment?->sender_name,
+            'virtual_account_number' => $booking->payment?->virtual_account_number,
             'transferred_amount' => '2000000',
             'transfer_date' => optional($booking->payment?->transfer_date)->toDateString(),
             'referral_source' => $booking->referral_source,
@@ -246,6 +250,7 @@ it('replaces a reserved table slot safely', function () {
             'customer_email' => $booking->customer_email,
             'attendee_count' => $booking->attendee_count,
             'sender_name' => $booking->payment?->sender_name,
+            'virtual_account_number' => $booking->payment?->virtual_account_number,
             'transferred_amount' => '2000000',
             'transfer_date' => optional($booking->payment?->transfer_date)->toDateString(),
             'referral_source' => $booking->referral_source,
@@ -341,6 +346,7 @@ it('allows zero meal quantities when admin updates a booking', function () {
             'customer_email' => $booking->customer_email,
             'attendee_count' => $booking->attendee_count,
             'sender_name' => $booking->payment?->sender_name,
+            'virtual_account_number' => $booking->payment?->virtual_account_number,
             'transferred_amount' => '2000000',
             'transfer_date' => optional($booking->payment?->transfer_date)->toDateString(),
             'referral_source' => $booking->referral_source,
@@ -375,6 +381,7 @@ it('rejects meal quantity above package quota when admin updates a booking', fun
             'customer_email' => $booking->customer_email,
             'attendee_count' => $booking->attendee_count,
             'sender_name' => $booking->payment?->sender_name,
+            'virtual_account_number' => $booking->payment?->virtual_account_number,
             'transferred_amount' => '2000000',
             'transfer_date' => optional($booking->payment?->transfer_date)->toDateString(),
             'referral_source' => $booking->referral_source,
@@ -394,4 +401,88 @@ it('rejects meal quantity above package quota when admin updates a booking', fun
             'vegetarian_quantity',
             'non_vegetarian_quantity',
         ]);
+});
+
+it('allows admin to change virtual account on pending booking and releases the old one', function () {
+    AppSetting::putMany([
+        'virtual_account_mode' => 'POOL',
+    ]);
+
+    VirtualAccount::query()->create([
+        'package_code' => PackageCode::Prayer,
+        'account_number' => '900002',
+        'status' => VirtualAccountStatus::Available,
+    ]);
+
+    $booking = createPendingBooking([
+        'idempotency_key' => 'admin-booking-change-va',
+        'use_manual_virtual_account' => '1',
+        'manual_virtual_account_number' => '900001',
+    ]);
+    $admin = User::factory()->admin()->create();
+
+    $this->actingAs($admin)
+        ->put(route('admin.bookings.update', $booking), [
+            'customer_name' => $booking->customer_name,
+            'customer_phone' => $booking->customer_phone,
+            'customer_email' => $booking->customer_email,
+            'attendee_count' => $booking->attendee_count,
+            'sender_name' => $booking->payment?->sender_name,
+            'virtual_account_number' => '900002',
+            'transferred_amount' => '2000000',
+            'transfer_date' => optional($booking->payment?->transfer_date)->toDateString(),
+            'referral_source' => $booking->referral_source,
+            'agent_name' => $booking->agent_name,
+            'vegetarian_quantity' => $booking->meal?->vegetarian_quantity,
+            'non_vegetarian_quantity' => $booking->meal?->non_vegetarian_quantity,
+            'deceased_names' => [
+                [
+                    'position' => 1,
+                    'indonesian_name' => 'Tan Ah Kok',
+                    'mandarin_name' => 'æž—ç–æœˆ',
+                ],
+            ],
+            'incense_name' => null,
+        ])
+        ->assertRedirect();
+
+    expect($booking->fresh()?->payment?->virtual_account_number)->toBe('900002')
+        ->and(VirtualAccount::query()->where('account_number', '900001')->value('status'))->toBe(VirtualAccountStatus::Available)
+        ->and(VirtualAccount::query()->where('account_number', '900001')->value('booking_id'))->toBeNull()
+        ->and(VirtualAccount::query()->where('account_number', '900002')->value('status'))->toBe(VirtualAccountStatus::Assigned)
+        ->and(VirtualAccount::query()->where('account_number', '900002')->value('booking_id'))->toBe($booking->id);
+});
+
+it('rejects admin virtual account change when the number belongs to another package', function () {
+    $booking = createPendingBooking([
+        'idempotency_key' => 'admin-booking-invalid-va',
+    ]);
+    $admin = User::factory()->admin()->create();
+
+    $this->actingAs($admin)
+        ->from(route('admin.bookings.show', $booking))
+        ->put(route('admin.bookings.update', $booking), [
+            'customer_name' => $booking->customer_name,
+            'customer_phone' => $booking->customer_phone,
+            'customer_email' => $booking->customer_email,
+            'attendee_count' => $booking->attendee_count,
+            'sender_name' => $booking->payment?->sender_name,
+            'virtual_account_number' => '910001',
+            'transferred_amount' => '2000000',
+            'transfer_date' => optional($booking->payment?->transfer_date)->toDateString(),
+            'referral_source' => $booking->referral_source,
+            'agent_name' => $booking->agent_name,
+            'vegetarian_quantity' => $booking->meal?->vegetarian_quantity,
+            'non_vegetarian_quantity' => $booking->meal?->non_vegetarian_quantity,
+            'deceased_names' => [
+                [
+                    'position' => 1,
+                    'indonesian_name' => 'Tan Ah Kok',
+                    'mandarin_name' => 'æž—ç–æœˆ',
+                ],
+            ],
+            'incense_name' => null,
+        ])
+        ->assertRedirect(route('admin.bookings.show', $booking))
+        ->assertSessionHasErrors('virtual_account_number');
 });
