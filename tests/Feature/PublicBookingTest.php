@@ -180,7 +180,7 @@ it('creates a combo booking with table, incense, and both name groups', function
             ],
             [
                 'indonesian_name' => '',
-                'mandarin_name' => 'åå­—äºŒ',
+                'mandarin_name' => '名字二',
             ],
         ],
         'incense_name' => [
@@ -362,18 +362,18 @@ it('stores separate source photos for each name', function () {
         'deceased_names' => [
             [
                 'indonesian_name' => 'Nama Satu',
-                'mandarin_name' => 'åå­—ä¸€',
+                'mandarin_name' => '名字一',
                 'source_image' => UploadedFile::fake()->image('deceased-1.jpg'),
             ],
             [
                 'indonesian_name' => 'Nama Dua',
-                'mandarin_name' => 'åå­—äºŒ',
+                'mandarin_name' => '名字二',
                 'source_image' => UploadedFile::fake()->image('deceased-2.jpg'),
             ],
         ],
         'incense_name' => [
             'indonesian_name' => 'Keluarga Tan',
-            'mandarin_name' => 'é™³å®¶',
+            'mandarin_name' => '陈家',
             'source_image' => UploadedFile::fake()->image('incense.jpg'),
         ],
         'vegetarian_quantity' => '2',

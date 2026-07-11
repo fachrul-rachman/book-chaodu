@@ -118,6 +118,7 @@ class SubmitBookingRequest extends FormRequest
                     );
                 }
 
+                $this->validateCharacterRules($validator, $deceasedNames = array_values($this->input('deceased_names', [])), $this->input('incense_name', []));
                 $this->validateNames($validator, $packageCode);
             },
         ];
@@ -191,6 +192,49 @@ class SubmitBookingRequest extends FormRequest
         }
     }
 
+    /**
+     * @param  array<int, array<string, mixed>>  $deceasedNames
+     * @param  array<string, mixed>  $incenseName
+     */
+    private function validateCharacterRules(Validator $validator, array $deceasedNames, array $incenseName): void
+    {
+        foreach ($deceasedNames as $index => $name) {
+            $indonesian = (string) ($name['indonesian_name'] ?? '');
+            $mandarin = (string) ($name['mandarin_name'] ?? '');
+
+            if ($this->containsChineseCharacters($indonesian)) {
+                $validator->errors()->add(
+                    "deceased_names.$index.indonesian_name",
+                    'Nama Indonesia tidak boleh memakai aksara China.',
+                );
+            }
+
+            if ($mandarin !== '' && ! $this->isChineseOnlyText($mandarin)) {
+                $validator->errors()->add(
+                    "deceased_names.$index.mandarin_name",
+                    'Nama Mandarin hanya boleh memakai aksara China, bukan Pin Yin.',
+                );
+            }
+        }
+
+        $incenseIndonesian = (string) ($incenseName['indonesian_name'] ?? '');
+        $incenseMandarin = (string) ($incenseName['mandarin_name'] ?? '');
+
+        if ($this->containsChineseCharacters($incenseIndonesian)) {
+            $validator->errors()->add(
+                'incense_name.indonesian_name',
+                'Nama Indonesia tidak boleh memakai aksara China.',
+            );
+        }
+
+        if ($incenseMandarin !== '' && ! $this->isChineseOnlyText($incenseMandarin)) {
+            $validator->errors()->add(
+                'incense_name.mandarin_name',
+                'Nama Mandarin hanya boleh memakai aksara China, bukan Pin Yin.',
+            );
+        }
+    }
+
     private function trimString(string $key): string
     {
         return trim((string) $this->input($key));
@@ -211,5 +255,21 @@ class SubmitBookingRequest extends FormRequest
         $value = trim((string) ($data[$key] ?? ''));
 
         return $value === '' ? null : $value;
+    }
+
+    private function containsChineseCharacters(string $value): bool
+    {
+        return preg_match('/\p{Han}/u', trim($value)) === 1;
+    }
+
+    private function isChineseOnlyText(string $value): bool
+    {
+        $normalized = preg_replace("/\r\n?/", "\n", trim($value));
+
+        if (! is_string($normalized) || $normalized === '') {
+            return false;
+        }
+
+        return preg_match('/^[\p{Han}\s]+$/u', $normalized) === 1;
     }
 }

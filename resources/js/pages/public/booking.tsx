@@ -159,6 +159,20 @@ function isValidEmail(value: string): boolean {
     return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim());
 }
 
+function containsChineseCharacters(value: string): boolean {
+    return /\p{Script=Han}/u.test(value);
+}
+
+function isChineseOnlyText(value: string): boolean {
+    const normalized = normalizeDisplayText(value);
+
+    if (!normalized) {
+        return false;
+    }
+
+    return /^[\p{Script=Han}\s]+$/u.test(normalized);
+}
+
 function formatRemainingTime(totalSeconds: number): string {
     const safeSeconds = Math.max(0, totalSeconds);
     const hours = Math.floor(safeSeconds / 3600);
@@ -407,6 +421,7 @@ function NameCard({
     readButtonLabel,
     entry,
     mandarinError,
+    indonesianError,
     photoError,
     maxUploadMb,
     indonesianLocked,
@@ -423,6 +438,7 @@ function NameCard({
     readButtonLabel: string;
     entry: NameEntry;
     mandarinError?: string;
+    indonesianError?: string;
     photoError?: string;
     maxUploadMb: number;
     indonesianLocked: boolean;
@@ -448,6 +464,7 @@ function NameCard({
                         <textarea
                             aria-label={indonesianLabel}
                             rows={3}
+                            placeholder="Budi Santoso"
                             value={entry.indonesian_name}
                             disabled={indonesianLocked}
                             onChange={(event) =>
@@ -463,6 +480,7 @@ function NameCard({
                         <input
                             aria-label={indonesianLabel}
                             type="text"
+                            placeholder="Budi Santoso"
                             value={entry.indonesian_name}
                             disabled={indonesianLocked}
                             onChange={(event) =>
@@ -475,6 +493,10 @@ function NameCard({
                             }`}
                         />
                     )}
+                    <p className="mt-2 text-sm text-[#5C3D2E]">
+                        Kolom ini hanya untuk huruf biasa, bukan aksara China.
+                    </p>
+                    <ErrorText value={indonesianError} />
                 </label>
 
                 <label className="block">
@@ -485,6 +507,7 @@ function NameCard({
                         <textarea
                             aria-label={mandarinLabel}
                             rows={3}
+                            placeholder="布迪桑托索"
                             value={entry.mandarin_name}
                             disabled={mandarinLocked}
                             onChange={(event) =>
@@ -500,6 +523,7 @@ function NameCard({
                         <input
                             aria-label={mandarinLabel}
                             type="text"
+                            placeholder="布迪桑托索"
                             value={entry.mandarin_name}
                             disabled={mandarinLocked}
                             onChange={(event) =>
@@ -518,6 +542,9 @@ function NameCard({
                             : indonesianLocked
                               ? 'Kolom ini aktif karena Anda sedang memakai nama Mandarin atau foto.'
                               : 'Pilih salah satu: nama Indonesia atau nama Mandarin/foto.'}
+                    </p>
+                    <p className="mt-1 text-sm text-[#5C3D2E]">
+                        Gunakan aksara China. Bukan Pin Yin.
                     </p>
                     <ErrorText value={mandarinError} />
                 </label>
@@ -1122,6 +1149,24 @@ export default function PublicBookingPage() {
                 nextErrors.package_code =
                     'Silakan pilih paket terlebih dahulu.';
             } else {
+                form.deceased_names.forEach((item, index) => {
+                    if (
+                        item.indonesian_name.trim() &&
+                        containsChineseCharacters(item.indonesian_name)
+                    ) {
+                        nextErrors[`deceased_names.${index}.indonesian_name`] =
+                            'Nama Indonesia tidak boleh memakai aksara China.';
+                    }
+
+                    if (
+                        item.mandarin_name.trim() &&
+                        !isChineseOnlyText(item.mandarin_name)
+                    ) {
+                        nextErrors[`deceased_names.${index}.mandarin_name`] =
+                            'Nama Mandarin hanya boleh memakai aksara China, bukan Pin Yin.';
+                    }
+                });
+
                 if (
                     (selectedPackage.code === 'PRAYER' ||
                         selectedPackage.code === 'COMBO') &&
@@ -1132,6 +1177,22 @@ export default function PublicBookingPage() {
                     ).length < 1
                 ) {
                     nextErrors.deceased_names = 'Isi minimal 1 nama.';
+                }
+
+                if (
+                    form.incense_name.indonesian_name.trim() &&
+                    containsChineseCharacters(form.incense_name.indonesian_name)
+                ) {
+                    nextErrors['incense_name.indonesian_name'] =
+                        'Nama Indonesia tidak boleh memakai aksara China.';
+                }
+
+                if (
+                    form.incense_name.mandarin_name.trim() &&
+                    !isChineseOnlyText(form.incense_name.mandarin_name)
+                ) {
+                    nextErrors['incense_name.mandarin_name'] =
+                        'Nama Mandarin hanya boleh memakai aksara China, bukan Pin Yin.';
                 }
 
                 if (
@@ -1678,6 +1739,11 @@ export default function PublicBookingPage() {
                                                             photoLabel={`Foto nama ${index + 1}`}
                                                             readButtonLabel={`Baca foto nama ${index + 1}`}
                                                             entry={item}
+                                                            indonesianError={
+                                                                errors[
+                                                                    `deceased_names.${index}.indonesian_name`
+                                                                ]
+                                                            }
                                                             mandarinError={
                                                                 errors[
                                                                     `deceased_names.${index}.mandarin_name`
@@ -1764,6 +1830,11 @@ export default function PublicBookingPage() {
                                                     readButtonLabel="Baca foto nama yang didoakan"
                                                     entry={form.incense_name}
                                                     multiline
+                                                    indonesianError={
+                                                        errors[
+                                                            'incense_name.indonesian_name'
+                                                        ]
+                                                    }
                                                     mandarinError={
                                                         errors[
                                                             'incense_name.mandarin_name'
