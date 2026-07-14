@@ -7,6 +7,7 @@ use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\RequestException;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 
 class TwoOcrClient
 {
@@ -16,45 +17,159 @@ class TwoOcrClient
             throw new OcrRecognitionException('Source image is missing.');
         }
 
-        $apiKey = (string) config('services.two_ocr.api_key');
-        $baseUrl = (string) config('services.two_ocr.base_url');
+        $credentials = $this->credentials();
 
-        if ($apiKey === '' || $baseUrl === '') {
+        if ($credentials === []) {
             throw new OcrRecognitionException('2OCR is not configured.');
         }
 
-        try {
-            $response = Http::baseUrl($baseUrl)
-                ->acceptJson()
-                ->timeout(max(1, (int) config('phase4.ocr_timeout_seconds')))
-                ->retry(max(0, (int) config('phase4.ocr_retry_times')))
-                ->withQueryParameters([
-                    'access_token' => $apiKey,
-                ])
-                ->asMultipart()
-                ->attach(
-                    'files',
-                    file_get_contents($sourceImage->getRealPath()) ?: '',
-                    $sourceImage->getClientOriginalName(),
-                )
-                ->post((string) config('phase4.ocr_endpoint'), [
-                    'type' => (string) config('phase4.ocr_type'),
-                    'lang' => (string) config('phase4.ocr_lang'),
-                    'retain' => config('phase4.ocr_retain') ? 'true' : 'false',
+        $fileContents = file_get_contents($sourceImage->getRealPath());
+
+        if ($fileContents === false) {
+            throw new OcrRecognitionException('Source image cannot be read.');
+        }
+
+        $lastException = null;
+
+        foreach ($credentials as $index => $credential) {
+            try {
+                $response = Http::baseUrl((string) $credential['base_url'])
+                    ->acceptJson()
+                    ->timeout(max(1, (int) config('phase4.ocr_timeout_seconds')))
+                    ->retry(max(0, (int) config('phase4.ocr_retry_times')))
+                    ->withQueryParameters([
+                        'access_token' => (string) $credential['api_key'],
+                    ])
+                    ->asMultipart()
+                    ->attach(
+                        'files',
+                        $fileContents,
+                        $sourceImage->getClientOriginalName(),
+                    )
+                    ->post((string) config('phase4.ocr_endpoint'), [
+                        'type' => (string) config('phase4.ocr_type'),
+                        'lang' => (string) config('phase4.ocr_lang'),
+                        'retain' => config('phase4.ocr_retain') ? 'true' : 'false',
+                    ]);
+
+                $response->throw();
+
+                $text = $this->extractText($response->json());
+
+                if ($text === null || $text === '') {
+                    throw new OcrRecognitionException('2OCR response does not contain readable text.');
+                }
+
+                if ($index > 0) {
+                    Log::info('OCR succeeded using fallback credential.', [
+                        'provider' => 'two_ocr',
+                        'credential_label' => $credential['label'],
+                        'credential_position' => $index + 1,
+                    ]);
+                }
+
+                return $text;
+            } catch (ConnectionException|RequestException $exception) {
+                $lastException = $exception;
+
+                if (! $this->shouldTryNextCredential($exception, $index, count($credentials))) {
+                    throw new OcrRecognitionException('2OCR request failed.', previous: $exception);
+                }
+
+                Log::warning('OCR credential failed. Trying next credential.', [
+                    'provider' => 'two_ocr',
+                    'credential_label' => $credential['label'],
+                    'credential_position' => $index + 1,
+                    'status_code' => $exception instanceof RequestException ? $exception->response?->status() : null,
+                    'reason' => $this->failureReason($exception),
                 ]);
-
-            $response->throw();
-        } catch (ConnectionException|RequestException $exception) {
-            throw new OcrRecognitionException('2OCR request failed.', previous: $exception);
+            }
         }
 
-        $text = $this->extractText($response->json());
+        throw new OcrRecognitionException('2OCR request failed.', previous: $lastException);
+    }
 
-        if ($text === null || $text === '') {
-            throw new OcrRecognitionException('2OCR response does not contain readable text.');
+    /**
+     * @return array<int, array{label:string, api_key:string, base_url:string}>
+     */
+    private function credentials(): array
+    {
+        $credentials = config('services.two_ocr.credentials', []);
+
+        if (! is_array($credentials)) {
+            return [];
         }
 
-        return $text;
+        return array_values(array_filter(array_map(
+            static fn (mixed $credential): ?array => is_array($credential)
+                ? [
+                    'label' => trim((string) ($credential['label'] ?? 'ocr')),
+                    'api_key' => trim((string) ($credential['api_key'] ?? '')),
+                    'base_url' => trim((string) ($credential['base_url'] ?? '')),
+                ]
+                : null,
+            $credentials,
+        ), static fn (?array $credential): bool => $credential !== null
+            && $credential['api_key'] !== ''
+            && $credential['base_url'] !== ''));
+    }
+
+    private function shouldTryNextCredential(ConnectionException|RequestException $exception, int $index, int $total): bool
+    {
+        if ($index >= ($total - 1)) {
+            return false;
+        }
+
+        if ($exception instanceof ConnectionException) {
+            return true;
+        }
+
+        $status = $exception->response?->status();
+
+        if ($status === null) {
+            return true;
+        }
+
+        if (in_array($status, [401, 402, 403, 408, 409, 423, 425, 429], true) || $status >= 500) {
+            return true;
+        }
+
+        $payload = $exception->response?->json();
+        $message = strtolower(trim((string) (
+            data_get($payload, 'message')
+            ?: data_get($payload, 'error')
+            ?: data_get($payload, 'detail')
+            ?: data_get($payload, 'status')
+        )));
+
+        if ($message === '') {
+            return false;
+        }
+
+        foreach (['limit', 'quota', 'exceed', 'expired', 'unauthorized', 'forbidden', 'rate'] as $keyword) {
+            if (str_contains($message, $keyword)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private function failureReason(ConnectionException|RequestException $exception): string
+    {
+        if ($exception instanceof ConnectionException) {
+            return 'connection';
+        }
+
+        $payload = $exception->response?->json();
+        $message = trim((string) (
+            data_get($payload, 'message')
+            ?: data_get($payload, 'error')
+            ?: data_get($payload, 'detail')
+            ?: $exception->getMessage()
+        ));
+
+        return $message !== '' ? $message : 'request_failed';
     }
 
     private function extractText(mixed $payload): ?string

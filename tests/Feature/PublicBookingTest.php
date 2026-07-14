@@ -12,6 +12,7 @@ use App\Models\IncenseSlot;
 use App\Models\Package;
 use App\Models\TableSlot;
 use App\Models\VirtualAccount;
+use App\Services\BookingExpiryService;
 use App\Services\BookingPaymentLinkService;
 use App\Services\VirtualAccountService;
 use Illuminate\Http\UploadedFile;
@@ -33,6 +34,13 @@ beforeEach(function () {
     config()->set('phase4.ocr_retain', false);
     config()->set('services.two_ocr.api_key', 'two-ocr-secret');
     config()->set('services.two_ocr.base_url', 'https://backend.scandocflow.com');
+    config()->set('services.two_ocr.credentials', [
+        [
+            'label' => 'utama',
+            'api_key' => 'two-ocr-secret',
+            'base_url' => 'https://backend.scandocflow.com',
+        ],
+    ]);
     Storage::fake('booking-private');
 
     $this->seed();
@@ -342,6 +350,55 @@ it('reads mandarin text from a photo', function () {
     });
 });
 
+it('falls back to the next OCR key when the first key is exhausted', function () {
+    config()->set('services.two_ocr.credentials', [
+        [
+            'label' => 'utama',
+            'api_key' => 'two-ocr-secret-1',
+            'base_url' => 'https://backend.scandocflow.com',
+        ],
+        [
+            'label' => 'cadangan_2',
+            'api_key' => 'two-ocr-secret-2',
+            'base_url' => 'https://backend.scandocflow.com',
+        ],
+    ]);
+
+    Http::fake(function ($request) {
+        if (str_contains($request->url(), 'access_token=two-ocr-secret-1')) {
+            return Http::response([
+                'message' => 'Quota exceeded',
+            ], 429);
+        }
+
+        if (str_contains($request->url(), 'access_token=two-ocr-secret-2')) {
+            return Http::response([
+                'requestId' => 'abc-456',
+                'status' => 'success',
+                'documents' => [
+                    [
+                        'plainTextBase64' => base64_encode('林珖月'),
+                    ],
+                ],
+            ], 200);
+        }
+
+        return Http::response([], 500);
+    });
+
+    $this->post(route('api.public.ocr.store'), [
+        'source_image' => UploadedFile::fake()->image('nama.jpg'),
+    ], [
+        'Accept' => 'application/json',
+    ])
+        ->assertOk()
+        ->assertJson([
+            'text' => '林珖月',
+        ]);
+
+    Http::assertSentCount(2);
+});
+
 it('rejects invalid photo types for name reading', function () {
     $this->post(route('api.public.ocr.store'), [
         'source_image' => UploadedFile::fake()->create('nama.txt', 10, 'text/plain'),
@@ -525,7 +582,7 @@ it('hangs booking after payment link expires and releases reserved data', functi
     $this->artisan('bookings:expire-unpaid')->assertExitCode(0);
 
     expect($booking->fresh()?->status)->toBe(BookingStatus::Rejected)
-        ->and($booking->fresh()?->rejection_reason)->toBe(App\Services\BookingExpiryService::EXPIRED_REASON)
+        ->and($booking->fresh()?->rejection_reason)->toBe(BookingExpiryService::EXPIRED_REASON)
         ->and(TableSlot::query()->where('booking_id', $booking->id)->exists())->toBeFalse()
         ->and(VirtualAccount::query()->where('booking_id', $booking->id)->exists())->toBeFalse();
 });
