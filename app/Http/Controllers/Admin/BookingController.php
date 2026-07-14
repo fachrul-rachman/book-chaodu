@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Enums\ApprovalIntegrationComponent;
 use App\Enums\BookingNameCategory;
 use App\Enums\BookingStatus;
+use App\Enums\PackageCode;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\UpdateBookingRequest;
 use App\Models\Booking;
@@ -26,6 +27,8 @@ class BookingController extends Controller
     public function index(Request $request): Response
     {
         $selectedStatus = $this->selectedStatus($request->query('status'));
+        $search = $this->normalizeSearch($request->query('search'));
+        $selectedPackage = $this->selectedPackage($request->query('package'));
         $query = Booking::query()
             ->with(['tableSlots', 'incenseSlots'])
             ->where(function ($builder): void {
@@ -46,13 +49,33 @@ class BookingController extends Controller
             $query->where('status', $selectedStatus);
         }
 
+        if ($search !== null) {
+            $query->where(function ($builder) use ($search): void {
+                $builder
+                    ->where('booking_number', 'like', '%'.$search.'%')
+                    ->orWhere('customer_name', 'like', '%'.$search.'%');
+            });
+        }
+
+        if ($selectedPackage) {
+            $query->where('package_code_snapshot', $selectedPackage->value);
+        }
+
         return Inertia::render('admin/bookings/index', [
             'selected_status' => $selectedStatus ? $selectedStatus->value : 'ALL',
+            'selected_package' => $selectedPackage ? $selectedPackage->value : 'ALL',
+            'search' => $search ?? '',
             'status_options' => [
                 ['value' => 'ALL', 'label' => 'Semua'],
                 ['value' => BookingStatus::Pending->value, 'label' => 'Pending'],
                 ['value' => BookingStatus::Approved->value, 'label' => 'Approve'],
                 ['value' => BookingStatus::Rejected->value, 'label' => 'Reject'],
+            ],
+            'package_options' => [
+                ['value' => 'ALL', 'label' => 'Semua paket'],
+                ['value' => PackageCode::Prayer->value, 'label' => PackageCode::Prayer->label()],
+                ['value' => PackageCode::Incense->value, 'label' => PackageCode::Incense->label()],
+                ['value' => PackageCode::Combo->value, 'label' => PackageCode::Combo->label()],
             ],
             'status_counts' => [
                 'ALL' => Booking::query()
@@ -306,5 +329,25 @@ class BookingController extends Controller
             BookingStatus::Rejected->value => BookingStatus::Rejected,
             default => null,
         };
+    }
+
+    private function selectedPackage(mixed $value): ?PackageCode
+    {
+        if (! is_string($value) || trim($value) === '') {
+            return null;
+        }
+
+        return PackageCode::tryFrom(trim($value));
+    }
+
+    private function normalizeSearch(mixed $value): ?string
+    {
+        if (! is_string($value)) {
+            return null;
+        }
+
+        $search = trim($value);
+
+        return $search !== '' ? $search : null;
     }
 }

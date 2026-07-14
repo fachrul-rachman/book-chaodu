@@ -167,6 +167,61 @@ it('shows booking detail including reserved slots and proof', function () {
         ->assertSee('bukti-transfer.jpg');
 });
 
+it('lets admin search bookings by booking number or customer name and filter by package', function () {
+    $prayerBooking = createPendingBooking([
+        'idempotency_key' => 'search-prayer-1',
+        'customer_name' => 'Budi Santoso',
+        'package_code' => PackageCode::Prayer->value,
+    ]);
+
+    $comboBooking = createPendingBooking([
+        'idempotency_key' => 'search-combo-1',
+        'customer_name' => 'Siti Lestari',
+        'package_code' => PackageCode::Combo->value,
+        'customer_email' => 'siti.lestari@gmail.com',
+        'incense_name' => [
+            'indonesian_name' => 'Keluarga Siti',
+            'mandarin_name' => '',
+            'source_image' => null,
+        ],
+    ]);
+
+    $admin = User::factory()->admin()->create();
+
+    $searchByNumber = $this->actingAs($admin)
+        ->get(route('admin.bookings.index', [
+            'search' => $prayerBooking->booking_number,
+        ]))
+        ->assertOk();
+
+    $searchByNumberBookings = collect($searchByNumber->viewData('page')['props']['bookings'] ?? []);
+
+    expect($searchByNumberBookings)->toHaveCount(1)
+        ->and($searchByNumberBookings->pluck('booking_number')->all())->toBe([$prayerBooking->booking_number]);
+
+    $searchByName = $this->actingAs($admin)
+        ->get(route('admin.bookings.index', [
+            'search' => 'Siti',
+        ]))
+        ->assertOk();
+
+    $searchByNameBookings = collect($searchByName->viewData('page')['props']['bookings'] ?? []);
+
+    expect($searchByNameBookings)->toHaveCount(1)
+        ->and($searchByNameBookings->pluck('booking_number')->all())->toBe([$comboBooking->booking_number]);
+
+    $filterByPackage = $this->actingAs($admin)
+        ->get(route('admin.bookings.index', [
+            'package' => PackageCode::Combo->value,
+        ]))
+        ->assertOk();
+
+    $filterByPackageBookings = collect($filterByPackage->viewData('page')['props']['bookings'] ?? []);
+
+    expect($filterByPackageBookings)->toHaveCount(1)
+        ->and($filterByPackageBookings->pluck('booking_number')->all())->toBe([$comboBooking->booking_number]);
+});
+
 it('allows admin to update allowed booking fields and regenerate final file after name revision', function () {
     $booking = createPendingBooking();
     $admin = User::factory()->admin()->create();

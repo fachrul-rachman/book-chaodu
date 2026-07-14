@@ -1,4 +1,5 @@
-import { Head, Link, usePage } from '@inertiajs/react';
+import { Head, Link, router, usePage } from '@inertiajs/react';
+import { FormEvent, useMemo, useState } from 'react';
 
 type BookingItem = {
     id: number;
@@ -15,8 +16,14 @@ type BookingItem = {
 
 type Props = {
     selected_status: 'ALL' | 'PENDING' | 'APPROVED' | 'REJECTED';
+    selected_package: 'ALL' | 'PRAYER' | 'INCENSE' | 'COMBO';
+    search: string;
     status_options: Array<{
         value: 'ALL' | 'PENDING' | 'APPROVED' | 'REJECTED';
+        label: string;
+    }>;
+    package_options: Array<{
+        value: 'ALL' | 'PRAYER' | 'INCENSE' | 'COMBO';
         label: string;
     }>;
     status_counts: Record<'ALL' | 'PENDING' | 'APPROVED' | 'REJECTED', number>;
@@ -24,8 +31,69 @@ type Props = {
 };
 
 export default function AdminBookingIndexPage() {
-    const { bookings, selected_status, status_options, status_counts } =
-        usePage<Props>().props;
+    const {
+        bookings,
+        selected_status,
+        selected_package,
+        search,
+        status_options,
+        package_options,
+        status_counts,
+    } = usePage<Props>().props;
+    const [searchValue, setSearchValue] = useState(search);
+    const [packageValue, setPackageValue] = useState(selected_package);
+
+    const baseQuery = useMemo(() => {
+        const query: Record<string, string> = {};
+
+        if (search.trim() !== '') {
+            query.search = search.trim();
+        }
+
+        if (selected_package !== 'ALL') {
+            query.package = selected_package;
+        }
+
+        return query;
+    }, [search, selected_package]);
+
+    function submitFilters(event: FormEvent<HTMLFormElement>) {
+        event.preventDefault();
+
+        const query: Record<string, string> = {};
+
+        if (selected_status !== 'ALL') {
+            query.status = selected_status;
+        }
+
+        if (searchValue.trim() !== '') {
+            query.search = searchValue.trim();
+        }
+
+        if (packageValue !== 'ALL') {
+            query.package = packageValue;
+        }
+
+        router.get('/admin/booking', query, {
+            preserveScroll: true,
+            preserveState: true,
+            replace: true,
+        });
+    }
+
+    function resetFilters() {
+        setSearchValue('');
+        setPackageValue('ALL');
+
+        const query =
+            selected_status === 'ALL' ? {} : { status: selected_status };
+
+        router.get('/admin/booking', query, {
+            preserveScroll: true,
+            preserveState: true,
+            replace: true,
+        });
+    }
 
     return (
         <>
@@ -56,11 +124,13 @@ export default function AdminBookingIndexPage() {
                         {status_options.map((item) => (
                             <Link
                                 key={item.value}
-                                href={
-                                    item.value === 'ALL'
-                                        ? '/admin/booking'
-                                        : `/admin/booking?status=${item.value}`
-                                }
+                                href="/admin/booking"
+                                data={{
+                                    ...baseQuery,
+                                    ...(item.value === 'ALL'
+                                        ? {}
+                                        : { status: item.value }),
+                                }}
                                 className={`rounded-full px-4 py-2 text-sm font-semibold ${
                                     selected_status === item.value
                                         ? 'bg-[var(--color-brand)] text-white'
@@ -71,6 +141,71 @@ export default function AdminBookingIndexPage() {
                             </Link>
                         ))}
                     </div>
+
+                    <section className="rounded-[24px] border border-[var(--color-border)] bg-white/90 p-4 shadow-sm">
+                        <form
+                            onSubmit={submitFilters}
+                            className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_220px_auto_auto]"
+                        >
+                            <label className="space-y-2">
+                                <span className="text-sm font-medium text-slate-700">
+                                    Cari booking
+                                </span>
+                                <input
+                                    type="text"
+                                    value={searchValue}
+                                    onChange={(event) =>
+                                        setSearchValue(event.target.value)
+                                    }
+                                    placeholder="Nomor booking atau nama customer"
+                                    className="w-full rounded-2xl border border-[var(--color-border)] px-4 py-3 text-base outline-none ring-0 transition focus:border-[var(--color-brand)]"
+                                />
+                            </label>
+
+                            <label className="space-y-2">
+                                <span className="text-sm font-medium text-slate-700">
+                                    Paket
+                                </span>
+                                <select
+                                    value={packageValue}
+                                    onChange={(event) =>
+                                        setPackageValue(
+                                            event.target.value as
+                                                | 'ALL'
+                                                | 'PRAYER'
+                                                | 'INCENSE'
+                                                | 'COMBO',
+                                        )
+                                    }
+                                    className="w-full rounded-2xl border border-[var(--color-border)] px-4 py-3 text-base outline-none ring-0 transition focus:border-[var(--color-brand)]"
+                                >
+                                    {package_options.map((option) => (
+                                        <option
+                                            key={option.value}
+                                            value={option.value}
+                                        >
+                                            {option.label}
+                                        </option>
+                                    ))}
+                                </select>
+                            </label>
+
+                            <button
+                                type="submit"
+                                className="rounded-2xl bg-[var(--color-brand)] px-5 py-3 text-base font-semibold text-white"
+                            >
+                                Cari
+                            </button>
+
+                            <button
+                                type="button"
+                                onClick={resetFilters}
+                                className="rounded-2xl border border-[var(--color-border)] px-5 py-3 text-base font-semibold text-slate-700"
+                            >
+                                Reset
+                            </button>
+                        </form>
+                    </section>
 
                     <section className="overflow-hidden rounded-[24px] border border-[var(--color-border)] bg-white/90 shadow-sm">
                         {bookings.length === 0 ? (
