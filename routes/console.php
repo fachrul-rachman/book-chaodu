@@ -4,8 +4,10 @@ use App\Enums\ApprovalIntegrationComponent;
 use App\Models\Booking;
 use App\Services\ApprovalIntegrationService;
 use App\Services\BookingExpiryService;
+use App\Services\DirectorDiscordRecapService;
 use App\Services\PrayerPaperGenerationService;
 use App\Services\VirtualAccountService;
+use Carbon\CarbonImmutable;
 use Illuminate\Console\Command;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
@@ -135,3 +137,56 @@ Artisan::command('bookings:expire-unpaid', function (
 
     return Command::SUCCESS;
 })->purpose('Menghanguskan booking yang belum kirim pembayaran setelah batas waktu.');
+
+Artisan::command('discord:send-director-recap {--date= : Tanggal akhir periode dalam format YYYY-MM-DD}', function (
+    DirectorDiscordRecapService $directorDiscordRecapService,
+) {
+    $date = $this->option('date');
+    $periodEnd = null;
+
+    if (is_string($date) && $date !== '') {
+        if (! preg_match('/^\d{4}-\d{2}-\d{2}$/', $date)) {
+            $this->error('Tanggal harus memakai format YYYY-MM-DD, contoh 2026-07-14.');
+
+            return Command::FAILURE;
+        }
+
+        $periodEnd = CarbonImmutable::createFromFormat(
+            '!Y-m-d',
+            $date,
+            (string) config('app.timezone'),
+        );
+
+        if (! $periodEnd || $periodEnd->format('Y-m-d') !== $date) {
+            $this->error('Tanggal harus memakai format YYYY-MM-DD, contoh 2026-07-14.');
+
+            return Command::FAILURE;
+        }
+
+        $periodEnd = $periodEnd->setTime(18, 0);
+    }
+
+    $status = $periodEnd
+        ? $directorDiscordRecapService->sendForPeriod($periodEnd)
+        : $directorDiscordRecapService->sendLatest();
+
+    return match ($status) {
+        DirectorDiscordRecapService::STATUS_SENT => tap(Command::SUCCESS, fn () => $this->info('Rekapan direksi berhasil dikirim.')),
+        DirectorDiscordRecapService::STATUS_NO_NEW_BOOKING => tap(Command::SUCCESS, fn () => $this->line('Tidak ada booking baru yang disetujui. Rekapan tidak dikirim.')),
+        DirectorDiscordRecapService::STATUS_ALREADY_SENT => tap(Command::SUCCESS, fn () => $this->line('Rekapan untuk periode ini sudah pernah dikirim.')),
+        DirectorDiscordRecapService::STATUS_NOT_CONFIGURED => tap(Command::SUCCESS, fn () => $this->warn('Webhook Discord direksi belum diisi.')),
+        default => tap(Command::FAILURE, fn () => $this->error('Rekapan direksi gagal dikirim.')),
+    };
+})->purpose('Mengirim rekapan booking ke Discord direksi jika ada persetujuan baru.');
+
+Artisan::command('discord:send-director-daily', function (
+    DirectorDiscordRecapService $directorDiscordRecapService,
+) {
+    $status = $directorDiscordRecapService->sendCurrentSnapshot();
+
+    return match ($status) {
+        DirectorDiscordRecapService::STATUS_SENT => tap(Command::SUCCESS, fn () => $this->info('Rekapan seluruh booking yang disetujui berhasil dikirim.')),
+        DirectorDiscordRecapService::STATUS_NOT_CONFIGURED => tap(Command::SUCCESS, fn () => $this->warn('Webhook Discord direksi belum diisi.')),
+        default => tap(Command::FAILURE, fn () => $this->error('Rekapan seluruh booking yang disetujui gagal dikirim.')),
+    };
+})->purpose('Mengirim rekapan manual seluruh booking yang sudah disetujui.');

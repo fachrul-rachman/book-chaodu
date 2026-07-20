@@ -2,13 +2,17 @@
 
 declare(strict_types=1);
 
+use App\Enums\BookingNameCategory;
 use App\Enums\BookingStatus;
 use App\Enums\PackageCode;
+use App\Enums\PrayerPaperStatus;
+use App\Enums\PrayerPaperType;
 use App\Enums\SlotStatus;
 use App\Models\Booking;
 use App\Models\Package;
 use App\Models\TableSlot;
 use App\Models\User;
+use App\Services\AdminReportService;
 
 beforeEach(function () {
     $this->seed();
@@ -125,6 +129,134 @@ it('shows approved bookings only in reports', function () {
             'INTERNAL-HIO-1',
             'INTERNAL-HIO-2',
         );
+});
+
+it('shows approved customer names and prayer paper links in customer report', function () {
+    $approved = createApprovedReportBooking([
+        'booking_number' => 'CD-CUSTOMER-1',
+        'customer_name' => 'Budi Santoso',
+        'customer_phone' => '+6281234567890',
+        'customer_email' => 'budi@example.com',
+        'package_code_snapshot' => PackageCode::Combo->value,
+    ]);
+
+    $approved->names()->createMany([
+        [
+            'category' => BookingNameCategory::Deceased,
+            'position' => 1,
+            'indonesian_name' => 'ALM BUDI',
+            'mandarin_name' => null,
+        ],
+        [
+            'category' => BookingNameCategory::Deceased,
+            'position' => 2,
+            'indonesian_name' => null,
+            'mandarin_name' => '林光月',
+        ],
+        [
+            'category' => BookingNameCategory::Incense,
+            'position' => 1,
+            'indonesian_name' => 'KELUARGA BUDI',
+            'mandarin_name' => null,
+        ],
+    ]);
+
+    $papers = collect([
+        [PrayerPaperType::A, 1, 'prayer-papers/customer-a1.png'],
+        [PrayerPaperType::A, 2, 'prayer-papers/customer-a2.png'],
+        [PrayerPaperType::B, 1, 'prayer-papers/customer-b1.png'],
+    ])->map(fn (array $paper) => $approved->prayerPapers()->create([
+        'type' => $paper[0],
+        'sequence' => $paper[1],
+        'file_path' => $paper[2],
+        'version' => 1,
+        'status' => PrayerPaperStatus::Ready,
+        'generated_at' => now(),
+    ]));
+
+    $pending = createApprovedReportBooking([
+        'booking_number' => 'CD-CUSTOMER-PENDING',
+        'status' => BookingStatus::Pending,
+        'approved_at' => null,
+    ]);
+
+    $pending->names()->create([
+        'category' => BookingNameCategory::Deceased,
+        'position' => 1,
+        'indonesian_name' => 'TIDAK BOLEH MUNCUL',
+        'mandarin_name' => null,
+    ]);
+
+    $admin = User::factory()->admin()->create();
+
+    $response = $this->actingAs($admin)->get(route('admin.reports.index', [
+        'tab' => 'customer',
+    ]));
+
+    $response->assertOk();
+
+    $props = $response->viewData('page')['props'];
+    $row = collect($props['customer']['rows'])->firstWhere('booking_number', 'CD-CUSTOMER-1');
+
+    expect(collect($props['customer']['rows'])->pluck('booking_number')->all())
+        ->toContain('CD-CUSTOMER-1')
+        ->not->toContain('CD-CUSTOMER-PENDING')
+        ->and($row['customer_name'])->toBe('Budi Santoso')
+        ->and($row['customer_phone'])->toBe('+6281234567890')
+        ->and($row['customer_email'])->toBe('budi@example.com')
+        ->and($row['prayer_paper_1']['name'])->toBe('ALM BUDI')
+        ->and($row['prayer_paper_1']['image_url'])->toBe(route('admin.prayer-papers.show', $papers[0]))
+        ->and($row['prayer_paper_2']['name'])->toBe('林光月')
+        ->and($row['prayer_paper_2']['image_url'])->toBe(route('admin.prayer-papers.show', $papers[1]))
+        ->and($row['incense_paper']['name'])->toBe('KELUARGA BUDI')
+        ->and($row['incense_paper']['image_url'])->toBe(route('admin.prayer-papers.show', $papers[2]));
+});
+
+it('paginates every report tab with 25 items per page', function () {
+    foreach (range(1, 26) as $index) {
+        createApprovedReportBooking([
+            'booking_number' => 'CD-PAGE-'.str_pad((string) $index, 2, '0', STR_PAD_LEFT),
+            'customer_name' => 'Customer '.str_pad((string) $index, 2, '0', STR_PAD_LEFT),
+            'referral_source' => 'AGENT',
+            'agent_name' => 'Agent '.str_pad((string) $index, 2, '0', STR_PAD_LEFT),
+        ]);
+    }
+
+    $admin = User::factory()->admin()->create();
+
+    $expected = [
+        'checkin' => ['key' => 'rows', 'total' => 31, 'page_two_count' => 6],
+        'finance' => ['key' => 'rows', 'total' => 31, 'page_two_count' => 6],
+        'agent' => ['key' => 'groups', 'total' => 26, 'page_two_count' => 1],
+        'customer' => ['key' => 'rows', 'total' => 26, 'page_two_count' => 1],
+    ];
+
+    foreach ($expected as $tab => $expectation) {
+        $response = $this->actingAs($admin)->get(route('admin.reports.index', [
+            'tab' => $tab,
+            'page' => 2,
+        ]));
+
+        $response->assertOk();
+
+        $report = $response->viewData('page')['props'][$tab];
+
+        expect($report[$expectation['key']])->toHaveCount($expectation['page_two_count'])
+            ->and($report['pagination'])->toMatchArray([
+                'current_page' => 2,
+                'per_page' => 25,
+                'total' => $expectation['total'],
+            ]);
+    }
+
+    $reportService = app(AdminReportService::class);
+    $financeExportData = $reportService->finance($reportService->filters([
+        'tab' => 'finance',
+        'page' => 2,
+    ]));
+
+    expect($financeExportData['rows'])->toHaveCount(31)
+        ->and($financeExportData['summary']['total_bookings'])->toBe(31);
 });
 
 it('uses stored transferred amount in finance report', function () {

@@ -4,7 +4,7 @@ import type { FormEvent } from 'react';
 import { formatCurrency } from '@/lib/booking';
 
 type Filters = {
-    tab: 'checkin' | 'finance' | 'agent';
+    tab: 'checkin' | 'finance' | 'agent' | 'customer';
     date_field: 'booking' | 'approval';
     date_from: string | null;
     date_to: string | null;
@@ -12,6 +12,16 @@ type Filters = {
     sort:
         'table_number' | 'incense_number' | 'customer_name' | 'booking_number';
     agent_search: string | null;
+    page: number;
+};
+
+type PaginationMeta = {
+    current_page: number;
+    last_page: number;
+    per_page: number;
+    total: number;
+    from: number | null;
+    to: number | null;
 };
 
 type Props = {
@@ -33,6 +43,7 @@ type Props = {
             agent_name: string | null;
         }>;
         filter_lines: string[];
+        pagination: PaginationMeta;
     };
     finance: {
         summary: {
@@ -57,6 +68,7 @@ type Props = {
             agent_name: string | null;
         }>;
         filter_lines: string[];
+        pagination: PaginationMeta;
     };
     agent: {
         groups: Array<{
@@ -76,9 +88,76 @@ type Props = {
             }>;
         }>;
         filter_lines: string[];
+        pagination: PaginationMeta;
+    };
+    customer: {
+        rows: Array<{
+            booking_number: string;
+            customer_name: string;
+            customer_phone: string;
+            customer_email: string;
+            package_name: string;
+            prayer_paper_1: CustomerPaper;
+            prayer_paper_2: CustomerPaper;
+            incense_paper: CustomerPaper;
+        }>;
+        filter_lines: string[];
+        pagination: PaginationMeta;
     };
     export_urls: Record<string, { xlsx: string; pdf: string }>;
 };
+
+type CustomerPaper = {
+    name: string | null;
+    image_url: string | null;
+};
+
+function ReportPagination({
+    pagination,
+    onPageChange,
+}: {
+    pagination: PaginationMeta;
+    onPageChange: (page: number) => void;
+}) {
+    if (pagination.last_page <= 1) {
+        return null;
+    }
+
+    return (
+        <nav
+            aria-label="Halaman laporan"
+            className="mt-6 flex flex-col gap-3 border-t border-slate-200 pt-5 sm:flex-row sm:items-center sm:justify-between print:hidden"
+        >
+            <p className="text-sm text-slate-600">
+                Menampilkan {pagination.from ?? 0}-{pagination.to ?? 0} dari{' '}
+                {pagination.total} data
+            </p>
+
+            <div className="flex items-center gap-3">
+                <button
+                    type="button"
+                    disabled={pagination.current_page <= 1}
+                    onClick={() => onPageChange(pagination.current_page - 1)}
+                    className="min-h-11 rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                    Sebelumnya
+                </button>
+                <span className="text-sm font-medium text-slate-700">
+                    Halaman {pagination.current_page} dari{' '}
+                    {pagination.last_page}
+                </span>
+                <button
+                    type="button"
+                    disabled={pagination.current_page >= pagination.last_page}
+                    onClick={() => onPageChange(pagination.current_page + 1)}
+                    className="min-h-11 rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                    Berikutnya
+                </button>
+            </div>
+        </nav>
+    );
+}
 
 function buildQuery(filters: Filters): string {
     const params = new URLSearchParams();
@@ -118,6 +197,7 @@ export default function AdminReportsPage() {
         checkin,
         finance,
         agent,
+        customer,
         export_urls,
     } = usePage<Props>().props;
     const [form, setForm] = useState({
@@ -145,6 +225,7 @@ export default function AdminReportsPage() {
             '/admin/laporan',
             {
                 ...form,
+                page: 1,
                 date_from: form.date_from || undefined,
                 date_to: form.date_to || undefined,
                 package_code: form.package_code || undefined,
@@ -160,6 +241,18 @@ export default function AdminReportsPage() {
             {
                 ...filters,
                 tab,
+                page: 1,
+            },
+            { preserveScroll: true },
+        );
+    };
+
+    const changePage = (page: number) => {
+        router.get(
+            '/admin/laporan',
+            {
+                ...filters,
+                page,
             },
             { preserveScroll: true },
         );
@@ -387,19 +480,23 @@ export default function AdminReportsPage() {
                                     Terapkan
                                 </button>
 
-                                <a
-                                    href={`${activeExportUrls.xlsx}?${exportQuery}`}
-                                    className="rounded-full border border-slate-200 px-5 py-3 text-sm font-semibold text-slate-700"
-                                >
-                                    Export Excel
-                                </a>
+                                {activeExportUrls ? (
+                                    <>
+                                        <a
+                                            href={`${activeExportUrls.xlsx}?${exportQuery}`}
+                                            className="rounded-full border border-slate-200 px-5 py-3 text-sm font-semibold text-slate-700"
+                                        >
+                                            Export Excel
+                                        </a>
 
-                                <a
-                                    href={`${activeExportUrls.pdf}?${exportQuery}`}
-                                    className="rounded-full border border-slate-200 px-5 py-3 text-sm font-semibold text-slate-700"
-                                >
-                                    Export PDF
-                                </a>
+                                        <a
+                                            href={`${activeExportUrls.pdf}?${exportQuery}`}
+                                            className="rounded-full border border-slate-200 px-5 py-3 text-sm font-semibold text-slate-700"
+                                        >
+                                            Export PDF
+                                        </a>
+                                    </>
+                                ) : null}
 
                                 {filters.tab === 'checkin' ? (
                                     <button
@@ -504,6 +601,10 @@ export default function AdminReportsPage() {
                                     </tbody>
                                 </table>
                             </div>
+                            <ReportPagination
+                                pagination={checkin.pagination}
+                                onPageChange={changePage}
+                            />
                         </section>
                     ) : null}
 
@@ -623,6 +724,10 @@ export default function AdminReportsPage() {
                                     </tbody>
                                 </table>
                             </div>
+                            <ReportPagination
+                                pagination={finance.pagination}
+                                onPageChange={changePage}
+                            />
                         </section>
                     ) : null}
 
@@ -735,6 +840,126 @@ export default function AdminReportsPage() {
                                     </div>
                                 ))}
                             </div>
+                            <ReportPagination
+                                pagination={agent.pagination}
+                                onPageChange={changePage}
+                            />
+                        </section>
+                    ) : null}
+
+                    {filters.tab === 'customer' ? (
+                        <section className="rounded-[24px] border border-[var(--color-border)] bg-white p-4 shadow-sm sm:p-6">
+                            <div className="mb-6 flex flex-wrap gap-2 text-xs text-slate-600">
+                                {customer.filter_lines.map((line) => (
+                                    <span
+                                        key={line}
+                                        className="rounded-full bg-slate-100 px-3 py-1"
+                                    >
+                                        {line}
+                                    </span>
+                                ))}
+                            </div>
+
+                            {customer.rows.length > 0 ? (
+                                <div className="overflow-x-auto">
+                                    <table className="min-w-full border-collapse text-sm">
+                                        <thead>
+                                            <tr className="border-b border-slate-200 text-left text-slate-600">
+                                                {[
+                                                    'Nomor booking',
+                                                    'Nama customer',
+                                                    'Nomor telepon',
+                                                    'Email',
+                                                    'Paket',
+                                                    'Kertas Doa 1',
+                                                    'Kertas Doa 2',
+                                                    'Kertas Hio',
+                                                ].map((label) => (
+                                                    <th
+                                                        key={label}
+                                                        className="px-3 py-3 font-semibold"
+                                                    >
+                                                        {label}
+                                                    </th>
+                                                ))}
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {customer.rows.map((row) => (
+                                                <tr
+                                                    key={row.booking_number}
+                                                    className="border-b border-slate-100 align-top"
+                                                >
+                                                    <td className="px-3 py-3 font-medium text-slate-900">
+                                                        {row.booking_number}
+                                                    </td>
+                                                    <td className="px-3 py-3">
+                                                        {row.customer_name}
+                                                    </td>
+                                                    <td className="px-3 py-3">
+                                                        {row.customer_phone}
+                                                    </td>
+                                                    <td className="max-w-64 px-3 py-3 break-words">
+                                                        {row.customer_email}
+                                                    </td>
+                                                    <td className="px-3 py-3">
+                                                        {row.package_name}
+                                                    </td>
+                                                    {[
+                                                        {
+                                                            key: 'prayer-1',
+                                                            paper: row.prayer_paper_1,
+                                                        },
+                                                        {
+                                                            key: 'prayer-2',
+                                                            paper: row.prayer_paper_2,
+                                                        },
+                                                        {
+                                                            key: 'incense',
+                                                            paper: row.incense_paper,
+                                                        },
+                                                    ].map(({ key, paper }) => (
+                                                        <td
+                                                            key={key}
+                                                            className="min-w-40 px-3 py-3"
+                                                        >
+                                                            <p className="font-medium whitespace-pre-line text-slate-900">
+                                                                {paper.name ??
+                                                                    '-'}
+                                                            </p>
+                                                            {paper.image_url ? (
+                                                                <a
+                                                                    href={
+                                                                        paper.image_url
+                                                                    }
+                                                                    target="_blank"
+                                                                    rel="noreferrer"
+                                                                    className="mt-2 inline-flex min-h-10 items-center rounded-lg border border-[var(--color-brand)] px-3 py-2 font-semibold text-[var(--color-brand)]"
+                                                                >
+                                                                    Lihat gambar
+                                                                </a>
+                                                            ) : (
+                                                                <p className="mt-2 text-xs text-slate-500">
+                                                                    Gambar belum
+                                                                    tersedia
+                                                                </p>
+                                                            )}
+                                                        </td>
+                                                    ))}
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            ) : (
+                                <p className="py-10 text-center text-sm text-slate-600">
+                                    Belum ada data customer yang sesuai.
+                                </p>
+                            )}
+                            <ReportPagination
+                                pagination={customer.pagination}
+                                onPageChange={changePage}
+                            />
                         </section>
                     ) : null}
                 </div>

@@ -2,14 +2,20 @@
 
 namespace App\Services;
 
+use App\Enums\BookingNameCategory;
 use App\Enums\BookingStatus;
 use App\Enums\PackageCode;
+use App\Enums\PrayerPaperType;
 use App\Models\Booking;
+use App\Models\BookingName;
+use App\Models\PrayerPaper;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 
 class AdminReportService
 {
+    private const PER_PAGE = 25;
+
     public function __construct(
         private readonly InternalCompanySlotService $internalCompanySlotService,
     ) {}
@@ -23,12 +29,13 @@ class AdminReportService
      *     date_to:string|null,
      *     package_code:string|null,
      *     sort:string,
-     *     agent_search:string|null
+     *     agent_search:string|null,
+     *     page:int
      * }
      */
     public function filters(array $input): array
     {
-        $tab = in_array($input['tab'] ?? null, ['checkin', 'finance', 'agent'], true)
+        $tab = in_array($input['tab'] ?? null, ['checkin', 'finance', 'agent', 'customer'], true)
             ? (string) $input['tab']
             : 'checkin';
 
@@ -64,6 +71,7 @@ class AdminReportService
             'package_code' => $packageCode,
             'sort' => $sort,
             'agent_search' => $agentSearch,
+            'page' => max(1, (int) ($input['page'] ?? 1)),
         ];
     }
 
@@ -75,7 +83,7 @@ class AdminReportService
      *     package_options:array<int, array{value:string,label:string}>
      * }
      */
-    public function checkIn(array $filters): array
+    public function checkIn(array $filters, bool $paginate = false): array
     {
         /** @var Collection<int, Booking> $bookings */
         $bookings = $this->baseQuery($filters)->get();
@@ -89,9 +97,11 @@ class AdminReportService
         ];
 
         $this->sortCheckInRows($rows, (string) ($filters['sort'] ?? 'table_number'));
+        $paginated = $this->paginate($rows, $filters, $paginate);
 
         return [
-            'rows' => $rows,
+            'rows' => $paginated['items'],
+            'pagination' => $paginated['pagination'],
             'filter_lines' => $this->filterLines($filters),
             'package_options' => $this->packageOptions(),
         ];
@@ -114,7 +124,7 @@ class AdminReportService
      *     filter_lines:array<int, string>
      * }
      */
-    public function finance(array $filters): array
+    public function finance(array $filters, bool $paginate = false): array
     {
         /** @var Collection<int, Booking> $bookings */
         $bookings = $this->baseQuery($filters)->get();
@@ -140,6 +150,7 @@ class AdminReportService
             ->sortBy('package_name', SORT_NATURAL | SORT_FLAG_CASE)
             ->values()
             ->all();
+        $paginated = $this->paginate($rows->all(), $filters, $paginate);
 
         return [
             'summary' => [
@@ -147,7 +158,8 @@ class AdminReportService
                 'total_revenue' => (float) $rows->sum('amount'),
                 'by_package' => $byPackage,
             ],
-            'rows' => $rows->all(),
+            'rows' => $paginated['items'],
+            'pagination' => $paginated['pagination'],
             'filter_lines' => $this->filterLines($filters),
         ];
     }
@@ -166,7 +178,7 @@ class AdminReportService
      *     filter_lines:array<int, string>
      * }
      */
-    public function agent(array $filters): array
+    public function agent(array $filters, bool $paginate = false): array
     {
         $search = $this->normalizeAgentName((string) ($filters['agent_search'] ?? ''));
 
@@ -218,9 +230,38 @@ class AdminReportService
             })
             ->values()
             ->all();
+        $paginated = $this->paginate($groups, $filters, $paginate);
 
         return [
-            'groups' => $groups,
+            'groups' => $paginated['items'],
+            'pagination' => $paginated['pagination'],
+            'filter_lines' => $this->filterLines($filters),
+        ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $filters
+     * @return array{
+     *     rows:array<int, array<string, mixed>>,
+     *     filter_lines:array<int, string>
+     * }
+     */
+    public function customer(array $filters, bool $paginate = false): array
+    {
+        /** @var Collection<int, Booking> $bookings */
+        $bookings = $this->baseQuery($filters)
+            ->with(['names', 'prayerPapers'])
+            ->get();
+
+        $rows = $bookings
+            ->map(fn (Booking $booking): array => $this->customerRow($booking))
+            ->values()
+            ->all();
+        $paginated = $this->paginate($rows, $filters, $paginate);
+
+        return [
+            'rows' => $paginated['items'],
+            'pagination' => $paginated['pagination'],
             'filter_lines' => $this->filterLines($filters),
         ];
     }
@@ -388,6 +429,109 @@ class AdminReportService
             'package_name' => $booking->package_name_snapshot,
             'attendee_count' => $booking->attendee_count,
             'amount' => (float) ($payment ? $payment->transferred_amount : 0),
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function customerRow(Booking $booking): array
+    {
+        $deceasedNames = $booking->names
+            ->where('category', BookingNameCategory::Deceased)
+            ->keyBy('position');
+        $incenseName = $booking->names
+            ->first(fn (BookingName $name): bool => $name->category === BookingNameCategory::Incense);
+        $papers = $booking->prayerPapers->keyBy(
+            fn (PrayerPaper $paper): string => $paper->getRawOriginal('type').':'.$paper->sequence,
+        );
+
+        return [
+            'booking_number' => $booking->booking_number,
+            'customer_name' => $booking->customer_name,
+            'customer_phone' => $booking->customer_phone,
+            'customer_email' => $booking->customer_email,
+            'package_name' => $booking->package_name_snapshot,
+            'prayer_paper_1' => $this->customerPaper(
+                $deceasedNames->get(1),
+                $papers->get(PrayerPaperType::A->value.':1'),
+            ),
+            'prayer_paper_2' => $this->customerPaper(
+                $deceasedNames->get(2),
+                $papers->get(PrayerPaperType::A->value.':2'),
+            ),
+            'incense_paper' => $this->customerPaper(
+                $incenseName,
+                $papers->get(PrayerPaperType::B->value.':1'),
+            ),
+        ];
+    }
+
+    /**
+     * @return array{name:string|null,image_url:string|null}
+     */
+    private function customerPaper(?BookingName $name, ?PrayerPaper $paper): array
+    {
+        $mandarinName = trim((string) ($name?->mandarin_name ?? ''));
+        $indonesianName = trim((string) ($name?->indonesian_name ?? ''));
+        $displayName = $mandarinName !== '' ? $mandarinName : $indonesianName;
+
+        return [
+            'name' => $displayName !== '' ? $displayName : null,
+            'image_url' => filled($paper?->file_path)
+                ? route('admin.prayer-papers.show', $paper)
+                : null,
+        ];
+    }
+
+    /**
+     * @param  array<int, mixed>  $items
+     * @param  array<string, mixed>  $filters
+     * @return array{
+     *     items:array<int, mixed>,
+     *     pagination:array{
+     *         current_page:int,
+     *         last_page:int,
+     *         per_page:int,
+     *         total:int,
+     *         from:int|null,
+     *         to:int|null
+     *     }
+     * }
+     */
+    private function paginate(array $items, array $filters, bool $enabled): array
+    {
+        $total = count($items);
+
+        if (! $enabled) {
+            return [
+                'items' => $items,
+                'pagination' => [
+                    'current_page' => 1,
+                    'last_page' => 1,
+                    'per_page' => self::PER_PAGE,
+                    'total' => $total,
+                    'from' => $total > 0 ? 1 : null,
+                    'to' => $total > 0 ? $total : null,
+                ],
+            ];
+        }
+
+        $lastPage = max(1, (int) ceil($total / self::PER_PAGE));
+        $currentPage = min(max(1, (int) ($filters['page'] ?? 1)), $lastPage);
+        $offset = ($currentPage - 1) * self::PER_PAGE;
+        $pageItems = array_slice($items, $offset, self::PER_PAGE);
+
+        return [
+            'items' => $pageItems,
+            'pagination' => [
+                'current_page' => $currentPage,
+                'last_page' => $lastPage,
+                'per_page' => self::PER_PAGE,
+                'total' => $total,
+                'from' => $total > 0 ? $offset + 1 : null,
+                'to' => $total > 0 ? min($offset + count($pageItems), $total) : null,
+            ],
         ];
     }
 

@@ -58,6 +58,7 @@ return [
     'discord' => [
         'general_booking_webhook_url' => env('DISCORD_GENERAL_BOOKING_WEBHOOK_URL'),
         'agent_booking_webhook_url' => env('DISCORD_AGENT_BOOKING_WEBHOOK_URL'),
+        'director_recap_webhook_url' => env('DISCORD_DIRECTOR_RECAP_WEBHOOK_URL'),
         'username' => env('DISCORD_WEBHOOK_USERNAME', env('APP_NAME')),
         'timeout_seconds' => env('DISCORD_WEBHOOK_TIMEOUT_SECONDS', 5),
         'retry_times' => env('DISCORD_WEBHOOK_RETRY_TIMES', 1),
