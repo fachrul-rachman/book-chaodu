@@ -255,11 +255,23 @@ class AdminReportService
 
         $rows = $bookings
             ->map(fn (Booking $booking): array => $this->customerRow($booking))
-            ->values()
+            ->values();
+        $countsByPackage = $rows->countBy('package_code');
+        $byPackage = collect(PackageCode::cases())
+            ->map(fn (PackageCode $code): array => [
+                'package_code' => $code->value,
+                'package_name' => $code->label(),
+                'booking_count' => (int) $countsByPackage->get($code->value, 0),
+            ])
             ->all();
-        $paginated = $this->paginate($rows, $filters, $paginate);
+        $allRows = $rows->all();
+        $paginated = $this->paginate($allRows, $filters, $paginate);
 
         return [
+            'summary' => [
+                'total_bookings' => count($allRows),
+                'by_package' => $byPackage,
+            ],
             'rows' => $paginated['items'],
             'pagination' => $paginated['pagination'],
             'filter_lines' => $this->filterLines($filters),
@@ -448,9 +460,12 @@ class AdminReportService
 
         return [
             'booking_number' => $booking->booking_number,
+            'booking_date' => optional($booking->created_at)->toDateString(),
+            'status' => $booking->status->value,
             'customer_name' => $booking->customer_name,
             'customer_phone' => $booking->customer_phone,
             'customer_email' => $booking->customer_email,
+            'package_code' => $booking->package_code_snapshot,
             'package_name' => $booking->package_name_snapshot,
             'prayer_paper_1' => $this->customerPaper(
                 $deceasedNames->get(1),

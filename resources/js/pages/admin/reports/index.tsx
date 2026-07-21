@@ -91,11 +91,22 @@ type Props = {
         pagination: PaginationMeta;
     };
     customer: {
+        summary: {
+            total_bookings: number;
+            by_package: Array<{
+                package_code: string;
+                package_name: string;
+                booking_count: number;
+            }>;
+        };
         rows: Array<{
             booking_number: string;
+            booking_date: string | null;
+            status: string;
             customer_name: string;
             customer_phone: string;
             customer_email: string;
+            package_code: string;
             package_name: string;
             prayer_paper_1: CustomerPaper;
             prayer_paper_2: CustomerPaper;
@@ -860,6 +871,37 @@ export default function AdminReportsPage() {
                                 ))}
                             </div>
 
+                            <div className="mb-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                                <div className="rounded-2xl bg-[var(--color-brand)] p-4 text-white">
+                                    <p className="text-sm font-medium text-white/80">
+                                        Total booking
+                                    </p>
+                                    <p className="mt-2 text-3xl font-semibold">
+                                        {customer.summary.total_bookings.toLocaleString(
+                                            'id-ID',
+                                        )}
+                                    </p>
+                                </div>
+                                {customer.summary.by_package.map((item) => (
+                                    <div
+                                        key={item.package_code}
+                                        className="rounded-2xl border border-slate-200 bg-slate-50 p-4"
+                                    >
+                                        <p className="text-sm font-medium text-slate-600">
+                                            Paket {item.package_name}
+                                        </p>
+                                        <p className="mt-2 text-3xl font-semibold text-slate-900">
+                                            {item.booking_count.toLocaleString(
+                                                'id-ID',
+                                            )}
+                                        </p>
+                                        <p className="mt-1 text-xs text-slate-500">
+                                            booking
+                                        </p>
+                                    </div>
+                                ))}
+                            </div>
+
                             {customer.rows.length > 0 ? (
                                 <div className="overflow-x-auto">
                                     <table className="min-w-full border-collapse text-sm">
@@ -867,6 +909,8 @@ export default function AdminReportsPage() {
                                             <tr className="border-b border-slate-200 text-left text-slate-600">
                                                 {[
                                                     'Nomor booking',
+                                                    'Tanggal booking',
+                                                    'Status',
                                                     'Nama customer',
                                                     'Nomor telepon',
                                                     'Email',
@@ -892,6 +936,18 @@ export default function AdminReportsPage() {
                                                 >
                                                     <td className="px-3 py-3 font-medium text-slate-900">
                                                         {row.booking_number}
+                                                    </td>
+                                                    <td className="px-3 py-3 whitespace-nowrap">
+                                                        {row.booking_date ??
+                                                            '-'}
+                                                    </td>
+                                                    <td className="px-3 py-3">
+                                                        <span className="inline-flex rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-800">
+                                                            {row.status ===
+                                                            'APPROVED'
+                                                                ? 'Disetujui'
+                                                                : row.status}
+                                                        </span>
                                                     </td>
                                                     <td className="px-3 py-3">
                                                         {row.customer_name}

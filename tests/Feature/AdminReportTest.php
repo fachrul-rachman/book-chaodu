@@ -212,6 +212,60 @@ it('shows approved customer names and prayer paper links in customer report', fu
         ->and($row['incense_paper']['image_url'])->toBe(route('admin.prayer-papers.show', $papers[2]));
 });
 
+it('summarizes approved customer bookings by package using the active filters', function () {
+    $prayerOne = createApprovedReportBooking([
+        'booking_number' => 'CD-SUMMARY-PRAYER-1',
+        'package_code_snapshot' => PackageCode::Prayer->value,
+    ]);
+    $prayerOne->forceFill(['created_at' => '2026-07-10 08:00:00'])->save();
+
+    $prayerTwo = createApprovedReportBooking([
+        'booking_number' => 'CD-SUMMARY-PRAYER-2',
+        'package_code_snapshot' => PackageCode::Prayer->value,
+    ]);
+    $prayerTwo->forceFill(['created_at' => '2026-07-11 08:00:00'])->save();
+
+    $combo = createApprovedReportBooking([
+        'booking_number' => 'CD-SUMMARY-COMBO-1',
+        'package_code_snapshot' => PackageCode::Combo->value,
+    ]);
+    $combo->forceFill(['created_at' => '2026-07-12 08:00:00'])->save();
+
+    $outsideRange = createApprovedReportBooking([
+        'booking_number' => 'CD-SUMMARY-OUTSIDE-RANGE',
+        'package_code_snapshot' => PackageCode::Incense->value,
+    ]);
+    $outsideRange->forceFill(['created_at' => '2026-06-30 08:00:00'])->save();
+
+    $admin = User::factory()->admin()->create();
+
+    $response = $this->actingAs($admin)->get(route('admin.reports.index', [
+        'tab' => 'customer',
+        'date_field' => 'booking',
+        'date_from' => '2026-07-01',
+        'date_to' => '2026-07-31',
+    ]));
+
+    $response->assertOk();
+
+    $customer = $response->viewData('page')['props']['customer'];
+    $counts = collect($customer['summary']['by_package'])
+        ->mapWithKeys(fn (array $item): array => [$item['package_code'] => $item['booking_count']])
+        ->all();
+    $prayerRow = collect($customer['rows'])->firstWhere('booking_number', 'CD-SUMMARY-PRAYER-1');
+
+    expect(collect($customer['rows'])->pluck('booking_number')->all())
+        ->not->toContain('CD-SUMMARY-OUTSIDE-RANGE')
+        ->and($customer['summary']['total_bookings'])->toBe(3)
+        ->and($counts)->toBe([
+            PackageCode::Prayer->value => 2,
+            PackageCode::Incense->value => 0,
+            PackageCode::Combo->value => 1,
+        ])
+        ->and($prayerRow['booking_date'])->toBe('2026-07-10')
+        ->and($prayerRow['status'])->toBe(BookingStatus::Approved->value);
+});
+
 it('paginates every report tab with 25 items per page', function () {
     foreach (range(1, 26) as $index) {
         createApprovedReportBooking([
