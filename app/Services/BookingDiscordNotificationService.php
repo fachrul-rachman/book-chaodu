@@ -2,25 +2,32 @@
 
 namespace App\Services;
 
+use App\Enums\BookingNameCategory;
+use App\Enums\PackageCode;
 use App\Models\Booking;
+use App\Models\BookingName;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
 class BookingDiscordNotificationService
 {
-    public function notifySubmitted(Booking $booking): void
+    public function __construct(
+        private readonly VirtualAccountService $virtualAccountService,
+    ) {}
+
+    public function notifyPaymentSubmitted(Booking $booking): void
     {
-        $booking->loadMissing(['payment']);
+        $booking->loadMissing([
+            'payment',
+            'meal',
+            'names',
+            'tableSlots',
+            'incenseSlots',
+        ]);
 
         $this->sendToWebhook(
             (string) config('services.discord.general_booking_webhook_url'),
-            $this->embedPayload(
-                $booking,
-                '🆕 Booking Baru Masuk',
-                3066993,
-                optional($booking->created_at)->timezone(config('app.timezone'))->format('d-m-Y H:i'),
-                '🕒 Waktu Kirim',
-            ),
+            $this->submittedBookingPayload($booking),
             'general',
             $booking,
         );
@@ -36,13 +43,7 @@ class BookingDiscordNotificationService
 
         $this->sendToWebhook(
             (string) config('services.discord.agent_booking_webhook_url'),
-            $this->embedPayload(
-                $booking,
-                '✅ Booking Agent Disetujui',
-                3447003,
-                optional($booking->approved_at)->timezone(config('app.timezone'))->format('d-m-Y H:i'),
-                '🕒 Waktu Disetujui',
-            ),
+            $this->approvalPayload($booking),
             'agent',
             $booking,
         );
@@ -75,60 +76,137 @@ class BookingDiscordNotificationService
     /**
      * @return array<string, mixed>
      */
-    private function embedPayload(
-        Booking $booking,
-        string $title,
-        int $color,
-        ?string $timeValue,
-        string $timeLabel,
-    ): array {
+    private function submittedBookingPayload(Booking $booking): array
+    {
         $payment = $booking->payment;
+        $meal = $booking->meal;
+        $deceasedNames = $booking->names
+            ->where('category', BookingNameCategory::Deceased)
+            ->keyBy('position');
+        $incenseName = $booking->names
+            ->first(fn (BookingName $name): bool => $name->category === BookingNameCategory::Incense);
+        $tableNumbers = $booking->tableSlots
+            ->sortBy('allocation_order')
+            ->pluck('code')
+            ->filter()
+            ->implode(', ');
+        $incenseNumbers = $booking->incenseSlots
+            ->sortBy('allocation_order')
+            ->pluck('number')
+            ->filter()
+            ->implode(', ');
 
-        // Field disusun 2 kolom per baris. Tiap baris berisi 2 field akan
-        // diselipin "spacer" (field kosong tak terlihat) supaya Discord
-        // tidak memaksa 3 kolom sejajar seperti tampilan default-nya.
-        $rows = [
-            [
-                $this->field('🎫 Nomor Booking', $booking->booking_number),
-            ],
-            [
-                $this->field('👤 Nama Customer', $booking->customer_name),
-            ],
-            [
-                $this->field('📦 Paket', $booking->package_name_snapshot),
-            ],
-            [
-                $this->field('👥 Jumlah Hadir', (string) $booking->attendee_count),
-            ],
+        $fields = [
+            $this->field('🎫 Nomor Booking', $booking->booking_number),
+            $this->field(
+                '🕒 Waktu Booking',
+                optional($booking->created_at)->timezone(config('app.timezone'))->format('d-m-Y H:i'),
+            ),
+            $this->field('👤 Nama Customer', $booking->customer_name),
+            $this->field('📱 Nomor Telepon', $booking->customer_phone),
+            $this->field('✉️ Email', $booking->customer_email, false),
+            $this->field(
+                '📦 Paket',
+                $booking->package_name_snapshot.' — '.$this->formatCurrency((int) $booking->package_price_snapshot),
+            ),
+            $this->field('👥 Jumlah Hadir', $booking->attendee_count.' orang'),
         ];
 
-        $sourceRow = [$this->field('📣 Sumber', $this->referralSourceLabel($booking->referral_source))];
-        if ($booking->agent_name) {
-            $sourceRow[] = $this->field('🧑‍💼 Nama Agent', $booking->agent_name);
-        }
-        $rows[] = $sourceRow;
+        foreach ([1, 2] as $position) {
+            $name = $deceasedNames->get($position);
 
-        $fields = [];
-        foreach ($rows as $row) {
-            foreach ($row as $field) {
-                $fields[] = $field;
-            }
-
-            // Kalau baris ini isinya 2 field, tambahkan spacer supaya
-            // baris berikutnya turun ke baris baru (bukan nempel jadi kolom ke-3).
-            if (count($row) === 2) {
-                $fields[] = $this->spacer();
+            if ($name instanceof BookingName) {
+                $fields[] = $this->field(
+                    '🙏 Nama Mendiang '.$position,
+                    $this->bookingNameValue($name),
+                    false,
+                );
             }
         }
 
-        if ($payment && $payment->virtual_account_number) {
+        if ($incenseName instanceof BookingName) {
+            $fields[] = $this->field('🧧 Nama Hio', $this->bookingNameValue($incenseName), false);
+        }
+
+        $fields = [
+            ...$fields,
+            $this->field('🥬 Vegetarian', $meal->vegetarian_quantity.' porsi'),
+            $this->field('🍗 Nonvegetarian', $meal->non_vegetarian_quantity.' porsi'),
+            $this->field('🪑 Nomor Meja', $tableNumbers),
+            $this->field('🧧 Nomor Hio', $incenseNumbers),
+            $this->field('📣 Sumber', $this->referralSourceLabel($booking->referral_source)),
+        ];
+
+        if (filled($booking->agent_name)) {
+            $fields[] = $this->field('🧑‍💼 Nama Agent', $booking->agent_name);
+        }
+
+        $fields[] = $this->field('💳 Nomor VA', $this->virtualAccountNumber($booking), false);
+        $fields[] = $this->field(
+            '🧾 Status Pembayaran',
+            $payment ? 'Bukti pembayaran sudah diunggah' : 'Belum mengunggah bukti pembayaran',
+            false,
+        );
+
+        if ($payment) {
+            $fields[] = $this->field('🏦 Nama Pengirim', $payment->sender_name);
+            $fields[] = $this->field(
+                '📅 Tanggal Transfer',
+                optional($payment->transfer_date)->format('d-m-Y'),
+            );
+        }
+
+        return $this->embed(
+            $booking,
+            '🆕 Booking Baru Masuk',
+            3066993,
+            $fields,
+        );
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function approvalPayload(Booking $booking): array
+    {
+        $payment = $booking->payment;
+        $fields = [
+            $this->field('🎫 Nomor Booking', $booking->booking_number),
+            $this->field('👤 Nama Customer', $booking->customer_name),
+            $this->field('📦 Paket', $booking->package_name_snapshot),
+            $this->field('👥 Jumlah Hadir', (string) $booking->attendee_count),
+            $this->field('📣 Sumber', $this->referralSourceLabel($booking->referral_source)),
+        ];
+
+        if (filled($booking->agent_name)) {
+            $fields[] = $this->field('🧑‍💼 Nama Agent', $booking->agent_name);
+            $fields[] = $this->spacer();
+        }
+
+        if ($payment && filled($payment->virtual_account_number)) {
             $fields[] = $this->field('💳 Nomor VA', $payment->virtual_account_number, false);
         }
 
-        if ($timeValue) {
-            $fields[] = $this->field($timeLabel, $timeValue, false);
-        }
+        $fields[] = $this->field(
+            '🕒 Waktu Disetujui',
+            optional($booking->approved_at)->timezone(config('app.timezone'))->format('d-m-Y H:i'),
+            false,
+        );
 
+        return $this->embed(
+            $booking,
+            '✅ Booking Agent Disetujui',
+            3447003,
+            $fields,
+        );
+    }
+
+    /**
+     * @param  array<int, array{name:string,value:string,inline:bool}>  $fields
+     * @return array<string, mixed>
+     */
+    private function embed(Booking $booking, string $title, int $color, array $fields): array
+    {
         return [
             'username' => (string) config('services.discord.username', config('app.name')),
             'embeds' => [[
@@ -149,19 +227,16 @@ class BookingDiscordNotificationService
     /**
      * @return array{name:string,value:string,inline:bool}
      */
-    private function field(string $name, ?string $value, bool $inline = true): array
+    private function field(string $name, string|int|null $value, bool $inline = true): array
     {
         return [
             'name' => $name,
-            'value' => $value ?: '-',
+            'value' => filled($value) ? (string) $value : '-',
             'inline' => $inline,
         ];
     }
 
     /**
-     * Field kosong tak terlihat (zero-width space), dipakai sebagai "pengisi"
-     * kolom ketiga supaya layout embed Discord konsisten 2 kolom per baris.
-     *
      * @return array{name:string,value:string,inline:bool}
      */
     private function spacer(): array
@@ -171,6 +246,38 @@ class BookingDiscordNotificationService
             'value' => "\u{200b}",
             'inline' => true,
         ];
+    }
+
+    private function bookingNameValue(BookingName $name): string
+    {
+        return implode("\n", [
+            'Indonesia: '.($name->indonesian_name ?: '-'),
+            'Mandarin: '.($name->mandarin_name ?: '-'),
+        ]);
+    }
+
+    private function virtualAccountNumber(Booking $booking): ?string
+    {
+        if (filled($booking->payment?->virtual_account_number)) {
+            return $booking->payment->virtual_account_number;
+        }
+
+        try {
+            $virtualAccount = $this->virtualAccountService->isFixedMode()
+                ? $this->virtualAccountService->requirePackageAccount(
+                    PackageCode::from($booking->package_code_snapshot),
+                )
+                : $this->virtualAccountService->findByBooking($booking);
+
+            return $virtualAccount?->account_number;
+        } catch (\Throwable) {
+            return null;
+        }
+    }
+
+    private function formatCurrency(int $amount): string
+    {
+        return 'Rp'.number_format($amount, 0, ',', '.');
     }
 
     private function referralSourceLabel(?string $value): string

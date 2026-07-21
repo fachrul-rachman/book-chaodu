@@ -77,7 +77,7 @@ class BookingPaymentSubmissionService
             throw $throwable;
         }
 
-        $this->bookingDiscordNotificationService->notifySubmitted($booking);
+        $this->bookingDiscordNotificationService->notifyPaymentSubmitted($booking);
 
         return $booking;
     }

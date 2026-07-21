@@ -9,6 +9,7 @@ use App\Models\Package;
 use App\Models\User;
 use App\Models\VirtualAccount;
 use App\Services\ApprovalEmailService;
+use App\Services\BookingPaymentLinkService;
 use App\Services\GoogleDriveClient;
 use App\Services\NotionClient;
 use App\Services\VirtualAccountService;
@@ -113,6 +114,105 @@ it('sends general discord notification for every successful booking', function (
     ]);
 
     $response->assertCreated();
+
+    Http::assertSentCount(1);
+    Http::assertSent(fn ($request) => $request->url() === 'https://discord.test/general');
+});
+
+it('sends complete customer data after payment is submitted with the booking', function () {
+    activateDiscordPackage(PackageCode::Combo, '3000000');
+
+    Http::fake([
+        'https://discord.test/general' => Http::response(['ok' => true], 204),
+    ]);
+
+    $response = $this->post(route('api.public.bookings.store'), discordBookingPayload([
+        'idempotency_key' => 'discord-booking-created-without-payment',
+        'package_code' => PackageCode::Combo->value,
+        'deceased_names' => [
+            [
+                'indonesian_name' => 'Tan Ah Kok',
+                'mandarin_name' => '陳亞國',
+                'source_image' => null,
+            ],
+            [
+                'indonesian_name' => 'Lim Mei Mei',
+                'mandarin_name' => '林美美',
+                'source_image' => null,
+            ],
+        ],
+        'incense_name' => [
+            'indonesian_name' => 'Keluarga Tan',
+            'mandarin_name' => '陳氏家族',
+            'source_image' => null,
+        ],
+        'vegetarian_quantity' => '1',
+        'non_vegetarian_quantity' => '3',
+        'referral_source' => 'AGENT',
+        'agent_name' => 'Budi Agent',
+    ]), [
+        'Accept' => 'application/json',
+    ]);
+
+    $response->assertCreated();
+
+    Http::assertSent(function ($request): bool {
+        $embed = $request->data()['embeds'][0] ?? [];
+        $fields = collect($embed['fields'] ?? [])->keyBy('name');
+
+        return $request->url() === 'https://discord.test/general'
+            && ($embed['title'] ?? null) === '🆕 Booking Baru Masuk'
+            && ($fields['👤 Nama Customer']['value'] ?? null) === 'Budi Santoso'
+            && ($fields['📱 Nomor Telepon']['value'] ?? null) === '+6281234567890'
+            && ($fields['✉️ Email']['value'] ?? null) === 'customer@gmail.com'
+            && ($fields['📦 Paket']['value'] ?? null) === 'Combo — Rp3.000.000'
+            && ($fields['👥 Jumlah Hadir']['value'] ?? null) === '2 orang'
+            && str_contains((string) ($fields['🙏 Nama Mendiang 1']['value'] ?? ''), '陳亞國')
+            && str_contains((string) ($fields['🙏 Nama Mendiang 2']['value'] ?? ''), 'Lim Mei Mei')
+            && str_contains((string) ($fields['🧧 Nama Hio']['value'] ?? ''), '陳氏家族')
+            && ($fields['🥬 Vegetarian']['value'] ?? null) === '1 porsi'
+            && ($fields['🍗 Nonvegetarian']['value'] ?? null) === '3 porsi'
+            && ($fields['🪑 Nomor Meja']['value'] ?? null) !== '-'
+            && ($fields['🧧 Nomor Hio']['value'] ?? null) !== '-'
+            && ($fields['📣 Sumber']['value'] ?? null) === 'Agent'
+            && ($fields['🧑‍💼 Nama Agent']['value'] ?? null) === 'Budi Agent'
+            && ($fields['💳 Nomor VA']['value'] ?? null) === '920001'
+            && ($fields['🧾 Status Pembayaran']['value'] ?? null) === 'Bukti pembayaran sudah diunggah'
+            && ($fields['🏦 Nama Pengirim']['value'] ?? null) === 'Budi'
+            && ($fields['📅 Tanggal Transfer']['value'] ?? null) === now()->format('d-m-Y');
+    });
+});
+
+it('waits to send the general notification until payment is submitted later', function () {
+    activateDiscordPackage(PackageCode::Prayer);
+
+    Http::fake([
+        'https://discord.test/general' => Http::response(['ok' => true], 204),
+    ]);
+
+    $this->post(route('api.public.bookings.store'), discordBookingPayload([
+        'idempotency_key' => 'discord-booking-pay-later',
+        'sender_name' => null,
+        'transfer_date' => null,
+        'proof' => null,
+    ]), [
+        'Accept' => 'application/json',
+    ])->assertCreated();
+
+    Http::assertNothingSent();
+
+    $booking = Booking::query()->where('idempotency_key', 'discord-booking-pay-later')->firstOrFail();
+    $token = parse_url(app(BookingPaymentLinkService::class)->paymentUrl($booking), PHP_URL_QUERY);
+    parse_str(is_string($token) ? $token : '', $query);
+
+    $this->post(route('public.booking.payment.store', $booking), [
+        'token' => $query['token'] ?? '',
+        'sender_name' => 'Budi Santoso',
+        'transfer_date' => now()->toDateString(),
+        'proof' => UploadedFile::fake()->image('bukti-susulan.jpg'),
+    ], [
+        'Accept' => 'application/json',
+    ])->assertOk();
 
     Http::assertSentCount(1);
     Http::assertSent(fn ($request) => $request->url() === 'https://discord.test/general');
