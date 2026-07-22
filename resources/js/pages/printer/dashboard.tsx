@@ -4,15 +4,17 @@ import type { Auth } from '@/types';
 type PaperItem = {
     id: number;
     label: string;
+    name: string | null;
     download_url: string | null;
 };
 
 type BookingItem = {
     id: number;
     booking_number: string;
+    customer_name: string;
     package_name: string;
-    source_label: string;
-    approved_at: string | null;
+    table_numbers: string;
+    incense_numbers: string;
     is_printed: boolean;
     prayer_papers: PaperItem[];
 };
@@ -32,8 +34,14 @@ type Props = {
 };
 
 export default function PrinterDashboard() {
-    const { auth, selected_filter, filter_options, filter_counts, bookings, flash } =
-        usePage<Props>().props;
+    const {
+        auth,
+        selected_filter,
+        filter_options,
+        filter_counts,
+        bookings,
+        flash,
+    } = usePage<Props>().props;
     const user = auth.user!;
     const form = useForm({
         is_printed: false,
@@ -55,14 +63,15 @@ export default function PrinterDashboard() {
                     <section className="rounded-[24px] border border-[var(--color-border)] bg-[var(--color-panel)] p-6 shadow-sm sm:p-8">
                         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                             <div>
-                                <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
+                                <p className="text-xs font-medium tracking-wide text-slate-500 uppercase">
                                     Petugas Print
                                 </p>
                                 <h1 className="mt-1 text-2xl font-semibold text-slate-900 sm:text-3xl">
                                     Daftar kertas siap print
                                 </h1>
                                 <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">
-                                    Lihat booking yang sudah disetujui, download kertasnya, lalu tandai jika sudah di-print.
+                                    Lihat booking yang sudah disetujui, download
+                                    kertasnya, lalu tandai jika sudah di-print.
                                 </p>
                                 <p className="mt-2 text-sm text-slate-500">
                                     Masuk sebagai {user.name}
@@ -140,15 +149,27 @@ export default function PrinterDashboard() {
                                                     {booking.booking_number}
                                                 </p>
                                                 <p className="text-sm text-slate-700">
+                                                    Paket:{' '}
                                                     {booking.package_name}
                                                 </p>
                                                 <p className="text-sm text-slate-500">
-                                                    {booking.source_label}
+                                                    Nama customer:{' '}
+                                                    {booking.customer_name}
                                                 </p>
-                                                <p className="text-sm text-slate-500">
-                                                    Disetujui:{' '}
-                                                    {booking.approved_at ?? '-'}
-                                                </p>
+                                                {booking.table_numbers ? (
+                                                    <p className="text-sm text-slate-500">
+                                                        Nomor meja:{' '}
+                                                        {booking.table_numbers}
+                                                    </p>
+                                                ) : null}
+                                                {booking.incense_numbers ? (
+                                                    <p className="text-sm text-slate-500">
+                                                        Nomor hio:{' '}
+                                                        {
+                                                            booking.incense_numbers
+                                                        }
+                                                    </p>
+                                                ) : null}
                                             </div>
 
                                             <label className="flex items-center gap-3 rounded-2xl border border-[var(--color-border)] px-4 py-3 text-sm text-slate-700">
@@ -158,7 +179,8 @@ export default function PrinterDashboard() {
                                                     onChange={(event) =>
                                                         updatePrinted(
                                                             booking.id,
-                                                            event.target.checked,
+                                                            event.target
+                                                                .checked,
                                                         )
                                                     }
                                                     className="h-5 w-5 rounded border-[var(--color-border)] text-[var(--color-brand)]"
@@ -168,33 +190,44 @@ export default function PrinterDashboard() {
                                         </div>
 
                                         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-                                            {booking.prayer_papers.length > 0 ? (
-                                                booking.prayer_papers.map((paper) => (
-                                                    <div
-                                                        key={paper.id}
-                                                        className="rounded-2xl border border-[var(--color-border)] bg-slate-50 p-4"
-                                                    >
-                                                        <p className="text-sm font-semibold text-slate-900">
-                                                            {paper.label}
-                                                        </p>
-                                                        <div className="mt-3">
-                                                            {paper.download_url ? (
-                                                                <a
-                                                                    href={
-                                                                        paper.download_url
-                                                                    }
-                                                                    className="inline-flex rounded-full bg-[var(--color-brand)] px-4 py-2 text-sm font-semibold text-white"
-                                                                >
-                                                                    Download
-                                                                </a>
-                                                            ) : (
-                                                                <p className="text-sm text-slate-500">
-                                                                    File belum ada.
-                                                                </p>
-                                                            )}
+                                            {booking.prayer_papers.length >
+                                            0 ? (
+                                                booking.prayer_papers.map(
+                                                    (paper) => (
+                                                        <div
+                                                            key={paper.id}
+                                                            className="rounded-2xl border border-[var(--color-border)] bg-slate-50 p-4"
+                                                        >
+                                                            <p className="text-sm font-semibold text-slate-900">
+                                                                {paper.label}
+                                                            </p>
+                                                            <p className="mt-1 text-sm whitespace-pre-line text-slate-600">
+                                                                Nama:{' '}
+                                                                {paper.name ??
+                                                                    '-'}
+                                                            </p>
+                                                            <div className="mt-3">
+                                                                {paper.download_url ? (
+                                                                    <a
+                                                                        href={
+                                                                            paper.download_url
+                                                                        }
+                                                                        download
+                                                                        className="inline-flex rounded-full bg-[var(--color-brand)] px-4 py-2 text-sm font-semibold text-white"
+                                                                    >
+                                                                        Download
+                                                                    </a>
+                                                                ) : (
+                                                                    <p className="text-sm text-slate-500">
+                                                                        File
+                                                                        belum
+                                                                        ada.
+                                                                    </p>
+                                                                )}
+                                                            </div>
                                                         </div>
-                                                    </div>
-                                                ))
+                                                    ),
+                                                )
                                             ) : (
                                                 <div className="rounded-2xl border border-dashed border-[var(--color-border)] bg-slate-50 p-4 text-sm text-slate-500">
                                                     Kertas belum tersedia.

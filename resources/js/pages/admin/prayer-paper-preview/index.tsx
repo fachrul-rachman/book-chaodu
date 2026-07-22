@@ -256,8 +256,8 @@ export default function PrayerPaperPreviewPage() {
                                                 <span className="mb-2 block text-sm">
                                                     Nama Indonesia
                                                 </span>
-                                                <input
-                                                    type="text"
+                                                <textarea
+                                                    rows={3}
                                                     value={
                                                         form.name_1_indonesian
                                                     }
@@ -276,8 +276,8 @@ export default function PrayerPaperPreviewPage() {
                                                 <span className="mb-2 block text-sm">
                                                     Nama Mandarin
                                                 </span>
-                                                <input
-                                                    type="text"
+                                                <textarea
+                                                    rows={3}
                                                     value={form.name_1_mandarin}
                                                     onChange={(event) =>
                                                         setForm((current) => ({
@@ -302,8 +302,8 @@ export default function PrayerPaperPreviewPage() {
                                                 <span className="mb-2 block text-sm">
                                                     Nama Indonesia
                                                 </span>
-                                                <input
-                                                    type="text"
+                                                <textarea
+                                                    rows={3}
                                                     value={
                                                         form.name_2_indonesian
                                                     }
@@ -322,8 +322,8 @@ export default function PrayerPaperPreviewPage() {
                                                 <span className="mb-2 block text-sm">
                                                     Nama Mandarin
                                                 </span>
-                                                <input
-                                                    type="text"
+                                                <textarea
+                                                    rows={3}
                                                     value={form.name_2_mandarin}
                                                     onChange={(event) =>
                                                         setForm((current) => ({
@@ -352,9 +352,7 @@ export default function PrayerPaperPreviewPage() {
                                             </span>
                                             <textarea
                                                 rows={3}
-                                                value={
-                                                    form.incense_indonesian
-                                                }
+                                                value={form.incense_indonesian}
                                                 onChange={(event) =>
                                                     setForm((current) => ({
                                                         ...current,
@@ -534,7 +532,8 @@ export default function PrayerPaperPreviewPage() {
                                                 </label>
                                                 <label className="block">
                                                     <span className="mb-2 block text-sm">
-                                                        Indonesia putar 90 derajat
+                                                        Indonesia putar 90
+                                                        derajat
                                                     </span>
                                                     <input
                                                         type="number"

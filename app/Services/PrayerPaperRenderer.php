@@ -228,18 +228,33 @@ class PrayerPaperRenderer
     private function drawRotatedText($image, PrayerPaperType $type, string $text, array $marker, string $fill): void
     {
         $font = $this->fontPath(false);
-        $fontSize = $this->estimateRotatedPreviewFontSize($type, $marker, $text);
+        $lines = $this->textLines($text);
 
-        $this->drawCenteredText(
-            $image,
-            trim($text),
-            $font,
-            90,
-            $fontSize,
-            (float) $marker['x'] + ((float) $marker['width'] / 2),
-            (float) $marker['y'] + ((float) $marker['height'] / 2),
-            $fill,
-        );
+        if ($lines === []) {
+            return;
+        }
+
+        $longestLine = collect($lines)
+            ->sortByDesc(fn (string $line): int => mb_strlen($line))
+            ->first() ?? '';
+        $fontSize = $this->estimateRotatedPreviewFontSize($type, $marker, $longestLine);
+        $lineGap = $fontSize * 1.28;
+        $centerX = (float) $marker['x'] + ((float) $marker['width'] / 2);
+        $centerY = (float) $marker['y'] + ((float) $marker['height'] / 2);
+        $startX = $centerX - (($lineGap * max(count($lines) - 1, 0)) / 2);
+
+        foreach ($lines as $index => $line) {
+            $this->drawCenteredText(
+                $image,
+                $line,
+                $font,
+                90,
+                $fontSize,
+                $startX + ($lineGap * $index),
+                $centerY,
+                $fill,
+            );
+        }
     }
 
     /**
