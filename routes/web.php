@@ -116,6 +116,8 @@ Route::middleware('auth')->group(function () {
     Route::middleware('role:PRINTER')->group(function () {
         Route::get('/printer', PrinterDashboardController::class)
             ->name('printer.dashboard');
+        Route::get('/printer/export', [PrinterDashboardController::class, 'export'])
+            ->name('printer.export');
         Route::put('/printer/booking/{booking}/print', BookingPrintedController::class)
             ->name('printer.bookings.print');
         Route::get('/printer/kertas-doa/cek-cepat', PrayerPaperPreviewController::class)

@@ -79,6 +79,16 @@ export default function PrinterDashboard() {
                             </div>
 
                             <div className="flex flex-wrap gap-3">
+                                <a
+                                    href={`/printer/export${
+                                        selected_filter === 'ALL'
+                                            ? ''
+                                            : `?filter=${selected_filter}`
+                                    }`}
+                                    className="rounded-full border border-[var(--color-brand)] px-5 py-2 text-sm font-semibold text-[var(--color-brand)]"
+                                >
+                                    Download Excel
+                                </a>
                                 <Link
                                     href="/printer/kertas-doa/cek-cepat"
                                     className="rounded-full bg-[var(--color-brand)] px-5 py-2 text-sm font-semibold text-white"
