@@ -101,6 +101,7 @@ type Props = {
         };
         rows: Array<{
             booking_number: string;
+            slot_number: string;
             booking_date: string | null;
             status: string;
             customer_name: string;
@@ -909,6 +910,7 @@ export default function AdminReportsPage() {
                                             <tr className="border-b border-slate-200 text-left text-slate-600">
                                                 {[
                                                     'Nomor booking',
+                                                    'Nomor meja/hio',
                                                     'Tanggal booking',
                                                     'Status',
                                                     'Nama customer',
@@ -936,6 +938,9 @@ export default function AdminReportsPage() {
                                                 >
                                                     <td className="px-3 py-3 font-medium text-slate-900">
                                                         {row.booking_number}
+                                                    </td>
+                                                    <td className="px-3 py-3 whitespace-nowrap">
+                                                        {row.slot_number || '-'}
                                                     </td>
                                                     <td className="px-3 py-3 whitespace-nowrap">
                                                         {row.booking_date ??

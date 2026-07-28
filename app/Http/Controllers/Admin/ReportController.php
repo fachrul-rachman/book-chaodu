@@ -57,6 +57,10 @@ class ReportController extends Controller
                     'xlsx' => route('admin.reports.export', ['tab' => 'agent', 'format' => 'xlsx']),
                     'pdf' => route('admin.reports.export', ['tab' => 'agent', 'format' => 'pdf']),
                 ],
+                'customer' => [
+                    'xlsx' => route('admin.reports.export', ['tab' => 'customer', 'format' => 'xlsx']),
+                    'pdf' => route('admin.reports.export', ['tab' => 'customer', 'format' => 'pdf']),
+                ],
             ],
         ]);
     }

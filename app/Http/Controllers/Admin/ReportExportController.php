@@ -19,7 +19,7 @@ class ReportExportController extends Controller
         AdminReportService $reportService,
         AdminReportExportService $reportExportService,
     ): BinaryFileResponse|StreamedResponse|Response {
-        abort_unless(in_array($tab, ['checkin', 'finance', 'agent'], true), 404);
+        abort_unless(in_array($tab, ['checkin', 'finance', 'agent', 'customer'], true), 404);
         abort_unless(in_array($format, ['xlsx', 'pdf'], true), 404);
 
         $validated = $request->validate([

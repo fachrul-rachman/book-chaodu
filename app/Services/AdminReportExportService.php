@@ -4,6 +4,7 @@ namespace App\Services;
 
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Response;
+use PhpOffice\PhpSpreadsheet\Cell\DataType;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 use Symfony\Component\HttpFoundation\StreamedResponse;
@@ -24,6 +25,7 @@ class AdminReportExportService
         $sheet->setTitle(match ($tab) {
             'finance' => 'Finance',
             'agent' => 'Agent',
+            'customer' => 'Data Customer',
             default => 'Check-in',
         });
 
@@ -41,6 +43,7 @@ class AdminReportExportService
         match ($tab) {
             'finance' => $this->writeFinanceSheet($sheet, $row, $filters),
             'agent' => $this->writeAgentSheet($sheet, $row, $filters),
+            'customer' => $this->writeCustomerSheet($sheet, $row, $filters),
             default => $this->writeCheckInSheet($sheet, $row, $filters),
         };
 
@@ -65,9 +68,10 @@ class AdminReportExportService
         $payload = match ($tab) {
             'finance' => $this->reportService->finance($filters),
             'agent' => $this->reportService->agent($filters),
+            'customer' => $this->reportService->customer($filters),
             default => $this->reportService->checkIn($filters),
         };
-        $orientation = $tab === 'checkin' ? 'landscape' : 'portrait';
+        $orientation = in_array($tab, ['checkin', 'customer'], true) ? 'landscape' : 'portrait';
 
         $pdf = Pdf::loadView('reports.'.$tab, [
             'title' => $this->title($tab),
@@ -227,11 +231,51 @@ class AdminReportExportService
         }
     }
 
+    /**
+     * @param  array<string, mixed>  $filters
+     */
+    private function writeCustomerSheet(mixed $sheet, int $row, array $filters): void
+    {
+        $payload = $this->reportService->customer($filters);
+        $sheet->fromArray([[
+            'Nomor Booking',
+            'Nomor Meja/Hio',
+            'Tanggal Booking',
+            'Nama Customer',
+            'Nomor Telepon',
+            'Email',
+            'Paket',
+            'Kertas Doa 1',
+            'Kertas Doa 2',
+            'Kertas Hio',
+        ]], null, 'A'.$row);
+        $row++;
+
+        foreach ($payload['rows'] as $item) {
+            $sheet->fromArray([[
+                $item['booking_number'],
+                $item['slot_number'] ?: '-',
+                $item['booking_date'] ?: '-',
+                $item['customer_name'],
+                $item['customer_phone'],
+                $item['customer_email'],
+                $item['package_name'],
+                $item['prayer_paper_1']['name'] ?: '-',
+                $item['prayer_paper_2']['name'] ?: '-',
+                $item['incense_paper']['name'] ?: '-',
+            ]], null, 'A'.$row);
+            $sheet->setCellValueExplicit('A'.$row, $item['booking_number'], DataType::TYPE_STRING);
+            $sheet->setCellValueExplicit('E'.$row, $item['customer_phone'], DataType::TYPE_STRING);
+            $row++;
+        }
+    }
+
     private function title(string $tab): string
     {
         return match ($tab) {
             'finance' => 'Laporan Keuangan',
             'agent' => 'Laporan Agent',
+            'customer' => 'Laporan Data Customer',
             default => 'Laporan Check-in',
         };
     }

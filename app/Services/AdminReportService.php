@@ -255,8 +255,10 @@ class AdminReportService
 
         $rows = $bookings
             ->map(fn (Booking $booking): array => $this->customerRow($booking))
-            ->values();
-        $countsByPackage = $rows->countBy('package_code');
+            ->values()
+            ->all();
+        $this->sortCheckInRows($rows, (string) ($filters['sort'] ?? 'table_number'));
+        $countsByPackage = collect($rows)->countBy('package_code');
         $byPackage = collect(PackageCode::cases())
             ->map(fn (PackageCode $code): array => [
                 'package_code' => $code->value,
@@ -264,12 +266,11 @@ class AdminReportService
                 'booking_count' => (int) $countsByPackage->get($code->value, 0),
             ])
             ->all();
-        $allRows = $rows->all();
-        $paginated = $this->paginate($allRows, $filters, $paginate);
+        $paginated = $this->paginate($rows, $filters, $paginate);
 
         return [
             'summary' => [
-                'total_bookings' => count($allRows),
+                'total_bookings' => count($rows),
                 'by_package' => $byPackage,
             ],
             'rows' => $paginated['items'],
@@ -449,6 +450,20 @@ class AdminReportService
      */
     private function customerRow(Booking $booking): array
     {
+        $tableNumbers = $booking->tableSlots
+            ->sortBy('allocation_order')
+            ->pluck('code')
+            ->filter()
+            ->implode(', ');
+        $incenseNumbers = $booking->incenseSlots
+            ->sortBy('allocation_order')
+            ->pluck('number')
+            ->filter()
+            ->implode(', ');
+        $slotNumbers = array_filter([
+            $tableNumbers !== '' ? 'Meja: '.$tableNumbers : null,
+            $incenseNumbers !== '' ? 'Hio: '.$incenseNumbers : null,
+        ]);
         $deceasedNames = $booking->names
             ->where('category', BookingNameCategory::Deceased)
             ->keyBy('position');
@@ -460,6 +475,9 @@ class AdminReportService
 
         return [
             'booking_number' => $booking->booking_number,
+            'slot_number' => implode(' | ', $slotNumbers),
+            'table_number' => $tableNumbers,
+            'incense_number' => $incenseNumbers,
             'booking_date' => optional($booking->created_at)->toDateString(),
             'status' => $booking->status->value,
             'customer_name' => $booking->customer_name,
@@ -487,8 +505,8 @@ class AdminReportService
      */
     private function customerPaper(?BookingName $name, ?PrayerPaper $paper): array
     {
-        $mandarinName = trim((string) ($name?->mandarin_name ?? ''));
-        $indonesianName = trim((string) ($name?->indonesian_name ?? ''));
+        $mandarinName = $name ? trim((string) $name->mandarin_name) : '';
+        $indonesianName = $name ? trim((string) $name->indonesian_name) : '';
         $displayName = $mandarinName !== '' ? $mandarinName : $indonesianName;
 
         return [
