@@ -34,7 +34,7 @@ class TableSlot extends Model
     public function scopeNotTemporarilyClosed(Builder $query): Builder
     {
         if (! config('table_slots.hold_ej_from_88', true)) {
-            return $query;
+            return $query->whereRaw('TRUE');
         }
 
         return $query->where(function (Builder $query): void {
