@@ -230,6 +230,11 @@ class BookingController extends Controller
                         $query->whereNull('booking_id')
                             ->orWhere('booking_id', $booking->id);
                     })
+                    ->where(function ($query) use ($booking): void {
+                        $query
+                            ->where('booking_id', $booking->id)
+                            ->orWhere(fn ($query) => $query->notTemporarilyClosed());
+                    })
                     ->whereNotIn('code', $this->internalCompanySlotService->tableCodes())
                     ->orderBy('allocation_order')
                     ->get()

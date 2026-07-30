@@ -9,6 +9,7 @@ type TableSlotItem = {
     booking_number: string | null;
     customer_name: string | null;
     is_internal_company: boolean;
+    is_temporarily_closed: boolean;
 };
 
 type RowItem = {
@@ -37,12 +38,20 @@ function slotClass(slot: TableSlotItem): string {
         return 'bg-sky-400 text-sky-950 border-sky-500';
     }
 
+    if (slot.is_temporarily_closed) {
+        return 'bg-slate-500 text-white border-slate-600';
+    }
+
     return slotTone(slot.status);
 }
 
 function slotTitle(slot: TableSlotItem): string {
     if (slot.is_internal_company) {
         return `${slot.code}: Internal Perusahaan`;
+    }
+
+    if (slot.is_temporarily_closed) {
+        return `${slot.code}: ditutup sementara`;
     }
 
     if (!slot.booking_number) {
@@ -103,6 +112,10 @@ export default function AdminTableLayoutPage() {
                             <div className="flex items-center gap-2">
                                 <span className="h-4 w-4 rounded border border-sky-500 bg-sky-400" />
                                 <span>Internal Perusahaan</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <span className="h-4 w-4 rounded border border-slate-600 bg-slate-500" />
+                                <span>Ditutup sementara</span>
                             </div>
                         </div>
                     </section>

@@ -134,6 +134,10 @@ class SlotAllocator
                 return;
             }
 
+            if ($newSlot->isTemporarilyClosed()) {
+                throw new SlotUnavailableException('Nomor meja tersebut sedang ditutup.');
+            }
+
             if ($newSlot->status !== SlotStatus::Available) {
                 throw new SlotUnavailableException('Nomor meja pengganti sudah dipakai.');
             }
@@ -192,6 +196,7 @@ class SlotAllocator
         return TableSlot::query()
             ->where('status', SlotStatus::Available)
             ->whereNotIn('code', $this->internalCompanySlotService->tableCodes())
+            ->notTemporarilyClosed()
             ->orderBy('allocation_order')
             ->lock('FOR UPDATE SKIP LOCKED')
             ->first();

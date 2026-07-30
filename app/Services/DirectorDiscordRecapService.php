@@ -187,6 +187,7 @@ class DirectorDiscordRecapService
         $availableTables = TableSlot::query()
             ->where('status', SlotStatus::Available)
             ->whereNotIn('code', $this->internalCompanySlotService->tableCodes())
+            ->notTemporarilyClosed()
             ->count();
         $assignedIncense = IncenseSlot::query()->where('status', SlotStatus::Assigned)->count();
         $availableIncense = IncenseSlot::query()

@@ -30,6 +30,7 @@ class AvailabilityService
         $tableRemaining = TableSlot::query()
             ->where('status', SlotStatus::Available)
             ->whereNotIn('code', $this->internalCompanySlotService->tableCodes())
+            ->notTemporarilyClosed()
             ->count();
 
         $incenseRemaining = IncenseSlot::query()
@@ -72,6 +73,7 @@ class AvailabilityService
         $tableRemaining ??= TableSlot::query()
             ->where('status', SlotStatus::Available)
             ->whereNotIn('code', $this->internalCompanySlotService->tableCodes())
+            ->notTemporarilyClosed()
             ->count();
         $incenseRemaining ??= IncenseSlot::query()
             ->where('status', SlotStatus::Available)
@@ -93,6 +95,7 @@ class AvailabilityService
         $tableRemaining ??= TableSlot::query()
             ->where('status', SlotStatus::Available)
             ->whereNotIn('code', $this->internalCompanySlotService->tableCodes())
+            ->notTemporarilyClosed()
             ->count();
         $incenseRemaining ??= IncenseSlot::query()
             ->where('status', SlotStatus::Available)

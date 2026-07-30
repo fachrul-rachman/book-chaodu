@@ -36,6 +36,7 @@ class TableLayoutController extends Controller
                             'booking_number' => $slot->booking?->booking_number,
                             'customer_name' => $slot->booking?->customer_name,
                             'is_internal_company' => $internalCompanySlotService->isInternalTableCode($slot->code),
+                            'is_temporarily_closed' => $slot->booking_id === null && $slot->isTemporarilyClosed(),
                         ])
                         ->all(),
                 ])
