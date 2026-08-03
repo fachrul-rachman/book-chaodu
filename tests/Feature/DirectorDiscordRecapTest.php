@@ -25,6 +25,7 @@ function createDirectorRecapBooking(
     PackageCode $packageCode,
     string $approvedAt,
     string $amount = '2000000',
+    ?string $paymentCreatedAt = null,
 ): Booking {
     $package = Package::query()->where('code', $packageCode)->firstOrFail();
 
@@ -45,13 +46,20 @@ function createDirectorRecapBooking(
         'approved_at' => $approvedAt,
     ]);
 
-    $booking->payment()->create([
+    $payment = $booking->payment()->create([
         'expected_amount' => $amount,
         'sender_name' => 'Customer Direksi',
         'transferred_amount' => $amount,
         'transfer_date' => '2026-07-20',
         'proof_path' => 'proof/director.jpg',
     ]);
+
+    if ($paymentCreatedAt !== null) {
+        $payment->forceFill([
+            'created_at' => $paymentCreatedAt,
+            'updated_at' => $paymentCreatedAt,
+        ])->saveQuietly();
+    }
 
     $booking->meal()->create([
         'vegetarian_quantity' => 1,
@@ -61,7 +69,11 @@ function createDirectorRecapBooking(
     return $booking;
 }
 
-it('does not send director recap when there is no newly approved booking', function () {
+it('sends director recap even when there is no new activity', function () {
+    Http::fake([
+        'https://discord.test/director' => Http::response([], 204),
+    ]);
+
     createDirectorRecapBooking(
         'CD-DIRECTOR-OLD',
         PackageCode::Prayer,
@@ -70,9 +82,16 @@ it('does not send director recap when there is no newly approved booking', funct
 
     $this->artisan('discord:send-director-recap')
         ->assertSuccessful()
-        ->expectsOutput('Tidak ada booking baru yang disetujui. Rekapan tidak dikirim.');
+        ->expectsOutput('Rekapan direksi berhasil dikirim.');
 
-    Http::assertNothingSent();
+    Http::assertSent(function ($request): bool {
+        $fields = collect($request->data()['embeds'][0]['fields'] ?? []);
+        $newPayment = $fields->first(fn (array $field): bool => str_contains($field['name'], 'Booking masuk'));
+        $newApproved = $fields->first(fn (array $field): bool => str_contains($field['name'], 'Booking baru disetujui'));
+
+        return ($newPayment['value'] ?? null) === '0'
+            && ($newApproved['value'] ?? null) === '0';
+    });
 });
 
 it('sends a director recap card with current period and overall totals', function () {
@@ -83,14 +102,16 @@ it('sends a director recap card with current period and overall totals', functio
     createDirectorRecapBooking(
         'CD-DIRECTOR-PRAYER',
         PackageCode::Prayer,
-        '2026-07-19 18:30:00',
+        '2026-07-19 20:30:00',
         '2000000',
+        '2026-07-19 21:00:00',
     );
     createDirectorRecapBooking(
         'CD-DIRECTOR-INCENSE',
         PackageCode::Incense,
         '2026-07-20 10:00:00',
         '1000000',
+        '2026-07-20 09:00:00',
     );
     createDirectorRecapBooking(
         'CD-DIRECTOR-OLD',
@@ -104,10 +125,13 @@ it('sends a director recap card with current period and overall totals', functio
     Http::assertSent(function ($request): bool {
         $embed = $request->data()['embeds'][0] ?? [];
         $fields = collect($embed['fields'] ?? [])->keyBy('name');
+        $newPayment = collect($embed['fields'] ?? [])
+            ->first(fn (array $field): bool => str_contains($field['name'], 'Booking masuk'));
 
         return $request->url() === 'https://discord.test/director'
             && ($embed['title'] ?? null) === '📊 Rekapan Booking Chao Du'
             && ($fields['🆕 Booking baru disetujui']['value'] ?? null) === '2'
+            && ($newPayment['value'] ?? null) === '2'
             && ($fields['✅ Total booking disetujui']['value'] ?? null) === '3'
             && ($fields['💰 Total pemasukan']['value'] ?? null) === 'Rp6.000.000'
             && str_contains((string) ($fields['📦 Rincian paket']['value'] ?? ''), 'Sembahyang: 1')
@@ -145,7 +169,9 @@ it('can send a director recap for a selected date', function () {
     createDirectorRecapBooking(
         'CD-DIRECTOR-JULY-14',
         PackageCode::Prayer,
-        '2026-07-14 10:00:00',
+        '2026-07-14 15:00:00',
+        '2000000',
+        '2026-07-14 14:00:00',
     );
     createDirectorRecapBooking(
         'CD-DIRECTOR-JULY-15',
@@ -160,7 +186,7 @@ it('can send a director recap for a selected date', function () {
         $fields = collect($request->data()['embeds'][0]['fields'] ?? [])->keyBy('name');
 
         return ($fields['📅 Periode']['value'] ?? null)
-                === '13-07-2026 18:00 sampai 14-07-2026 18:00'
+                === '14-07-2026 12:00 sampai 14-07-2026 20:00'
             && ($fields['🆕 Booking baru disetujui']['value'] ?? null) === '1'
             && ($fields['✅ Total booking disetujui']['value'] ?? null) === '1';
     });

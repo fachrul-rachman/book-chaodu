@@ -6,6 +6,7 @@ use App\Enums\BookingStatus;
 use App\Enums\PackageCode;
 use App\Enums\SlotStatus;
 use App\Models\Booking;
+use App\Models\BookingPayment;
 use App\Models\IncenseSlot;
 use App\Models\TableSlot;
 use Carbon\CarbonImmutable;
@@ -17,8 +18,6 @@ use Illuminate\Support\Facades\Log;
 class DirectorDiscordRecapService
 {
     public const STATUS_SENT = 'sent';
-
-    public const STATUS_NO_NEW_BOOKING = 'no_new_booking';
 
     public const STATUS_ALREADY_SENT = 'already_sent';
 
@@ -33,12 +32,8 @@ class DirectorDiscordRecapService
     public function sendLatest(): string
     {
         $now = CarbonImmutable::now((string) config('app.timezone'));
-        $todayCutoff = $now->setTime(18, 0);
-        $periodEnd = $now->lessThan($todayCutoff)
-            ? $todayCutoff->subDay()
-            : $todayCutoff;
 
-        return $this->sendForPeriod($periodEnd);
+        return $this->sendForPeriod($this->latestPeriodEnd($now));
     }
 
     public function sendForPeriod(CarbonImmutable $periodEnd): string
@@ -50,7 +45,7 @@ class DirectorDiscordRecapService
         }
 
         $periodEnd = $periodEnd->timezone((string) config('app.timezone'));
-        $periodStart = $periodEnd->subDay();
+        $periodStart = $this->periodStart($periodEnd);
         $sentKey = 'discord:director-recap:'.$periodEnd->format('Y-m-d-H-i');
 
         if (Cache::has($sentKey)) {
@@ -67,15 +62,15 @@ class DirectorDiscordRecapService
                 return self::STATUS_ALREADY_SENT;
             }
 
+            $newPaymentCount = BookingPayment::query()
+                ->where('created_at', '>=', $periodStart)
+                ->where('created_at', '<', $periodEnd)
+                ->count();
             $newApprovedCount = Booking::query()
                 ->where('status', BookingStatus::Approved)
                 ->where('approved_at', '>=', $periodStart)
                 ->where('approved_at', '<', $periodEnd)
                 ->count();
-
-            if ($newApprovedCount === 0) {
-                return self::STATUS_NO_NEW_BOOKING;
-            }
 
             /** @var Collection<int, Booking> $approvedBookings */
             $approvedBookings = Booking::query()
@@ -91,6 +86,7 @@ class DirectorDiscordRecapService
                     ->post($url, $this->payload(
                         $periodStart,
                         $periodEnd,
+                        $newPaymentCount,
                         $newApprovedCount,
                         $approvedBookings,
                     ))
@@ -150,6 +146,7 @@ class DirectorDiscordRecapService
     private function payload(
         CarbonImmutable $periodStart,
         CarbonImmutable $periodEnd,
+        int $newPaymentCount,
         int $newApprovedCount,
         Collection $approvedBookings,
     ): array {
@@ -212,6 +209,7 @@ class DirectorDiscordRecapService
                         '📅 Periode',
                         $periodStart->format('d-m-Y H:i').' sampai '.$periodEnd->format('d-m-Y H:i'),
                     ),
+                    $this->field('📥 Booking masuk (bukti bayar)', (string) $newPaymentCount),
                     $this->field('🆕 Booking baru disetujui', (string) $newApprovedCount),
                     $this->field('✅ Total booking disetujui', (string) $approvedBookings->count()),
                     $this->field('💰 Total pemasukan', $this->formatCurrency($totalRevenue)),
@@ -344,5 +342,24 @@ class DirectorDiscordRecapService
     private function formatCurrency(int $amount): string
     {
         return 'Rp'.number_format($amount, 0, ',', '.');
+    }
+
+    private function latestPeriodEnd(CarbonImmutable $now): CarbonImmutable
+    {
+        $noon = $now->setTime(12, 0);
+        $evening = $now->setTime(20, 0);
+
+        return match (true) {
+            $now->greaterThanOrEqualTo($evening) => $evening,
+            $now->greaterThanOrEqualTo($noon) => $noon,
+            default => $evening->subDay(),
+        };
+    }
+
+    private function periodStart(CarbonImmutable $periodEnd): CarbonImmutable
+    {
+        return $periodEnd->hour === 12
+            ? $periodEnd->subDay()->setTime(20, 0)
+            : $periodEnd->setTime(12, 0);
     }
 }

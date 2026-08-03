@@ -20,7 +20,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $schedule->command('virtual-accounts:release-expired')->everyFiveMinutes();
         $schedule->command('bookings:expire-unpaid')->everyFiveMinutes();
         $schedule->command('discord:send-director-recap')
-            ->dailyAt('18:00')
+            ->twiceDaily(12, 20)
             ->timezone((string) config('app.timezone'))
             ->withoutOverlapping()
             ->onOneServer();

@@ -163,7 +163,7 @@ Artisan::command('discord:send-director-recap {--date= : Tanggal akhir periode d
             return Command::FAILURE;
         }
 
-        $periodEnd = $periodEnd->setTime(18, 0);
+        $periodEnd = $periodEnd->setTime(20, 0);
     }
 
     $status = $periodEnd
@@ -172,12 +172,11 @@ Artisan::command('discord:send-director-recap {--date= : Tanggal akhir periode d
 
     return match ($status) {
         DirectorDiscordRecapService::STATUS_SENT => tap(Command::SUCCESS, fn () => $this->info('Rekapan direksi berhasil dikirim.')),
-        DirectorDiscordRecapService::STATUS_NO_NEW_BOOKING => tap(Command::SUCCESS, fn () => $this->line('Tidak ada booking baru yang disetujui. Rekapan tidak dikirim.')),
         DirectorDiscordRecapService::STATUS_ALREADY_SENT => tap(Command::SUCCESS, fn () => $this->line('Rekapan untuk periode ini sudah pernah dikirim.')),
         DirectorDiscordRecapService::STATUS_NOT_CONFIGURED => tap(Command::SUCCESS, fn () => $this->warn('Webhook Discord direksi belum diisi.')),
         default => tap(Command::FAILURE, fn () => $this->error('Rekapan direksi gagal dikirim.')),
     };
-})->purpose('Mengirim rekapan booking ke Discord direksi jika ada persetujuan baru.');
+})->purpose('Mengirim rekapan booking terjadwal ke Discord direksi.');
 
 Artisan::command('discord:send-director-daily', function (
     DirectorDiscordRecapService $directorDiscordRecapService,
