@@ -38,6 +38,21 @@ class TableSlotHoldTest extends TestCase
         $this->assertStringContainsString('TRUE', $sql);
     }
 
+    public function test_specific_table_codes_can_be_temporarily_held(): void
+    {
+        config()->set('table_slots.hold_ej_from_88', false);
+        config()->set('table_slots.hold_codes', ['B118', 'E98']);
+
+        $this->assertTrue($this->slot('B', 118)->isTemporarilyClosed());
+        $this->assertTrue($this->slot('E', 98)->isTemporarilyClosed());
+        $this->assertFalse($this->slot('G', 118)->isTemporarilyClosed());
+
+        $query = TableSlot::query()->notTemporarilyClosed();
+
+        $this->assertStringContainsString('not in', strtolower($query->toSql()));
+        $this->assertSame(['B118', 'E98'], $query->getBindings());
+    }
+
     private function slot(string $rowCode, int $number): TableSlot
     {
         return (new TableSlot)->forceFill([

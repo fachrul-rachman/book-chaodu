@@ -33,22 +33,43 @@ class TableSlot extends Model
      */
     public function scopeNotTemporarilyClosed(Builder $query): Builder
     {
-        if (! config('table_slots.hold_ej_from_88', true)) {
+        $holdEjFrom88 = (bool) config('table_slots.hold_ej_from_88', true);
+        $holdCodes = self::holdCodes();
+
+        if (! $holdEjFrom88 && $holdCodes === []) {
             return $query->whereRaw('TRUE');
         }
 
-        return $query->where(function (Builder $query): void {
-            $query
-                ->whereNotIn('row_code', ['E', 'J'])
-                ->orWhere('number', '<', 88);
-        });
+        if ($holdEjFrom88) {
+            $query->where(function (Builder $query): void {
+                $query
+                    ->whereNotIn('row_code', ['E', 'J'])
+                    ->orWhere('number', '<', 88);
+            });
+        }
+
+        if ($holdCodes !== []) {
+            $query->whereNotIn('code', $holdCodes);
+        }
+
+        return $query;
     }
 
     public function isTemporarilyClosed(): bool
     {
-        return (bool) config('table_slots.hold_ej_from_88', true)
+        return (
+            (bool) config('table_slots.hold_ej_from_88', true)
             && in_array($this->row_code, ['E', 'J'], true)
-            && $this->number >= 88;
+            && $this->number >= 88
+        ) || in_array(strtoupper($this->code), self::holdCodes(), true);
+    }
+
+    /** @return array<int, string> */
+    private static function holdCodes(): array
+    {
+        $codes = config('table_slots.hold_codes', []);
+
+        return is_array($codes) ? array_values($codes) : [];
     }
 
     protected function casts(): array
