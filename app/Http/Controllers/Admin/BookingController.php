@@ -52,8 +52,8 @@ class BookingController extends Controller
         if ($search !== null) {
             $query->where(function ($builder) use ($search): void {
                 $builder
-                    ->where('booking_number', 'like', '%'.$search.'%')
-                    ->orWhere('customer_name', 'like', '%'.$search.'%');
+                    ->where('booking_number', 'ilike', '%'.$search.'%')
+                    ->orWhere('customer_name', 'ilike', '%'.$search.'%');
             });
         }
 

@@ -16,25 +16,28 @@ class DashboardController extends Controller
     {
         $lookupCode = trim((string) $request->query('kode', ''));
         $lookupError = null;
-        $result = null;
+        $results = [];
 
         if ($lookupCode !== '') {
-            $booking = $checkerLookupService->findBooking($lookupCode);
+            $bookings = $checkerLookupService->findBookings($lookupCode);
 
-            if (! $booking) {
-                $lookupError = 'Kode tidak ditemukan.';
-            } elseif ($booking->status !== BookingStatus::Approved) {
+            if ($bookings->isEmpty()) {
+                $lookupError = 'Data booking tidak ditemukan.';
+            } elseif (($booking = $bookings->first()) && $booking->status !== BookingStatus::Approved) {
                 $lookupError = 'Booking ini belum bisa check-in.';
-                $result = $this->blockedResult($booking);
+                $results = [$this->blockedResult($booking)];
             } else {
-                $result = $this->result($booking);
+                $results = $bookings
+                    ->map(fn (Booking $booking): array => $this->result($booking))
+                    ->values()
+                    ->all();
             }
         }
 
         return Inertia::render('checker/dashboard', [
             'lookup_code' => $lookupCode,
             'lookup_error' => $lookupError,
-            'result' => $result,
+            'results' => $results,
         ]);
     }
 

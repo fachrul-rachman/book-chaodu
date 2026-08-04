@@ -161,6 +161,33 @@ it('finds approved booking from qr token lookup', function () {
         ->assertSee($data['booking']->customer_name);
 });
 
+it('finds multiple approved bookings by customer name and normalized phone', function () {
+    $first = createCheckerBooking(BookingStatus::Approved, [
+        'idempotency_key' => 'checker-search-name-1',
+        'customer_name' => 'LIMEI',
+        'customer_phone_local' => '81234567890',
+    ]);
+    $second = createCheckerBooking(BookingStatus::Approved, [
+        'idempotency_key' => 'checker-search-name-2',
+        'customer_name' => 'Limei Tan',
+        'customer_phone_local' => '81345678901',
+        'customer_email' => 'limei.tan@gmail.com',
+    ]);
+    $checker = User::factory()->checker()->create();
+
+    $this->actingAs($checker)
+        ->get(route('checker.dashboard', ['kode' => 'limei']))
+        ->assertOk()
+        ->assertSee($first['booking']->booking_number)
+        ->assertSee($second['booking']->booking_number);
+
+    $this->actingAs($checker)
+        ->get(route('checker.dashboard', ['kode' => '0812-3456-7890']))
+        ->assertOk()
+        ->assertSee($first['booking']->booking_number)
+        ->assertDontSee($second['booking']->booking_number);
+});
+
 it('rejects lookup for pending or rejected booking', function () {
     $pending = createCheckerBooking(BookingStatus::Pending, [
         'idempotency_key' => 'checker-module8-key-3',
@@ -212,5 +239,5 @@ it('shows not found message for invalid code', function () {
     $this->actingAs($checker)
         ->get(route('checker.dashboard', ['kode' => 'tidak-ada']))
         ->assertOk()
-        ->assertSee('Kode tidak ditemukan.');
+        ->assertSee('Data booking tidak ditemukan.');
 });

@@ -59,16 +59,20 @@ class PrinterBookingExportTest extends TestCase
             'Nama Alm 1',
             'Nama Alm 2',
             'Nomor Meja/Hio',
+            'Meja',
+            'Hio',
             'Nomor Telepon',
-        ], $sheet->rangeToArray('A1:F1')[0]);
+        ], $sheet->rangeToArray('A1:H1')[0]);
         self::assertSame([
             'CD-TEST-123',
             'Budi',
             'Alm Satu',
             '亡者二',
             'Meja: A01 | Hio: 12',
+            'A01',
+            '12',
             '+628123456789',
-        ], $sheet->rangeToArray('A2:F2')[0]);
-        self::assertSame(DataType::TYPE_STRING, $sheet->getCell('F2')->getDataType());
+        ], $sheet->rangeToArray('A2:H2')[0]);
+        self::assertSame(DataType::TYPE_STRING, $sheet->getCell('H2')->getDataType());
     }
 }

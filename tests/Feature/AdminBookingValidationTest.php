@@ -201,7 +201,7 @@ it('lets admin search bookings by booking number or customer name and filter by 
 
     $searchByName = $this->actingAs($admin)
         ->get(route('admin.bookings.index', [
-            'search' => 'Siti',
+            'search' => 'siti',
         ]))
         ->assertOk();
 

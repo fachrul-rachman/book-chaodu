@@ -127,6 +127,8 @@ class DashboardController extends Controller
             'Nama Alm 1',
             'Nama Alm 2',
             'Nomor Meja/Hio',
+            'Meja',
+            'Hio',
             'Nomor Telepon',
         ]], null, 'A1');
 
@@ -159,13 +161,15 @@ class DashboardController extends Controller
                 $this->displayName($nameOne instanceof BookingName ? $nameOne : null),
                 $this->displayName($nameTwo instanceof BookingName ? $nameTwo : null),
                 implode(' | ', $slotNumbers) ?: '-',
+                $tableNumbers !== '' ? $tableNumbers : '-',
+                $incenseNumbers !== '' ? $incenseNumbers : '-',
                 $booking->customer_phone,
             ]], null, 'A'.$row);
             $sheet->setCellValueExplicit('A'.$row, $booking->booking_number, DataType::TYPE_STRING);
-            $sheet->setCellValueExplicit('F'.$row, $booking->customer_phone, DataType::TYPE_STRING);
+            $sheet->setCellValueExplicit('H'.$row, $booking->customer_phone, DataType::TYPE_STRING);
         }
 
-        foreach (range('A', 'F') as $column) {
+        foreach (range('A', 'H') as $column) {
             $sheet->getColumnDimension($column)->setAutoSize(true);
         }
 

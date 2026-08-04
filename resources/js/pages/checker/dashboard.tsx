@@ -21,7 +21,7 @@ type Props = {
     auth: Auth;
     lookup_code: string;
     lookup_error: string | null;
-    result: ResultItem | null;
+    results: ResultItem[];
     flash?: {
         status?: string | null;
     };
@@ -42,7 +42,8 @@ declare global {
 }
 
 export default function CheckerDashboard() {
-    const { lookup_code, lookup_error, result, flash } = usePage<Props>().props;
+    const { lookup_code, lookup_error, results, flash } =
+        usePage<Props>().props;
     const form = useForm({
         kode: lookup_code,
     });
@@ -169,16 +170,12 @@ export default function CheckerDashboard() {
         submitLookup(form.data.kode);
     };
 
-    const checkIn = () => {
-        if (!result?.booking_id) {
-            return;
-        }
-
+    const checkIn = (bookingId: number) => {
         if (!window.confirm('Catat tamu ini sebagai sudah masuk?')) {
             return;
         }
 
-        router.post(`/checker/check-in/${result.booking_id}`);
+        router.post(`/checker/check-in/${bookingId}`);
     };
 
     return (
@@ -194,8 +191,8 @@ export default function CheckerDashboard() {
                                     Check-in tamu
                                 </h1>
                                 <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-700">
-                                    Scan QR atau masukkan kode booking untuk
-                                    mencari tamu.
+                                    Scan QR atau cari dengan kode booking, nama,
+                                    atau nomor telepon.
                                 </p>
                             </div>
 
@@ -276,8 +273,8 @@ export default function CheckerDashboard() {
                                 Input manual
                             </h2>
                             <p className="mt-1 text-sm text-slate-700">
-                                Bisa isi nomor booking atau kode dari hasil
-                                scan.
+                                Bisa isi nomor booking, nama pemesan, nomor
+                                telepon, atau kode dari hasil scan.
                             </p>
                         </div>
 
@@ -288,7 +285,7 @@ export default function CheckerDashboard() {
                                 onChange={(event) =>
                                     form.setData('kode', event.target.value)
                                 }
-                                placeholder="Contoh: CD-XXXXXXX"
+                                placeholder="Kode booking, nama, atau nomor telepon"
                                 className="w-full rounded-2xl border border-[var(--color-border)] bg-white px-4 py-4 text-base"
                             />
                             <button
@@ -306,8 +303,11 @@ export default function CheckerDashboard() {
                         ) : null}
                     </section>
 
-                    {result ? (
-                        <section className="space-y-5 rounded-[24px] border border-[var(--color-border)] bg-white/90 p-6 shadow-sm">
+                    {results.map((result) => (
+                        <section
+                            key={result.booking_id}
+                            className="space-y-5 rounded-[24px] border border-[var(--color-border)] bg-white/90 p-6 shadow-sm"
+                        >
                             <div>
                                 <h2 className="text-lg font-semibold">
                                     Hasil pencarian
@@ -392,7 +392,9 @@ export default function CheckerDashboard() {
                                     ) : (
                                         <button
                                             type="button"
-                                            onClick={checkIn}
+                                            onClick={() =>
+                                                checkIn(result.booking_id)
+                                            }
                                             className="w-full rounded-full bg-emerald-600 px-5 py-4 text-base font-semibold text-white"
                                         >
                                             Catat check-in
@@ -405,7 +407,7 @@ export default function CheckerDashboard() {
                                 </div>
                             )}
                         </section>
-                    ) : null}
+                    ))}
                 </div>
             </main>
         </>
