@@ -140,7 +140,7 @@
 
             <div class="contact">
                 <p>Jika membutuhkan bantuan, silakan hubungi tim kami.</p>
-                <a class="button" href="tel:+6282163332227">Hubungi kami</a>
+                <a class="button" href="https://wa.me/6282163332227">Hubungi kami</a>
                 <span class="number">+62 821-6333-2227</span>
             </div>
         </div>
