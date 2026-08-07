@@ -7,6 +7,7 @@ namespace Tests\Unit;
 use App\Enums\BookingNameCategory;
 use App\Http\Controllers\Printer\DashboardController;
 use App\Models\Booking;
+use App\Models\BookingMeal;
 use App\Models\BookingName;
 use App\Models\IncenseSlot;
 use App\Models\TableSlot;
@@ -45,6 +46,10 @@ class PrinterBookingExportTest extends TestCase
         $booking->setRelation('incenseSlots', new Collection([
             (new IncenseSlot)->forceFill(['number' => 12, 'allocation_order' => 1]),
         ]));
+        $booking->setRelation('meal', (new BookingMeal)->forceFill([
+            'vegetarian_quantity' => 2,
+            'non_vegetarian_quantity' => 3,
+        ]));
 
         $method = new ReflectionMethod(DashboardController::class, 'exportSpreadsheet');
         $spreadsheet = $method->invoke(
@@ -62,7 +67,9 @@ class PrinterBookingExportTest extends TestCase
             'Meja',
             'Hio',
             'Nomor Telepon',
-        ], $sheet->rangeToArray('A1:H1')[0]);
+            'Vegetarian',
+            'Non-Vegetarian',
+        ], $sheet->rangeToArray('A1:J1')[0]);
         self::assertSame([
             'CD-TEST-123',
             'Budi',
@@ -72,7 +79,11 @@ class PrinterBookingExportTest extends TestCase
             'A01',
             '12',
             '+628123456789',
-        ], $sheet->rangeToArray('A2:H2')[0]);
+            '2',
+            '3',
+        ], $sheet->rangeToArray('A2:J2')[0]);
         self::assertSame(DataType::TYPE_STRING, $sheet->getCell('H2')->getDataType());
+        self::assertSame(DataType::TYPE_NUMERIC, $sheet->getCell('I2')->getDataType());
+        self::assertSame(DataType::TYPE_NUMERIC, $sheet->getCell('J2')->getDataType());
     }
 }

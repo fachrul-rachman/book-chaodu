@@ -78,7 +78,9 @@ class DashboardController extends Controller
     public function export(Request $request): StreamedResponse
     {
         $selectedFilter = $this->selectedFilter($request->query('filter'));
-        $spreadsheet = $this->exportSpreadsheet($this->bookingQuery($selectedFilter)->get());
+        $spreadsheet = $this->exportSpreadsheet(
+            $this->bookingQuery($selectedFilter)->with('meal')->get(),
+        );
         $writer = new Xlsx($spreadsheet);
 
         return response()->streamDownload(
@@ -130,6 +132,8 @@ class DashboardController extends Controller
             'Meja',
             'Hio',
             'Nomor Telepon',
+            'Vegetarian',
+            'Non-Vegetarian',
         ]], null, 'A1');
 
         foreach ($bookings->values() as $index => $booking) {
@@ -164,12 +168,14 @@ class DashboardController extends Controller
                 $tableNumbers !== '' ? $tableNumbers : '-',
                 $incenseNumbers !== '' ? $incenseNumbers : '-',
                 $booking->customer_phone,
+                (int) ($booking->meal?->vegetarian_quantity ?? 0),
+                (int) ($booking->meal?->non_vegetarian_quantity ?? 0),
             ]], null, 'A'.$row);
             $sheet->setCellValueExplicit('A'.$row, $booking->booking_number, DataType::TYPE_STRING);
             $sheet->setCellValueExplicit('H'.$row, $booking->customer_phone, DataType::TYPE_STRING);
         }
 
-        foreach (range('A', 'H') as $column) {
+        foreach (range('A', 'J') as $column) {
             $sheet->getColumnDimension($column)->setAutoSize(true);
         }
 
