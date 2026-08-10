@@ -14,4 +14,6 @@ return [
     'upload_url_ttl_minutes' => 15,
     'caption_max_characters' => 200,
     'archive_ttl_hours' => max(1, (int) env('GALLERY_ARCHIVE_TTL_HOURS', 24)),
+    'ffprobe_binary' => env('GALLERY_FFPROBE_BINARY', 'ffprobe'),
+    'video_inspection_timeout_seconds' => max(60, (int) env('GALLERY_VIDEO_INSPECTION_TIMEOUT_SECONDS', 1800)),
 ];

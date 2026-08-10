@@ -8,8 +8,8 @@ use App\Jobs\ProcessGalleryVideo;
 use App\Models\GalleryMedia;
 use App\Models\User;
 use App\Services\GalleryVideoInspector;
-use Illuminate\Console\Scheduling\Schedule;
-use Illuminate\Contracts\Queue\ShouldBeUnique;
+use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Storage;
 
@@ -40,17 +40,10 @@ it('adds privacy headers even when a secret album URL is invalid', function () {
         ->assertHeader('X-Content-Type-Options', 'nosniff');
 });
 
-it('keeps archive building unique and scheduled cleanup non-overlapping', function () {
-    $job = new BuildGalleryArchive(91);
-
-    expect($job)->toBeInstanceOf(ShouldBeUnique::class)
-        ->and($job->uniqueId())->toBe('91');
-
-    $cleanup = collect(app(Schedule::class)->events())
-        ->first(fn ($event): bool => str_contains($event->command ?? '', 'gallery:cleanup-archives'));
-
-    expect($cleanup)->not->toBeNull()
-        ->and($cleanup->withoutOverlapping)->toBeTrue();
+it('keeps archive building asynchronous and schedules cleanup', function () {
+    expect(new BuildGalleryArchive(91))->toBeInstanceOf(ShouldQueue::class);
+    Artisan::call('schedule:list');
+    expect(Artisan::output())->toContain('gallery:cleanup-archives');
 });
 
 it('accepts only h264 video with optional aac audio metadata', function () {

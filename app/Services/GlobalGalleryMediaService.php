@@ -6,6 +6,7 @@ use App\Enums\GalleryMediaScope;
 use App\Enums\GalleryMediaStatus;
 use App\Enums\GalleryMediaType;
 use App\Jobs\ProcessGalleryImage;
+use App\Jobs\ProcessGalleryVideo;
 use App\Models\GalleryMedia;
 use App\Models\GalleryMediaDeletion;
 use App\Models\User;
@@ -119,17 +120,18 @@ class GlobalGalleryMediaService
             throw $exception;
         }
 
-        $isImage = $media->media_type === GalleryMediaType::Image;
         $media->forceFill([
-            'status' => $isImage ? GalleryMediaStatus::Processing : GalleryMediaStatus::Ready,
+            'status' => GalleryMediaStatus::Processing,
             'upload_id' => null,
             'upload_expires_at' => null,
             'error_message' => null,
-            'published_at' => $isImage ? null : now(),
+            'published_at' => null,
         ])->save();
 
-        if ($isImage) {
+        if ($media->media_type === GalleryMediaType::Image) {
             ProcessGalleryImage::dispatch($media->id);
+        } else {
+            ProcessGalleryVideo::dispatch($media->id);
         }
 
         return $media->refresh();

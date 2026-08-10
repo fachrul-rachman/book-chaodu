@@ -58,33 +58,35 @@ Route::get('/booking/berhasil/{bookingNumber}', PublicBookingSuccessController::
     ->name('public.booking.success');
 Route::get('/booking/pembayaran/{bookingNumber}', PublicBookingPaymentPageController::class)
     ->name('public.booking.payment.show');
-Route::get('/chaodu/{bookingNumber}', PublicGalleryAlbumController::class)
-    ->middleware('throttle:public-gallery-album')
-    ->name('public.gallery.show');
-Route::get('/chaodu/{bookingNumber}/wallpaper', PublicGalleryWallpaperController::class)
-    ->middleware('throttle:public-gallery-media')
-    ->name('public.gallery.wallpaper');
-Route::get('/chaodu/{bookingNumber}/media/{media}', PublicGalleryMediaController::class)
-    ->whereNumber('media')
-    ->middleware('throttle:public-gallery-media')
-    ->name('public.gallery.media.preview');
-Route::get('/chaodu/{bookingNumber}/media/{media}/viewer', PublicGalleryViewerMediaController::class)
-    ->whereNumber('media')
-    ->middleware('throttle:public-gallery-media')
-    ->name('public.gallery.media.viewer');
-Route::get('/chaodu/{bookingNumber}/media/{media}/download', PublicGalleryMediaDownloadController::class)
-    ->whereNumber('media')
-    ->middleware('throttle:public-gallery-media')
-    ->name('public.gallery.media.download');
-Route::get('/chaodu/{bookingNumber}/archive', [PublicGalleryArchiveController::class, 'show'])
-    ->middleware('throttle:public-gallery-archive')
-    ->name('public.gallery.archive.show');
-Route::post('/chaodu/{bookingNumber}/archive', [PublicGalleryArchiveController::class, 'store'])
-    ->middleware('throttle:public-gallery-archive')
-    ->name('public.gallery.archive.store');
-Route::get('/chaodu/{bookingNumber}/archive/download', PublicGalleryArchiveDownloadController::class)
-    ->middleware('throttle:public-gallery-archive')
-    ->name('public.gallery.archive.download');
+Route::middleware('gallery.private')->group(function (): void {
+    Route::get('/chaodu/{bookingNumber}', PublicGalleryAlbumController::class)
+        ->middleware('throttle:public-gallery-album')
+        ->name('public.gallery.show');
+    Route::get('/chaodu/{bookingNumber}/wallpaper', PublicGalleryWallpaperController::class)
+        ->middleware('throttle:public-gallery-media')
+        ->name('public.gallery.wallpaper');
+    Route::get('/chaodu/{bookingNumber}/media/{media}', PublicGalleryMediaController::class)
+        ->whereNumber('media')
+        ->middleware('throttle:public-gallery-media')
+        ->name('public.gallery.media.preview');
+    Route::get('/chaodu/{bookingNumber}/media/{media}/viewer', PublicGalleryViewerMediaController::class)
+        ->whereNumber('media')
+        ->middleware('throttle:public-gallery-media')
+        ->name('public.gallery.media.viewer');
+    Route::get('/chaodu/{bookingNumber}/media/{media}/download', PublicGalleryMediaDownloadController::class)
+        ->whereNumber('media')
+        ->middleware('throttle:public-gallery-media')
+        ->name('public.gallery.media.download');
+    Route::get('/chaodu/{bookingNumber}/archive', [PublicGalleryArchiveController::class, 'show'])
+        ->middleware('throttle:public-gallery-archive')
+        ->name('public.gallery.archive.show');
+    Route::post('/chaodu/{bookingNumber}/archive', [PublicGalleryArchiveController::class, 'store'])
+        ->middleware('throttle:public-gallery-archive')
+        ->name('public.gallery.archive.store');
+    Route::get('/chaodu/{bookingNumber}/archive/download', PublicGalleryArchiveDownloadController::class)
+        ->middleware('throttle:public-gallery-archive')
+        ->name('public.gallery.archive.download');
+});
 
 Route::redirect('/login', '/masuk');
 
