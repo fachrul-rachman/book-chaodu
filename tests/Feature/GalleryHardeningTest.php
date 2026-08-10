@@ -10,6 +10,7 @@ use App\Models\User;
 use App\Services\GalleryVideoInspector;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Storage;
 
@@ -72,12 +73,42 @@ it('publishes a video only after asynchronous codec inspection succeeds', functi
     Storage::disk('gallery-hardening-test')->put($media->original_path, 'video-compatible');
 
     $inspector = Mockery::mock(GalleryVideoInspector::class);
-    $inspector->shouldReceive('inspect')->once()->withArgs(fn (GalleryMedia $value): bool => $value->is($media));
+    $inspector->shouldReceive('inspect')->once()
+        ->withArgs(fn (GalleryMedia $value): bool => $value->is($media))
+        ->andReturn([
+            'thumbnail_path' => 'gallery/global/video/thumbnail.webp',
+            'width' => 1920,
+            'height' => 1080,
+            'duration_seconds' => 18.25,
+        ]);
 
     (new ProcessGalleryVideo($media->id))->handle($inspector);
 
     expect($media->refresh()->status)->toBe(GalleryMediaStatus::Ready)
+        ->and($media->thumbnail_path)->toBe('gallery/global/video/thumbnail.webp')
+        ->and($media->width)->toBe(1920)
+        ->and($media->height)->toBe(1080)
+        ->and((float) $media->duration_seconds)->toBe(18.25)
         ->and($media->published_at)->not->toBeNull();
+});
+
+it('queues thumbnail backfill for ready videos without hiding them', function () {
+    Queue::fake();
+    $media = hardeningVideo('gallery/global/video-old/original.mp4');
+    $media->forceFill([
+        'status' => GalleryMediaStatus::Ready,
+        'published_at' => now()->subDay(),
+    ])->save();
+
+    $this->artisan('gallery:regenerate-video-thumbnails')
+        ->expectsOutput('Thumbnail video yang dimasukkan ke antrean: 1')
+        ->assertSuccessful();
+
+    expect($media->refresh()->status)->toBe(GalleryMediaStatus::Ready);
+    Queue::assertPushed(
+        ProcessGalleryVideo::class,
+        fn (ProcessGalleryVideo $job): bool => $job->mediaId === $media->id && $job->thumbnailOnly,
+    );
 });
 
 it('quarantines and removes an incompatible video original', function () {

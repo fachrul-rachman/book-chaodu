@@ -15,5 +15,7 @@ return [
     'caption_max_characters' => 200,
     'archive_ttl_hours' => max(1, (int) env('GALLERY_ARCHIVE_TTL_HOURS', 24)),
     'ffprobe_binary' => env('GALLERY_FFPROBE_BINARY', 'ffprobe'),
+    'ffmpeg_binary' => env('GALLERY_FFMPEG_BINARY', 'ffmpeg'),
     'video_inspection_timeout_seconds' => max(60, (int) env('GALLERY_VIDEO_INSPECTION_TIMEOUT_SECONDS', 1800)),
+    'video_thumbnail_timeout_seconds' => max(30, (int) env('GALLERY_VIDEO_THUMBNAIL_TIMEOUT_SECONDS', 300)),
 ];

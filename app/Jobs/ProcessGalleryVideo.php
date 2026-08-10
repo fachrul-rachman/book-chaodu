@@ -23,7 +23,10 @@ class ProcessGalleryVideo implements ShouldBeUnique, ShouldQueue
 
     public int $uniqueFor = 3600;
 
-    public function __construct(public int $mediaId) {}
+    public function __construct(
+        public int $mediaId,
+        public bool $thumbnailOnly = false,
+    ) {}
 
     public function uniqueId(): string
     {
@@ -34,21 +37,36 @@ class ProcessGalleryVideo implements ShouldBeUnique, ShouldQueue
     {
         $media = GalleryMedia::query()->find($this->mediaId);
 
-        if (! $media || $media->media_type !== GalleryMediaType::Video || $media->status !== GalleryMediaStatus::Processing) {
+        $canProcess = $media
+            && $media->media_type === GalleryMediaType::Video
+            && ($media->status === GalleryMediaStatus::Processing
+                || ($this->thumbnailOnly && $media->status === GalleryMediaStatus::Ready));
+
+        if (! $canProcess) {
             return;
         }
 
         try {
-            $inspector->inspect($media);
+            $metadata = $inspector->inspect($media);
         } catch (UnexpectedValueException) {
+            if ($this->thumbnailOnly) {
+                $media->forceFill(['error_message' => 'Thumbnail video lama gagal dibuat karena format tidak didukung.'])->save();
+
+                return;
+            }
+
             $this->reject($media, 'Format video harus H.264 dengan audio AAC.');
 
             return;
         }
 
         $media->forceFill([
+            'thumbnail_path' => $metadata['thumbnail_path'],
+            'width' => $metadata['width'],
+            'height' => $metadata['height'],
+            'duration_seconds' => $metadata['duration_seconds'],
             'status' => GalleryMediaStatus::Ready,
-            'published_at' => now(),
+            'published_at' => $media->published_at ?? now(),
             'error_message' => null,
         ])->save();
     }
@@ -57,14 +75,19 @@ class ProcessGalleryVideo implements ShouldBeUnique, ShouldQueue
     {
         $media = GalleryMedia::query()->find($this->mediaId);
 
-        if ($media && $media->status === GalleryMediaStatus::Processing) {
+        if ($media && $this->thumbnailOnly && $media->status === GalleryMediaStatus::Ready) {
+            $media->forceFill(['error_message' => 'Thumbnail video lama gagal dibuat. Jalankan backfill kembali.'])->save();
+        } elseif ($media && $media->status === GalleryMediaStatus::Processing) {
             $this->reject($media, 'Video gagal diverifikasi. Silakan upload ulang.');
         }
     }
 
     private function reject(GalleryMedia $media, string $message): void
     {
-        Storage::disk($media->storage_disk)->delete($media->original_path);
+        Storage::disk($media->storage_disk)->delete(array_filter([
+            $media->original_path,
+            $media->thumbnail_path,
+        ]));
         $media->forceFill([
             'status' => GalleryMediaStatus::Failed,
             'published_at' => null,

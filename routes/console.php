@@ -1,7 +1,11 @@
 <?php
 
 use App\Enums\ApprovalIntegrationComponent;
+use App\Enums\GalleryMediaStatus;
+use App\Enums\GalleryMediaType;
+use App\Jobs\ProcessGalleryVideo;
 use App\Models\Booking;
+use App\Models\GalleryMedia;
 use App\Services\ApprovalIntegrationService;
 use App\Services\BookingExpiryService;
 use App\Services\DirectorDiscordRecapService;
@@ -152,6 +156,23 @@ Artisan::command('gallery:cleanup-archives', function (GalleryArchiveService $ar
 
     return Command::SUCCESS;
 })->purpose('Menghapus ZIP gallery yang sudah melewati masa simpan.');
+
+Artisan::command('gallery:regenerate-video-thumbnails', function () {
+    $count = 0;
+
+    GalleryMedia::query()
+        ->where('media_type', GalleryMediaType::Video)
+        ->where('status', GalleryMediaStatus::Ready)
+        ->whereNull('thumbnail_path')
+        ->eachById(function (GalleryMedia $media) use (&$count): void {
+            ProcessGalleryVideo::dispatch($media->id, true);
+            $count++;
+        });
+
+    $this->line("Thumbnail video yang dimasukkan ke antrean: {$count}");
+
+    return Command::SUCCESS;
+})->purpose('Membuat thumbnail untuk video gallery lama tanpa menyembunyikan videonya.');
 
 Artisan::command('prayer-papers:retry {booking? : Nomor booking}', function (
     PrayerPaperGenerationService $generationService,

@@ -199,6 +199,38 @@ it('streams video with byte range support and safe inline headers', function () 
         ->assertHeader('Content-Range', 'bytes */16');
 });
 
+it('exposes a generated video thumbnail as its album preview', function () {
+    $booking = publicAlbumBooking();
+    $video = publicAlbumMedia([
+        'media_type' => GalleryMediaType::Video,
+        'original_path' => 'gallery/global/video-thumbnail/original.mp4',
+        'thumbnail_path' => 'gallery/global/video-thumbnail/thumbnail.webp',
+        'original_filename' => 'acara.mp4',
+        'stored_filename' => 'original.mp4',
+        'mime_type' => 'video/mp4',
+        'extension' => 'mp4',
+        'width' => 1920,
+        'height' => 1080,
+    ]);
+    Storage::disk('gallery-test')->put($video->thumbnail_path, 'video-thumbnail');
+
+    $this->get(route('public.gallery.show', ['bookingNumber' => $booking->booking_number]))
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('media.0.previewUrl', route('public.gallery.media.preview', [
+                'bookingNumber' => $booking->booking_number,
+                'media' => $video->id,
+            ]))
+            ->where('media.0.width', 1920)
+            ->where('media.0.height', 1080));
+
+    $this->get(route('public.gallery.media.preview', [
+        'bookingNumber' => $booking->booking_number,
+        'media' => $video->id,
+    ]))->assertOk()
+        ->assertHeader('Content-Type', 'image/webp')
+        ->assertStreamedContent('video-thumbnail');
+});
+
 it('blocks viewer access to hidden media and media owned by another booking', function () {
     $bookingA = publicAlbumBooking();
     $bookingB = publicAlbumBooking(['booking_number' => 'CD-ALBUM02']);

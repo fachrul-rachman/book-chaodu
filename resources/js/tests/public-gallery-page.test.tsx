@@ -17,8 +17,8 @@ const pageProps = {
             type: 'IMAGE',
             scope: 'GLOBAL',
             caption: 'Doa pembukaan',
-            width: 1200,
-            height: 800,
+            width: 800,
+            height: 1600,
             previewUrl: '/chaodu/CD-ALBUM01/media/10',
             viewerUrl: '/chaodu/CD-ALBUM01/media/10/viewer',
             downloadUrl: '/chaodu/CD-ALBUM01/media/10/download',
@@ -28,9 +28,9 @@ const pageProps = {
             type: 'VIDEO',
             scope: 'BOOKING',
             caption: 'Dokumentasi keluarga',
-            width: null,
-            height: null,
-            previewUrl: null,
+            width: 1920,
+            height: 1080,
+            previewUrl: '/chaodu/CD-ALBUM01/media/11',
             viewerUrl: '/chaodu/CD-ALBUM01/media/11/viewer',
             downloadUrl: '/chaodu/CD-ALBUM01/media/11/download',
         },
@@ -79,7 +79,20 @@ describe('Album customer', () => {
         expect(screen.getByText('CD-ALBUM01')).toBeInTheDocument();
         expect(screen.getByText('Doa pembukaan')).toBeInTheDocument();
         expect(screen.getByText('Dokumentasi keluarga')).toBeInTheDocument();
-        expect(screen.getByText('Video')).toBeInTheDocument();
+        expect(
+            screen.getByRole('img', { name: 'Dokumentasi keluarga' }),
+        ).toHaveAttribute('src', expect.stringContaining('/media/11'));
+        expect(
+            screen.getByRole('button', { name: 'Putar slideshow album' }),
+        ).toBeInTheDocument();
+        expect(screen.getByTestId('album-masonry')).toHaveAttribute(
+            'data-layout',
+            'masonry',
+        );
+        expect(
+            screen.getByRole('button', { name: 'Buka Doa pembukaan' })
+                .parentElement,
+        ).toHaveAttribute('data-crop', 'portrait');
         expect(
             screen.getByRole('img', { name: 'Doa pembukaan' }),
         ).toHaveAttribute('loading', 'lazy');
@@ -124,6 +137,9 @@ describe('Album customer', () => {
         expect(
             screen.getByLabelText('Pemutar video Dokumentasi keluarga'),
         ).not.toHaveAttribute('autoplay');
+        expect(
+            screen.getByLabelText('Pemutar video Dokumentasi keluarga'),
+        ).toHaveAttribute('poster', '/chaodu/CD-ALBUM01/media/11');
 
         fireEvent.keyDown(window, { key: 'ArrowLeft' });
         expect(screen.getByText('1 dari 2')).toBeInTheDocument();
@@ -156,6 +172,21 @@ describe('Album customer', () => {
         expect(
             screen.getByLabelText('Pemutar video Dokumentasi keluarga'),
         ).not.toHaveAttribute('autoplay');
+    });
+
+    it('starts the slideshow directly from the sticky album header', () => {
+        render(<PublicGalleryPage />);
+
+        fireEvent.click(
+            screen.getByRole('button', { name: 'Putar slideshow album' }),
+        );
+
+        expect(
+            screen.getByRole('dialog', { name: 'Viewer media' }),
+        ).toBeInTheDocument();
+        expect(
+            screen.getByRole('button', { name: 'Jeda slideshow' }),
+        ).toBeInTheDocument();
     });
 
     it('supports horizontal swipe with visible button alternatives', () => {
