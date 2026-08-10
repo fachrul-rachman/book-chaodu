@@ -8,6 +8,8 @@ const pageProps = {
         eventName: 'Doa Bersama Chao Du',
         eventDate: '20 September 2026',
         title: 'Kenangan dalam Kebersamaan',
+        emptyStateText: 'Album khusus ini masih disiapkan.',
+        wallpaperUrl: '/chaodu/CD-ALBUM01/wallpaper',
     },
     media: [
         {
@@ -91,7 +93,7 @@ describe('Album customer', () => {
         render(<PublicGalleryPage />);
 
         expect(
-            screen.getByText('Dokumentasi acara belum tersedia.'),
+            screen.getByText('Album khusus ini masih disiapkan.'),
         ).toBeInTheDocument();
     });
 
