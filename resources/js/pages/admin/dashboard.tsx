@@ -28,7 +28,7 @@ export default function AdminDashboard() {
                     <section className="rounded-[24px] border border-[var(--color-border)] bg-[var(--color-panel)] p-6 shadow-sm sm:p-8">
                         <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
                             <div>
-                                <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
+                                <p className="text-xs font-medium tracking-wide text-slate-500 uppercase">
                                     Dashboard Admin
                                 </p>
                                 <h1 className="mt-1 text-2xl font-semibold text-slate-900 sm:text-3xl">
@@ -53,7 +53,7 @@ export default function AdminDashboard() {
 
                     {/* Sisa nomor */}
                     <section className="rounded-[24px] border border-[var(--color-border)] bg-white/90 p-6 shadow-sm sm:p-7">
-                        <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-500">
+                        <h2 className="text-sm font-semibold tracking-wide text-slate-500 uppercase">
                             Sisa nomor
                         </h2>
                         <div className="mt-4 grid gap-4 sm:grid-cols-2">
@@ -78,7 +78,7 @@ export default function AdminDashboard() {
 
                     {/* Ringkasan booking */}
                     <section>
-                        <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-slate-500">
+                        <h2 className="mb-3 text-sm font-semibold tracking-wide text-slate-500 uppercase">
                             Booking
                         </h2>
                         <div className="grid gap-4 sm:grid-cols-3">
@@ -131,7 +131,7 @@ export default function AdminDashboard() {
 
                     {/* Pengaturan */}
                     <section>
-                        <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-slate-500">
+                        <h2 className="mb-3 text-sm font-semibold tracking-wide text-slate-500 uppercase">
                             Pengaturan
                         </h2>
                         <div className="grid gap-4 sm:grid-cols-2">
@@ -171,6 +171,19 @@ export default function AdminDashboard() {
                                 <p className="mt-2 text-sm leading-6 text-slate-600">
                                     Lihat meja kosong, booking masuk, dan yang
                                     sudah disetujui.
+                                </p>
+                            </Link>
+
+                            <Link
+                                href="/admin/galeri"
+                                className="rounded-[24px] border border-[var(--color-border)] bg-white/90 p-6 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md"
+                            >
+                                <h3 className="text-lg font-semibold text-slate-900">
+                                    Galeri customer
+                                </h3>
+                                <p className="mt-2 text-sm leading-6 text-slate-600">
+                                    Atur nama acara, tanggal, judul album, dan
+                                    wallpaper.
                                 </p>
                             </Link>
 

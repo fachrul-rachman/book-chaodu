@@ -20,6 +20,8 @@ type Album = {
     eventName: string;
     eventDate: string;
     title: string;
+    emptyStateText: string;
+    wallpaperUrl: string | null;
 };
 
 type Media = {
@@ -567,9 +569,17 @@ export default function PublicGalleryPage() {
 
             <main className="min-h-screen bg-[#f4efe7] text-stone-900">
                 <header className="relative isolate overflow-hidden bg-[#6f241b] text-white">
-                    <div className="absolute inset-0 -z-10 bg-[radial-gradient(circle_at_15%_20%,rgba(255,221,164,0.24),transparent_34%),linear-gradient(130deg,rgba(72,18,14,0.94),rgba(138,45,31,0.82))]" />
-                    <div className="absolute inset-x-0 bottom-0 -z-10 h-24 bg-gradient-to-t from-black/15 to-transparent" />
-                    <div className="mx-auto flex min-h-[360px] max-w-6xl flex-col justify-end px-5 py-10 sm:min-h-[420px] sm:px-8 sm:py-14">
+                    {album.wallpaperUrl ? (
+                        <img
+                            src={album.wallpaperUrl}
+                            alt=""
+                            aria-hidden="true"
+                            className="absolute inset-0 -z-20 size-full object-cover"
+                        />
+                    ) : null}
+                    <div className="absolute inset-0 -z-10 bg-[radial-gradient(circle_at_15%_20%,rgba(255,221,164,0.18),transparent_34%),linear-gradient(115deg,rgba(49,14,11,0.94),rgba(111,36,27,0.63),rgba(30,20,16,0.35))]" />
+                    <div className="absolute inset-x-0 bottom-0 -z-10 h-32 bg-gradient-to-t from-black/40 to-transparent" />
+                    <div className="mx-auto flex min-h-[400px] max-w-6xl flex-col justify-end px-5 py-10 sm:min-h-[500px] sm:px-8 sm:py-16">
                         <p className="text-sm font-semibold tracking-[0.16em] text-amber-100 uppercase">
                             {album.eventName}
                         </p>
@@ -624,7 +634,7 @@ export default function PublicGalleryPage() {
                                 aria-hidden="true"
                             />
                             <h3 className="mt-4 text-lg font-semibold text-stone-900">
-                                Dokumentasi acara belum tersedia.
+                                {album.emptyStateText}
                             </h3>
                             <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-stone-600">
                                 Silakan buka kembali halaman ini setelah tim

@@ -14,6 +14,8 @@ use Illuminate\Support\Str;
 
 class PublicGalleryAlbumService
 {
+    public function __construct(private readonly GallerySettingService $settingService) {}
+
     public function findApprovedBooking(string $bookingNumber): Booking
     {
         return Booking::query()
@@ -37,15 +39,10 @@ class PublicGalleryAlbumService
         return $global->concat($owned)->values();
     }
 
-    /** @return array<string, string> */
+    /** @return array<string, string|null> */
     public function albumIdentity(Booking $booking): array
     {
-        return [
-            'bookingNumber' => $booking->booking_number,
-            'eventName' => (string) config('gallery.event_name'),
-            'eventDate' => $this->eventDateLabel(),
-            'title' => (string) config('gallery.album_title'),
-        ];
+        return $this->settingService->albumIdentity($booking);
     }
 
     /** @return array<string, int|string|null> */
@@ -146,43 +143,5 @@ class PublicGalleryAlbumService
             GalleryMediaScope::Booking => $media->booking_id === $booking->id,
         };
         abort_unless($canAccess, 404);
-    }
-
-    private function eventDateLabel(): string
-    {
-        $value = config('gallery.event_date');
-
-        if (! is_string($value) || trim($value) === '') {
-            return 'Tanggal acara akan diumumkan';
-        }
-
-        $dateValue = trim($value);
-
-        if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $dateValue) !== 1) {
-            return 'Tanggal acara akan diumumkan';
-        }
-
-        [$year, $month, $day] = array_map('intval', explode('-', $dateValue));
-
-        if (! checkdate($month, $day, $year)) {
-            return 'Tanggal acara akan diumumkan';
-        }
-
-        $months = [
-            1 => 'Januari',
-            2 => 'Februari',
-            3 => 'Maret',
-            4 => 'April',
-            5 => 'Mei',
-            6 => 'Juni',
-            7 => 'Juli',
-            8 => 'Agustus',
-            9 => 'September',
-            10 => 'Oktober',
-            11 => 'November',
-            12 => 'Desember',
-        ];
-
-        return $day.' '.$months[$month].' '.$year;
     }
 }

@@ -6,6 +6,8 @@ use App\Http\Controllers\Admin\BookingIntegrationRetryController;
 use App\Http\Controllers\Admin\BookingQrFileController;
 use App\Http\Controllers\Admin\BookingRejectionController;
 use App\Http\Controllers\Admin\DashboardController;
+use App\Http\Controllers\Admin\GallerySettingController;
+use App\Http\Controllers\Admin\GalleryWallpaperController;
 use App\Http\Controllers\Admin\PackageController;
 use App\Http\Controllers\Admin\PaymentProofFileController;
 use App\Http\Controllers\Admin\PrayerPaperFileController;
@@ -43,6 +45,7 @@ use App\Http\Controllers\PublicGalleryArchiveDownloadController;
 use App\Http\Controllers\PublicGalleryMediaController;
 use App\Http\Controllers\PublicGalleryMediaDownloadController;
 use App\Http\Controllers\PublicGalleryViewerMediaController;
+use App\Http\Controllers\PublicGalleryWallpaperController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', PublicBookingPageController::class)->name('home');
@@ -58,6 +61,9 @@ Route::get('/booking/pembayaran/{bookingNumber}', PublicBookingPaymentPageContro
 Route::get('/chaodu/{bookingNumber}', PublicGalleryAlbumController::class)
     ->middleware('throttle:public-gallery-album')
     ->name('public.gallery.show');
+Route::get('/chaodu/{bookingNumber}/wallpaper', PublicGalleryWallpaperController::class)
+    ->middleware('throttle:public-gallery-media')
+    ->name('public.gallery.wallpaper');
 Route::get('/chaodu/{bookingNumber}/media/{media}', PublicGalleryMediaController::class)
     ->whereNumber('media')
     ->middleware('throttle:public-gallery-media')
@@ -121,6 +127,12 @@ Route::middleware('auth')->group(function () {
             ->name('admin.settings.edit');
         Route::put('/admin/pembayaran', [SettingController::class, 'update'])
             ->name('admin.settings.update');
+        Route::get('/admin/galeri', [GallerySettingController::class, 'edit'])
+            ->name('admin.gallery-settings.edit');
+        Route::post('/admin/galeri', [GallerySettingController::class, 'update'])
+            ->name('admin.gallery-settings.update');
+        Route::get('/admin/galeri/wallpaper', GalleryWallpaperController::class)
+            ->name('admin.gallery-settings.wallpaper');
         Route::get('/admin/layout-meja', TableLayoutController::class)
             ->name('admin.table-layout');
         Route::get('/admin/laporan', ReportController::class)

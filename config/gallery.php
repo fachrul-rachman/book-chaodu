@@ -5,6 +5,7 @@ return [
     'event_name' => env('GALLERY_EVENT_NAME', 'Chao Du'),
     'event_date' => env('GALLERY_EVENT_DATE'),
     'album_title' => env('GALLERY_ALBUM_TITLE', 'Album Dokumentasi Acara'),
+    'empty_state_text' => env('GALLERY_EMPTY_STATE_TEXT', 'Dokumentasi acara belum tersedia.'),
     'preview_cache_seconds' => 300,
     'photo_max_bytes' => 30 * 1024 * 1024,
     'video_max_bytes' => 1024 * 1024 * 1024,
