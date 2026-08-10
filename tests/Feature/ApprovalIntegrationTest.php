@@ -18,6 +18,7 @@ use App\Services\NotionClient;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
+use Inertia\Testing\AssertableInertia as Assert;
 
 beforeEach(function () {
     config()->set('phase3.private_upload_disk', 'booking-private');
@@ -108,36 +109,16 @@ function createApprovalPendingBooking(array $overrides = []): Booking
     return Booking::query()->latest('id')->firstOrFail();
 }
 
-it('runs approval integrations after booking is approved', function () {
+it('runs QR and album approval email without creating Drive or Notion resources', function () {
     $calls = [
-        'drive' => 0,
-        'notion' => 0,
         'email' => 0,
     ];
 
     $driveClient = Mockery::mock(GoogleDriveClient::class);
-    $driveClient->shouldReceive('ensureFolder')
-        ->once()
-        ->andReturnUsing(function (string $bookingNumber) use (&$calls): array {
-            $calls['drive']++;
-
-            return [
-                'id' => 'drive-'.$bookingNumber,
-                'url' => 'https://drive.test/'.$bookingNumber,
-            ];
-        });
+    $driveClient->shouldNotReceive('ensureFolder');
 
     $notionClient = Mockery::mock(NotionClient::class);
-    $notionClient->shouldReceive('ensureBookingPage')
-        ->once()
-        ->andReturnUsing(function (string $bookingNumber) use (&$calls): array {
-            $calls['notion']++;
-
-            return [
-                'id' => 'notion-'.$bookingNumber,
-                'url' => 'https://notion.test/'.$bookingNumber,
-            ];
-        });
+    $notionClient->shouldNotReceive('ensureBookingPage');
 
     $emailService = Mockery::mock(ApprovalEmailService::class);
     $emailService->shouldReceive('sendApprovedEmail')
@@ -162,14 +143,12 @@ it('runs approval integrations after booking is approved', function () {
 
     expect($booking->status)->toBe(BookingStatus::Approved)
         ->and($integration->qr_status)->toBe(ApprovalIntegrationStatus::Succeeded)
-        ->and($integration->drive_status)->toBe(ApprovalIntegrationStatus::Succeeded)
-        ->and($integration->notion_status)->toBe(ApprovalIntegrationStatus::Succeeded)
+        ->and($integration->drive_status->value)->toBe('SKIPPED')
+        ->and($integration->notion_status->value)->toBe('SKIPPED')
         ->and($integration->approval_email_status)->toBe(ApprovalIntegrationStatus::Succeeded)
-        ->and($integration->drive_external_id)->toBe('drive-'.$booking->booking_number)
-        ->and($integration->notion_external_id)->toBe('notion-'.$booking->booking_number)
+        ->and($integration->drive_external_id)->toBeNull()
+        ->and($integration->notion_external_id)->toBeNull()
         ->and($integration->approval_email_sent_at)->not->toBeNull()
-        ->and($calls['drive'])->toBe(1)
-        ->and($calls['notion'])->toBe(1)
         ->and($calls['email'])->toBe(1);
 
     Storage::disk('approval-files')->assertExists('approval-qr/'.$booking->booking_number.'.png');
@@ -177,34 +156,14 @@ it('runs approval integrations after booking is approved', function () {
 
 it('does not rerun approval effects that already succeeded', function () {
     $calls = [
-        'drive' => 0,
-        'notion' => 0,
         'email' => 0,
     ];
 
     $driveClient = Mockery::mock(GoogleDriveClient::class);
-    $driveClient->shouldReceive('ensureFolder')
-        ->once()
-        ->andReturnUsing(function (string $bookingNumber) use (&$calls): array {
-            $calls['drive']++;
-
-            return [
-                'id' => 'drive-'.$bookingNumber,
-                'url' => 'https://drive.test/'.$bookingNumber,
-            ];
-        });
+    $driveClient->shouldNotReceive('ensureFolder');
 
     $notionClient = Mockery::mock(NotionClient::class);
-    $notionClient->shouldReceive('ensureBookingPage')
-        ->once()
-        ->andReturnUsing(function (string $bookingNumber) use (&$calls): array {
-            $calls['notion']++;
-
-            return [
-                'id' => 'notion-'.$bookingNumber,
-                'url' => 'https://notion.test/'.$bookingNumber,
-            ];
-        });
+    $notionClient->shouldNotReceive('ensureBookingPage');
 
     $emailService = Mockery::mock(ApprovalEmailService::class);
     $emailService->shouldReceive('sendApprovedEmail')
@@ -225,44 +184,30 @@ it('does not rerun approval effects that already succeeded', function () {
     $this->actingAs($admin)->post(route('admin.bookings.approve', $booking))->assertRedirect();
     $this->actingAs($admin)->post(route('admin.bookings.approve', $booking))->assertRedirect();
 
-    expect($calls['drive'])->toBe(1)
-        ->and($calls['notion'])->toBe(1)
-        ->and($calls['email'])->toBe(1);
+    expect($calls['email'])->toBe(1);
 });
 
-it('keeps booking approved when integration fails and allows retry per component', function () {
+it('keeps booking approved when email fails and allows retrying only active components', function () {
     $state = [
-        'drive_fail' => true,
+        'email_fail' => true,
         'email_calls' => 0,
     ];
 
     $driveClient = Mockery::mock(GoogleDriveClient::class);
-    $driveClient->shouldReceive('ensureFolder')
-        ->twice()
-        ->andReturnUsing(function (string $bookingNumber) use (&$state): array {
-            if ($state['drive_fail']) {
-                throw new RuntimeException('Drive sedang gagal.');
-            }
-
-            return [
-                'id' => 'drive-'.$bookingNumber,
-                'url' => 'https://drive.test/'.$bookingNumber,
-            ];
-        });
+    $driveClient->shouldNotReceive('ensureFolder');
 
     $notionClient = Mockery::mock(NotionClient::class);
-    $notionClient->shouldReceive('ensureBookingPage')
-        ->once()
-        ->andReturnUsing(fn (string $bookingNumber): array => [
-            'id' => 'notion-'.$bookingNumber,
-            'url' => 'https://notion.test/'.$bookingNumber,
-        ]);
+    $notionClient->shouldNotReceive('ensureBookingPage');
 
     $emailService = Mockery::mock(ApprovalEmailService::class);
     $emailService->shouldReceive('sendApprovedEmail')
-        ->once()
+        ->twice()
         ->andReturnUsing(function () use (&$state): void {
             $state['email_calls']++;
+
+            if ($state['email_fail']) {
+                throw new RuntimeException('Email sedang gagal.');
+            }
         });
 
     app()->instance(GoogleDriveClient::class, $driveClient);
@@ -279,38 +224,30 @@ it('keeps booking approved when integration fails and allows retry per component
     $integration = ApprovalIntegration::query()->where('booking_id', $booking->id)->firstOrFail();
 
     expect($booking->fresh()?->status)->toBe(BookingStatus::Approved)
-        ->and($integration->drive_status)->toBe(ApprovalIntegrationStatus::Failed)
+        ->and($integration->drive_status->value)->toBe('SKIPPED')
+        ->and($integration->notion_status->value)->toBe('SKIPPED')
         ->and($integration->approval_email_status)->toBe(ApprovalIntegrationStatus::Failed);
 
-    $state['drive_fail'] = false;
+    $this->actingAs($admin)
+        ->post(route('admin.bookings.integrations.retry', [$booking, ApprovalIntegrationComponent::Drive->value]))
+        ->assertNotFound();
 
-    $this->actingAs($admin)->post(route('admin.bookings.integrations.retry', [$booking, ApprovalIntegrationComponent::Drive->value]))->assertRedirect();
+    $state['email_fail'] = false;
     $this->actingAs($admin)->post(route('admin.bookings.integrations.retry', [$booking, ApprovalIntegrationComponent::ApprovalEmail->value]))->assertRedirect();
 
     $integration->refresh();
 
-    expect($integration->drive_status)->toBe(ApprovalIntegrationStatus::Succeeded)
-        ->and($integration->approval_email_status)->toBe(ApprovalIntegrationStatus::Succeeded)
-        ->and($state['email_calls'])->toBe(1);
+    expect($integration->approval_email_status)->toBe(ApprovalIntegrationStatus::Succeeded)
+        ->and($state['email_calls'])->toBe(2);
 });
 
 it('reuses the same qr token when qr is retried', function () {
     $driveClient = Mockery::mock(GoogleDriveClient::class);
-    $driveClient->shouldReceive('ensureFolder')
-        ->once()
-        ->andReturnUsing(fn (string $bookingNumber): array => [
-            'id' => 'drive-'.$bookingNumber,
-            'url' => 'https://drive.test/'.$bookingNumber,
-        ]);
+    $driveClient->shouldNotReceive('ensureFolder');
     app()->instance(GoogleDriveClient::class, $driveClient);
 
     $notionClient = Mockery::mock(NotionClient::class);
-    $notionClient->shouldReceive('ensureBookingPage')
-        ->once()
-        ->andReturnUsing(fn (string $bookingNumber): array => [
-            'id' => 'notion-'.$bookingNumber,
-            'url' => 'https://notion.test/'.$bookingNumber,
-        ]);
+    $notionClient->shouldNotReceive('ensureBookingPage');
     app()->instance(NotionClient::class, $notionClient);
 
     $emailService = Mockery::mock(ApprovalEmailService::class);
@@ -352,7 +289,7 @@ it('sends approval email through laravel mailer', function () {
         'notion_url' => 'https://notion.test/'.$booking->booking_number,
     ]);
 
-    app(ApprovalEmailService::class)->sendApprovedEmail($booking, $integration, 'png-content');
+    app(ApprovalEmailService::class)->sendApprovedEmail($booking, 'png-content');
 
     Mail::assertSent(BookingApprovedMail::class, function (BookingApprovedMail $mail) use ($booking): bool {
         return $mail->booking->is($booking);
@@ -374,11 +311,44 @@ it('renders approval email with the booking template', function () {
         'notion_url' => 'https://notion.test/'.$booking->booking_number,
     ]);
 
-    $html = (new BookingApprovedMail($booking, $integration, 'png-content'))->render();
+    $html = (new BookingApprovedMail(
+        $booking,
+        'png-content',
+        route('public.gallery.show', ['bookingNumber' => $booking->booking_number]),
+    ))->render();
 
     expect($html)->toContain('Detail booking')
         ->toContain($booking->booking_number)
-        ->toContain('Buka Google Drive')
-        ->toContain('Buka Notion')
+        ->toContain('Buka album foto dan video')
+        ->toContain(route('public.gallery.show', ['bookingNumber' => $booking->booking_number]))
+        ->not->toContain('Google Drive')
+        ->not->toContain('Notion')
         ->toContain('Pembayaran terverifikasi');
+});
+
+it('shows the album URL in Admin without Drive or Notion retry actions', function () {
+    $booking = createApprovalPendingBooking([
+        'idempotency_key' => 'approval-module9-admin-album',
+    ]);
+    $admin = User::factory()->admin()->create();
+    $this->actingAs($admin)->post(route('admin.bookings.approve', $booking))->assertRedirect();
+
+    $this->actingAs($admin)
+        ->get(route('admin.bookings.show', $booking))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('booking.album_url', route('public.gallery.show', [
+                'bookingNumber' => $booking->booking_number,
+            ]))
+            ->missing('booking.approval_integration.drive_status')
+            ->missing('booking.approval_integration.notion_status')
+            ->has('booking.approval_integration.retry_urls', 2)
+            ->where('booking.approval_integration.retry_urls.qr', route('admin.bookings.integrations.retry', [
+                $booking,
+                ApprovalIntegrationComponent::Qr->value,
+            ]))
+            ->where('booking.approval_integration.retry_urls.approval_email', route('admin.bookings.integrations.retry', [
+                $booking,
+                ApprovalIntegrationComponent::ApprovalEmail->value,
+            ])));
 });

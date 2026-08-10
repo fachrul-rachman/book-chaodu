@@ -238,15 +238,9 @@ it('also sends agent discord notification for agent booking', function () {
     $booking = Booking::query()->firstOrFail();
     $admin = User::factory()->admin()->create();
     $driveClient = Mockery::mock(GoogleDriveClient::class);
-    $driveClient->shouldReceive('ensureFolder')->once()->andReturn([
-        'id' => 'drive-'.$booking->booking_number,
-        'url' => 'https://drive.test/'.$booking->booking_number,
-    ]);
+    $driveClient->shouldNotReceive('ensureFolder');
     $notionClient = Mockery::mock(NotionClient::class);
-    $notionClient->shouldReceive('ensureBookingPage')->once()->andReturn([
-        'id' => 'notion-'.$booking->booking_number,
-        'url' => 'https://notion.test/'.$booking->booking_number,
-    ]);
+    $notionClient->shouldNotReceive('ensureBookingPage');
     $emailService = Mockery::mock(ApprovalEmailService::class);
     $emailService->shouldReceive('sendApprovedEmail')->once();
     app()->instance(GoogleDriveClient::class, $driveClient);
