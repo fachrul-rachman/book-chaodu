@@ -12,4 +12,5 @@ return [
     'multipart_part_size_bytes' => 10 * 1024 * 1024,
     'upload_url_ttl_minutes' => 15,
     'caption_max_characters' => 200,
+    'archive_ttl_hours' => max(1, (int) env('GALLERY_ARCHIVE_TTL_HOURS', 24)),
 ];

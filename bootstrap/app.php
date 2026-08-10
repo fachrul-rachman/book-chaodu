@@ -19,6 +19,7 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withSchedule(function (Schedule $schedule): void {
         $schedule->command('virtual-accounts:release-expired')->everyFiveMinutes();
         $schedule->command('bookings:expire-unpaid')->everyFiveMinutes();
+        $schedule->command('gallery:cleanup-archives')->hourly()->withoutOverlapping();
         $schedule->command('discord:send-director-recap')
             ->twiceDaily(12, 20)
             ->timezone((string) config('app.timezone'))

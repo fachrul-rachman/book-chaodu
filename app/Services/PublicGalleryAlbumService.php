@@ -10,6 +10,7 @@ use App\Models\Booking;
 use App\Models\GalleryMedia;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Str;
 
 class PublicGalleryAlbumService
 {
@@ -67,6 +68,10 @@ class PublicGalleryAlbumService
                 'bookingNumber' => $booking->booking_number,
                 'media' => $media->id,
             ]),
+            'downloadUrl' => route('public.gallery.media.download', [
+                'bookingNumber' => $booking->booking_number,
+                'media' => $media->id,
+            ]),
         ];
     }
 
@@ -95,6 +100,24 @@ class PublicGalleryAlbumService
         abort_unless($path !== '', 404);
 
         return $path;
+    }
+
+    public function downloadPath(Booking $booking, GalleryMedia $media): string
+    {
+        $this->assertCanAccess($booking, $media);
+        abort_unless($media->original_path !== '', 404);
+
+        return $media->original_path;
+    }
+
+    public function downloadFilename(GalleryMedia $media): string
+    {
+        $base = pathinfo(basename($media->original_filename), PATHINFO_FILENAME);
+        $base = Str::ascii($base);
+        $base = preg_replace('/[^A-Za-z0-9]+/', '_', $base) ?: 'media';
+        $base = Str::limit(trim($base, '_'), 120, '');
+
+        return ($base === '' ? 'media-'.$media->uuid : $base).'.'.strtolower($media->extension);
     }
 
     /** @return Builder<GalleryMedia> */

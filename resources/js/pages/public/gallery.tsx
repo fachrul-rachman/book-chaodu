@@ -3,6 +3,7 @@ import {
     CalendarDays,
     ChevronLeft,
     ChevronRight,
+    Download,
     Film,
     ImageOff,
     LoaderCircle,
@@ -30,12 +31,49 @@ type Media = {
     height: number | null;
     previewUrl: string | null;
     viewerUrl: string;
+    downloadUrl: string;
+};
+
+type ArchiveStatus =
+    'IDLE' | 'PENDING' | 'PROCESSING' | 'READY' | 'FAILED' | 'EXPIRED';
+
+type DownloadAll = {
+    status: ArchiveStatus;
+    totalSizeBytes: number;
+    requestUrl: string;
+    statusUrl: string;
+    downloadUrl: string | null;
 };
 
 type PageProps = {
     album: Album;
     media: Media[];
+    downloadAll: DownloadAll;
 };
+
+function csrfToken(): string {
+    return (
+        document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')
+            ?.content ?? ''
+    );
+}
+
+function formatBytes(bytes: number): string {
+    if (bytes < 1024) {
+        return `${bytes} byte`;
+    }
+
+    const units = ['KB', 'MB', 'GB', 'TB'];
+    let value = bytes / 1024;
+    let unit = units[0];
+
+    for (let index = 1; value >= 1024 && index < units.length; index++) {
+        value /= 1024;
+        unit = units[index];
+    }
+
+    return `${new Intl.NumberFormat('id-ID', { maximumFractionDigits: 1 }).format(value)} ${unit}`;
+}
 
 function AlbumMediaCard({
     item,
@@ -128,6 +166,127 @@ function AlbumMediaCard({
     );
 }
 
+function DownloadAllPanel({ initial }: { initial: DownloadAll }) {
+    const [archive, setArchive] = useState(initial);
+    const [requesting, setRequesting] = useState(false);
+
+    useEffect(() => {
+        if (archive.status !== 'PENDING' && archive.status !== 'PROCESSING') {
+            return;
+        }
+
+        const timer = window.setTimeout(async () => {
+            try {
+                const response = await fetch(archive.statusUrl, {
+                    headers: { Accept: 'application/json' },
+                });
+
+                if (!response.ok) {
+                    throw new Error('Status ZIP tidak dapat diperiksa.');
+                }
+
+                const payload = (await response.json()) as Partial<DownloadAll>;
+                setArchive((current) => ({ ...current, ...payload }));
+            } catch {
+                setArchive((current) => ({ ...current, status: 'FAILED' }));
+            }
+        }, 2000);
+
+        return () => window.clearTimeout(timer);
+    }, [archive.status, archive.statusUrl]);
+
+    async function requestArchive() {
+        setRequesting(true);
+        setArchive((current) => ({ ...current, status: 'PENDING' }));
+
+        try {
+            const response = await fetch(archive.requestUrl, {
+                method: 'POST',
+                headers: {
+                    Accept: 'application/json',
+                    'X-CSRF-TOKEN': csrfToken(),
+                },
+            });
+
+            if (!response.ok) {
+                throw new Error('ZIP tidak dapat diminta.');
+            }
+
+            const payload = (await response.json()) as Partial<DownloadAll>;
+            setArchive((current) => ({ ...current, ...payload }));
+        } catch {
+            setArchive((current) => ({ ...current, status: 'FAILED' }));
+        } finally {
+            setRequesting(false);
+        }
+    }
+
+    const processing =
+        archive.status === 'PENDING' || archive.status === 'PROCESSING';
+
+    return (
+        <aside className="mb-7 rounded-[22px] border border-stone-200 bg-white px-5 py-5 shadow-sm">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                    <h3 className="font-semibold text-stone-900">
+                        Download seluruh album
+                    </h3>
+                    <p className="mt-1 text-sm leading-6 text-stone-600">
+                        Foto dan video original akan disiapkan dalam satu file
+                        ZIP. Perkiraan ukuran{' '}
+                        {formatBytes(archive.totalSizeBytes)}.
+                    </p>
+                </div>
+
+                <div className="shrink-0" aria-live="polite">
+                    {archive.status === 'READY' && archive.downloadUrl ? (
+                        <a
+                            href={archive.downloadUrl}
+                            className="inline-flex min-h-12 items-center gap-2 rounded-full bg-[#8a2d1f] px-5 text-sm font-semibold text-white focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-[#8a2d1f]"
+                        >
+                            <Download size={19} aria-hidden="true" /> Download
+                            ZIP
+                        </a>
+                    ) : processing ? (
+                        <span className="inline-flex min-h-12 items-center gap-2 rounded-full bg-stone-100 px-5 text-sm font-semibold text-stone-700">
+                            <LoaderCircle
+                                className="animate-spin"
+                                size={19}
+                                aria-hidden="true"
+                            />
+                            Sedang menyiapkan file ZIP…
+                        </span>
+                    ) : (
+                        <div>
+                            {archive.status === 'FAILED' && (
+                                <p className="mb-2 text-sm text-red-700">
+                                    ZIP belum berhasil dibuat.
+                                </p>
+                            )}
+                            <button
+                                type="button"
+                                onClick={requestArchive}
+                                disabled={requesting}
+                                aria-label={
+                                    archive.status === 'FAILED'
+                                        ? 'Coba lagi'
+                                        : `Siapkan download semua, sekitar ${formatBytes(archive.totalSizeBytes)}`
+                                }
+                                className="inline-flex min-h-12 items-center gap-2 rounded-full bg-[#8a2d1f] px-5 text-sm font-semibold text-white focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-[#8a2d1f] disabled:opacity-60"
+                            >
+                                <Download size={19} aria-hidden="true" />
+                                {archive.status === 'FAILED'
+                                    ? 'Coba lagi'
+                                    : 'Siapkan download semua'}
+                            </button>
+                        </div>
+                    )}
+                </div>
+            </div>
+        </aside>
+    );
+}
+
 function MediaViewer({
     media,
     index,
@@ -192,7 +351,7 @@ function MediaViewer({
 
             const focusable = Array.from(
                 dialog.current.querySelectorAll<HTMLElement>(
-                    'button:not([disabled]), video[controls], [tabindex]:not([tabindex="-1"])',
+                    'a[href], button:not([disabled]), video[controls], [tabindex]:not([tabindex="-1"])',
                 ),
             );
 
@@ -295,6 +454,13 @@ function MediaViewer({
                     )}
                     {playing ? 'Jeda' : 'Slideshow'}
                 </button>
+                <a
+                    href={current.downloadUrl}
+                    aria-label="Download media ini"
+                    className="inline-flex size-12 items-center justify-center rounded-full bg-white/12 focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-white"
+                >
+                    <Download size={22} aria-hidden="true" />
+                </a>
                 <button
                     ref={closeButton}
                     type="button"
@@ -356,7 +522,7 @@ function MediaViewer({
 }
 
 export default function PublicGalleryPage() {
-    const { album, media } = usePage<PageProps>().props;
+    const { album, media, downloadAll } = usePage<PageProps>().props;
     const [viewerIndex, setViewerIndex] = useState<number | null>(null);
     const viewerTrigger = useRef<HTMLButtonElement | null>(null);
 
@@ -423,6 +589,10 @@ export default function PublicGalleryPage() {
                             </p>
                         )}
                     </div>
+
+                    {media.length > 0 && (
+                        <DownloadAllPanel initial={downloadAll} />
+                    )}
 
                     {media.length === 0 ? (
                         <div className="rounded-[28px] border border-dashed border-stone-300 bg-white px-6 py-16 text-center shadow-sm">

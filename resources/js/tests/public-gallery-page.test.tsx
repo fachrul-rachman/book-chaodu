@@ -217,7 +217,9 @@ describe('Album customer', () => {
             '/chaodu/CD-ALBUM01/archive',
             expect.objectContaining({ method: 'POST' }),
         );
-        expect(screen.getByText('Sedang menyiapkan file ZIP…')).toBeInTheDocument();
+        expect(
+            screen.getByText('Sedang menyiapkan file ZIP…'),
+        ).toBeInTheDocument();
 
         await act(async () => {
             vi.advanceTimersByTime(2000);
@@ -233,7 +235,9 @@ describe('Album customer', () => {
         pageProps.downloadAll.status = 'FAILED';
         render(<PublicGalleryPage />);
 
-        expect(screen.getByText('ZIP belum berhasil dibuat.')).toBeInTheDocument();
+        expect(
+            screen.getByText('ZIP belum berhasil dibuat.'),
+        ).toBeInTheDocument();
         expect(
             screen.getByRole('button', { name: 'Coba lagi' }),
         ).toBeInTheDocument();

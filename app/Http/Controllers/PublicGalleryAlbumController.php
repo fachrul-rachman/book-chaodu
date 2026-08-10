@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Services\GalleryArchiveService;
 use App\Services\PublicGalleryAlbumService;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -13,6 +14,7 @@ class PublicGalleryAlbumController extends Controller
         Request $request,
         string $bookingNumber,
         PublicGalleryAlbumService $albumService,
+        GalleryArchiveService $archiveService,
     ): Response {
         $booking = $albumService->findApprovedBooking($bookingNumber);
         $media = $albumService->activeMedia($booking)
@@ -20,6 +22,7 @@ class PublicGalleryAlbumController extends Controller
         $response = Inertia::render('public/gallery', [
             'album' => $albumService->albumIdentity($booking),
             'media' => $media,
+            'downloadAll' => $archiveService->albumPayload($booking),
         ])->toResponse($request);
 
         $response->headers->set('X-Robots-Tag', 'noindex, nofollow, noarchive');

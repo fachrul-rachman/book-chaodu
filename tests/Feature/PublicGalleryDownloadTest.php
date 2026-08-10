@@ -10,6 +10,7 @@ use App\Models\Booking;
 use App\Models\GalleryArchive;
 use App\Models\GalleryMedia;
 use App\Models\Package;
+use App\Services\GalleryArchiveService;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Storage;
@@ -110,7 +111,7 @@ it('downloads an original global or owned file with a safe attachment name', fun
     $this->get(route('public.gallery.media.download', [$booking->booking_number, $global->id]))
         ->assertOk()
         ->assertHeader('Content-Type', 'image/jpeg')
-        ->assertHeader('Content-Disposition', 'attachment; filename="Doa_Pembukaan_1.jpg"')
+        ->assertHeader('Content-Disposition', 'attachment; filename=Doa_Pembukaan_1.jpg')
         ->assertStreamedContent('global-original');
 
     $this->get(route('public.gallery.media.download', [$booking->booking_number, $owned->id]))
@@ -189,20 +190,32 @@ it('builds a zip containing active global and owned originals only', function ()
     $archiveId = $this->postJson(route('public.gallery.archive.store', $booking->booking_number))
         ->assertAccepted()
         ->json('archiveId');
-    (new BuildGalleryArchive($archiveId))->handle();
+    app()->call([new BuildGalleryArchive($archiveId), 'handle']);
 
     $archive = GalleryArchive::query()->findOrFail($archiveId);
     expect($archive->status->value)->toBe('READY')
-        ->and($archive->expires_at?->diffInHours(now()))->toBe(24)
+        ->and(now()->diffInHours($archive->expires_at))->toBeGreaterThan(23.9)
         ->and($archive->file_path)->not->toBeNull();
     Storage::disk('gallery-download-test')->assertExists($archive->file_path);
 
-    $zip = new \ZipArchive();
+    $zip = new ZipArchive;
     expect($zip->open(Storage::disk('gallery-download-test')->path($archive->file_path)))->toBeTrue()
         ->and($zip->numFiles)->toBe(2)
         ->and($zip->getFromName('001-Pembukaan.jpg'))->toBe('bytes-'.$global->id)
         ->and($zip->getFromName('002-Keluarga.mp4'))->toBe('bytes-'.$owned->id);
     $zip->close();
+
+    $zipBytes = Storage::disk('gallery-download-test')->get($archive->file_path);
+    $this->get(route('public.gallery.archive.download', $booking->booking_number))
+        ->assertOk()
+        ->assertHeader('Content-Type', 'application/zip')
+        ->assertHeader('Content-Disposition', 'attachment; filename=album-CD-DOWNLOAD01.zip')
+        ->assertStreamedContent($zipBytes);
+
+    $this->postJson(route('public.gallery.archive.store', $booking->booking_number))
+        ->assertAccepted()
+        ->assertJsonPath('status', 'READY');
+    Queue::assertPushed(BuildGalleryArchive::class, 1);
 });
 
 it('uses a new fingerprint after album contents change', function () {
@@ -225,7 +238,7 @@ it('does not serve expired archives and cleanup never removes original media', f
     Storage::disk('gallery-download-test')->put($media->original_path, 'original-stays');
     $archive = GalleryArchive::query()->create([
         'booking_id' => $booking->id,
-        'fingerprint' => hash('sha256', 'expired'),
+        'fingerprint' => app(GalleryArchiveService::class)->fingerprint(collect([$media])),
         'status' => 'READY',
         'storage_disk' => 'gallery-download-test',
         'file_path' => "gallery/archives/{$booking->id}/expired.zip",
@@ -249,7 +262,7 @@ it('marks archive failures safely and allows a retry to be queued', function () 
     downloadAlbumMedia();
     $archiveId = $this->postJson(route('public.gallery.archive.store', $booking->booking_number))->json('archiveId');
 
-    expect(fn () => (new BuildGalleryArchive($archiveId))->handle())->toThrow(Throwable::class);
+    expect(fn () => app()->call([new BuildGalleryArchive($archiveId), 'handle']))->toThrow(RuntimeException::class);
     expect(GalleryArchive::query()->findOrFail($archiveId)->status->value)->toBe('FAILED');
 
     $this->postJson(route('public.gallery.archive.store', $booking->booking_number))

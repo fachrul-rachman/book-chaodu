@@ -38,7 +38,10 @@ use App\Http\Controllers\PublicBookingPageController;
 use App\Http\Controllers\PublicBookingPaymentPageController;
 use App\Http\Controllers\PublicBookingSuccessController;
 use App\Http\Controllers\PublicGalleryAlbumController;
+use App\Http\Controllers\PublicGalleryArchiveController;
+use App\Http\Controllers\PublicGalleryArchiveDownloadController;
 use App\Http\Controllers\PublicGalleryMediaController;
+use App\Http\Controllers\PublicGalleryMediaDownloadController;
 use App\Http\Controllers\PublicGalleryViewerMediaController;
 use Illuminate\Support\Facades\Route;
 
@@ -63,6 +66,19 @@ Route::get('/chaodu/{bookingNumber}/media/{media}/viewer', PublicGalleryViewerMe
     ->whereNumber('media')
     ->middleware('throttle:public-gallery-media')
     ->name('public.gallery.media.viewer');
+Route::get('/chaodu/{bookingNumber}/media/{media}/download', PublicGalleryMediaDownloadController::class)
+    ->whereNumber('media')
+    ->middleware('throttle:public-gallery-media')
+    ->name('public.gallery.media.download');
+Route::get('/chaodu/{bookingNumber}/archive', [PublicGalleryArchiveController::class, 'show'])
+    ->middleware('throttle:public-gallery-archive')
+    ->name('public.gallery.archive.show');
+Route::post('/chaodu/{bookingNumber}/archive', [PublicGalleryArchiveController::class, 'store'])
+    ->middleware('throttle:public-gallery-archive')
+    ->name('public.gallery.archive.store');
+Route::get('/chaodu/{bookingNumber}/archive/download', PublicGalleryArchiveDownloadController::class)
+    ->middleware('throttle:public-gallery-archive')
+    ->name('public.gallery.archive.download');
 
 Route::redirect('/login', '/masuk');
 

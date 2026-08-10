@@ -152,4 +152,10 @@ class Booking extends Model
     {
         return $this->hasMany(GalleryMedia::class);
     }
+
+    /** @return HasMany<GalleryArchive, $this> */
+    public function galleryArchives(): HasMany
+    {
+        return $this->hasMany(GalleryArchive::class);
+    }
 }

@@ -5,6 +5,7 @@ use App\Models\Booking;
 use App\Services\ApprovalIntegrationService;
 use App\Services\BookingExpiryService;
 use App\Services\DirectorDiscordRecapService;
+use App\Services\GalleryArchiveService;
 use App\Services\PrayerPaperGenerationService;
 use App\Services\VirtualAccountService;
 use Carbon\CarbonImmutable;
@@ -144,6 +145,13 @@ Artisan::command('storage:gallery-check {--write}', function () {
 
     return Command::SUCCESS;
 })->purpose('Memeriksa koneksi storage gallery tanpa menampilkan credential.');
+
+Artisan::command('gallery:cleanup-archives', function (GalleryArchiveService $archiveService) {
+    $count = $archiveService->cleanupExpired();
+    $this->line("Archive gallery yang dibersihkan: {$count}");
+
+    return Command::SUCCESS;
+})->purpose('Menghapus ZIP gallery yang sudah melewati masa simpan.');
 
 Artisan::command('prayer-papers:retry {booking? : Nomor booking}', function (
     PrayerPaperGenerationService $generationService,
