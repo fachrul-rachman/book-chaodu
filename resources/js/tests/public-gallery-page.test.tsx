@@ -231,7 +231,9 @@ describe('Album customer', () => {
             await Promise.resolve();
         });
 
-        expect(screen.getByText('Sedang menyiapkan file ZIP…')).toBeInTheDocument();
+        expect(
+            screen.getByText('Sedang menyiapkan file ZIP…'),
+        ).toBeInTheDocument();
 
         await act(async () => {
             vi.advanceTimersByTime(2000);

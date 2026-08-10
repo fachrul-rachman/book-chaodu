@@ -175,7 +175,10 @@ function DownloadAllPanel({ initial }: { initial: DownloadAll }) {
             return;
         }
 
-        const timer = window.setTimeout(async () => {
+        let cancelled = false;
+        let timer: number;
+
+        async function pollStatus() {
             try {
                 const response = await fetch(archive.statusUrl, {
                     headers: { Accept: 'application/json' },
@@ -186,13 +189,32 @@ function DownloadAllPanel({ initial }: { initial: DownloadAll }) {
                 }
 
                 const payload = (await response.json()) as Partial<DownloadAll>;
-                setArchive((current) => ({ ...current, ...payload }));
-            } catch {
-                setArchive((current) => ({ ...current, status: 'FAILED' }));
-            }
-        }, 2000);
 
-        return () => window.clearTimeout(timer);
+                if (cancelled) {
+                    return;
+                }
+
+                setArchive((current) => ({ ...current, ...payload }));
+
+                if (
+                    payload.status === 'PENDING' ||
+                    payload.status === 'PROCESSING'
+                ) {
+                    timer = window.setTimeout(pollStatus, 2000);
+                }
+            } catch {
+                if (!cancelled) {
+                    setArchive((current) => ({ ...current, status: 'FAILED' }));
+                }
+            }
+        }
+
+        timer = window.setTimeout(pollStatus, 2000);
+
+        return () => {
+            cancelled = true;
+            window.clearTimeout(timer);
+        };
     }, [archive.status, archive.statusUrl]);
 
     async function requestArchive() {
