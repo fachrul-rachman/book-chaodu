@@ -104,6 +104,47 @@ it('searches approved bookings by number or customer name with a minimal payload
             ->missing('results.0.attendee_count'));
 });
 
+it('searches approved bookings using separate table and incense filters', function () {
+    $target = customerGalleryBooking();
+    TableSlot::query()->create([
+        'code' => 'A18', 'row_code' => 'A', 'number' => 18, 'allocation_order' => 1,
+        'status' => SlotStatus::Assigned, 'booking_id' => $target->id,
+    ]);
+    IncenseSlot::query()->create([
+        'number' => 1, 'allocation_order' => 1, 'status' => SlotStatus::Assigned, 'booking_id' => $target->id,
+    ]);
+
+    $other = customerGalleryBooking([
+        'booking_number' => 'CD-CUSTOMER02',
+        'customer_name' => 'Sari Wijaya',
+    ]);
+    TableSlot::query()->create([
+        'code' => 'F18', 'row_code' => 'F', 'number' => 18, 'allocation_order' => 2,
+        'status' => SlotStatus::Assigned, 'booking_id' => $other->id,
+    ]);
+    IncenseSlot::query()->create([
+        'number' => 2, 'allocation_order' => 2, 'status' => SlotStatus::Assigned, 'booking_id' => $other->id,
+    ]);
+
+    $user = User::factory()->contentTeam()->create();
+
+    foreach ([
+        ['table' => 'a18'],
+        ['incense' => '1'],
+        ['q' => 'Budi', 'table' => 'A18', 'incense' => '1'],
+    ] as $filters) {
+        $this->actingAs($user)
+            ->get(route('content.customer-media.index', $filters))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->has('results', 1)
+                ->where('results.0.id', $target->id)
+                ->where('filters.q', $filters['q'] ?? '')
+                ->where('filters.table', isset($filters['table']) ? strtoupper((string) $filters['table']) : '')
+                ->where('filters.incense', isset($filters['incense']) ? (string) $filters['incense'] : ''));
+    }
+});
+
 it('shows only operational booking details and its own media', function () {
     $booking = customerGalleryBooking();
     TableSlot::query()->create([

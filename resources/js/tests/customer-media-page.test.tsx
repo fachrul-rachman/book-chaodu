@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import CustomerMediaPage from '@/pages/content/customer-media/index';
 
@@ -16,9 +16,11 @@ const pageProps = {
     ],
     selectedBooking: null,
     media: [],
-    filters: { q: 'Budi' },
+    filters: { q: 'Budi', table: 'A18', incense: '1' },
     limits: { photoMb: 30, videoMb: 1024, captionCharacters: 200 },
 };
+
+const { routerGet } = vi.hoisted(() => ({ routerGet: vi.fn() }));
 
 vi.mock('@inertiajs/react', () => ({
     Head: () => null,
@@ -29,7 +31,7 @@ vi.mock('@inertiajs/react', () => ({
         children: React.ReactNode;
         'aria-label'?: string;
     }) => <button aria-label={ariaLabel}>{children}</button>,
-    router: { get: vi.fn(), reload: vi.fn() },
+    router: { get: routerGet, reload: vi.fn() },
     usePage: () => ({ props: pageProps }),
 }));
 
@@ -43,8 +45,10 @@ describe('Media Customer', () => {
             screen.getByRole('heading', { name: 'Media Customer' }),
         ).toBeInTheDocument();
         expect(
-            screen.getByLabelText('Cari nomor booking atau nama customer'),
+            screen.getByLabelText('Nama customer atau kode booking'),
         ).toHaveValue('Budi');
+        expect(screen.getByLabelText('Nomor meja')).toHaveValue('A18');
+        expect(screen.getByLabelText('Nomor hio')).toHaveValue('1');
         expect(screen.getByText('CD-CUSTOMER01')).toBeInTheDocument();
         expect(screen.getByText(/Meja A18/)).toBeInTheDocument();
         expect(screen.getByText(/Hio 1/)).toBeInTheDocument();
@@ -52,5 +56,27 @@ describe('Media Customer', () => {
         expect(
             screen.getByRole('button', { name: /Pilih booking CD-CUSTOMER01/ }),
         ).toBeInTheDocument();
+    });
+
+    it('submits the three booking search fields together', () => {
+        render(<CustomerMediaPage />);
+
+        fireEvent.change(
+            screen.getByLabelText('Nama customer atau kode booking'),
+            { target: { value: 'Sari' } },
+        );
+        fireEvent.change(screen.getByLabelText('Nomor meja'), {
+            target: { value: 'F18' },
+        });
+        fireEvent.change(screen.getByLabelText('Nomor hio'), {
+            target: { value: '2' },
+        });
+        fireEvent.click(screen.getByRole('button', { name: 'Cari booking' }));
+
+        expect(routerGet).toHaveBeenCalledWith('/content/media/customer', {
+            q: 'Sari',
+            table: 'F18',
+            incense: '2',
+        });
     });
 });

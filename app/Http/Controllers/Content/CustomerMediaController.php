@@ -25,19 +25,29 @@ class CustomerMediaController extends Controller
     {
         $validated = $request->validate([
             'q' => ['nullable', 'string', 'min:2', 'max:100'],
+            'table' => ['nullable', 'string', 'max:20'],
+            'incense' => ['nullable', 'integer', 'min:1'],
             'booking' => ['nullable', 'integer'],
         ]);
         $search = trim((string) ($validated['q'] ?? ''));
+        $tableSearch = strtoupper((string) preg_replace('/\s+/', '', trim((string) ($validated['table'] ?? ''))));
+        $incenseSearch = isset($validated['incense']) ? (int) $validated['incense'] : null;
         $results = collect();
 
-        if ($search !== '') {
-            $pattern = '%'.mb_strtolower($search).'%';
+        if ($search !== '' || $tableSearch !== '' || is_int($incenseSearch)) {
             $results = Booking::query()
                 ->where('status', BookingStatus::Approved)
-                ->where(function (Builder $query) use ($pattern): void {
-                    $query->whereRaw('LOWER(booking_number) LIKE ?', [$pattern])
-                        ->orWhereRaw('LOWER(customer_name) LIKE ?', [$pattern]);
+                ->when($search !== '', function (Builder $query) use ($search): void {
+                    $pattern = '%'.mb_strtolower($search).'%';
+                    $query->where(function (Builder $query) use ($pattern): void {
+                        $query->whereRaw('LOWER(booking_number) LIKE ?', [$pattern])
+                            ->orWhereRaw('LOWER(customer_name) LIKE ?', [$pattern]);
+                    });
                 })
+                ->when($tableSearch !== '', fn (Builder $query) => $query
+                    ->whereHas('tableSlots', fn (Builder $slots) => $slots->whereRaw('UPPER(code) = ?', [$tableSearch])))
+                ->when(is_int($incenseSearch), fn (Builder $query) => $query
+                    ->whereHas('incenseSlots', fn (Builder $slots) => $slots->where('number', $incenseSearch)))
                 ->with(['tableSlots:id,booking_id,code', 'incenseSlots:id,booking_id,number'])
                 ->withCount('galleryMedia')
                 ->orderByDesc('approved_at')
@@ -70,7 +80,11 @@ class CustomerMediaController extends Controller
             'results' => $results,
             'selectedBooking' => $selected,
             'media' => $media,
-            'filters' => ['q' => $search],
+            'filters' => [
+                'q' => $search,
+                'table' => $tableSearch,
+                'incense' => is_int($incenseSearch) ? (string) $incenseSearch : '',
+            ],
             'limits' => [
                 'photoMb' => (int) config('gallery.photo_max_bytes') / 1024 / 1024,
                 'videoMb' => (int) config('gallery.video_max_bytes') / 1024 / 1024,

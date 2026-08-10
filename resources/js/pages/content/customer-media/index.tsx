@@ -6,6 +6,7 @@ import {
     Eye,
     EyeOff,
     Film,
+    Flame,
     GripVertical,
     Image as ImageIcon,
     MapPin,
@@ -56,7 +57,7 @@ type PageProps = {
     results: BookingSummary[];
     selectedBooking: BookingSummary | null;
     media: Media[];
-    filters: { q: string };
+    filters: { q: string; table: string; incense: string };
     limits: { photoMb: number; videoMb: number; captionCharacters: number };
 };
 
@@ -154,6 +155,8 @@ export default function CustomerMediaPage() {
 
 function CustomerMediaWorkspace(props: PageProps) {
     const [query, setQuery] = useState(props.filters.q);
+    const [tableQuery, setTableQuery] = useState(props.filters.table);
+    const [incenseQuery, setIncenseQuery] = useState(props.filters.incense);
     const [media, setMedia] = useState(props.media);
     const [queue, setQueue] = useState<QueueItem[]>([]);
     const [draggedId, setDraggedId] = useState<number | null>(null);
@@ -180,7 +183,29 @@ function CustomerMediaWorkspace(props: PageProps) {
 
     function searchBookings(event: FormEvent) {
         event.preventDefault();
-        router.get('/content/media/customer', { q: query.trim() });
+        router.get('/content/media/customer', {
+            q: query.trim(),
+            table: tableQuery.trim(),
+            incense: incenseQuery.trim(),
+        });
+    }
+
+    function selectBookingUrl(bookingId: number): string {
+        const params = new URLSearchParams({ booking: String(bookingId) });
+
+        if (props.filters.q) {
+            params.set('q', props.filters.q);
+        }
+
+        if (props.filters.table) {
+            params.set('table', props.filters.table);
+        }
+
+        if (props.filters.incense) {
+            params.set('incense', props.filters.incense);
+        }
+
+        return `/content/media/customer?${params.toString()}`;
     }
 
     const updateQueue = (key: string, values: Partial<QueueItem>) =>
@@ -499,10 +524,10 @@ function CustomerMediaWorkspace(props: PageProps) {
                     <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
                         <form
                             onSubmit={searchBookings}
-                            className="flex flex-col gap-3 sm:flex-row"
+                            className="grid gap-3 sm:grid-cols-2 lg:grid-cols-[2fr_1fr_1fr_auto]"
                         >
-                            <label className="flex-1 text-sm font-semibold text-slate-700">
-                                Cari nomor booking atau nama customer
+                            <label className="text-sm font-semibold text-slate-700">
+                                Nama customer atau kode booking
                                 <div className="relative mt-1">
                                     <Search
                                         className="absolute top-1/2 left-4 -translate-y-1/2 text-slate-400"
@@ -520,6 +545,53 @@ function CustomerMediaWorkspace(props: PageProps) {
                                     />
                                 </div>
                             </label>
+                            <label className="text-sm font-semibold text-slate-700">
+                                Nomor meja
+                                <div className="relative mt-1">
+                                    <MapPin
+                                        className="absolute top-1/2 left-4 -translate-y-1/2 text-slate-400"
+                                        size={19}
+                                    />
+                                    <input
+                                        value={tableQuery}
+                                        onChange={(event) =>
+                                            setTableQuery(
+                                                event.target.value
+                                                    .toUpperCase()
+                                                    .replace(/\s/g, ''),
+                                            )
+                                        }
+                                        maxLength={20}
+                                        className="min-h-12 w-full rounded-2xl border border-slate-300 pr-4 pl-11 text-base"
+                                        placeholder="Contoh: A18"
+                                    />
+                                </div>
+                            </label>
+                            <label className="text-sm font-semibold text-slate-700">
+                                Nomor hio
+                                <div className="relative mt-1">
+                                    <Flame
+                                        className="absolute top-1/2 left-4 -translate-y-1/2 text-slate-400"
+                                        size={19}
+                                    />
+                                    <input
+                                        type="text"
+                                        inputMode="numeric"
+                                        value={incenseQuery}
+                                        onChange={(event) =>
+                                            setIncenseQuery(
+                                                event.target.value.replace(
+                                                    /\D/g,
+                                                    '',
+                                                ),
+                                            )
+                                        }
+                                        maxLength={3}
+                                        className="min-h-12 w-full rounded-2xl border border-slate-300 pr-4 pl-11 text-base"
+                                        placeholder="Contoh: 12"
+                                    />
+                                </div>
+                            </label>
                             <button
                                 type="submit"
                                 className="mt-auto min-h-12 rounded-full bg-[var(--color-brand)] px-6 text-sm font-semibold text-white"
@@ -528,7 +600,9 @@ function CustomerMediaWorkspace(props: PageProps) {
                             </button>
                         </form>
 
-                        {props.filters.q && (
+                        {(props.filters.q ||
+                            props.filters.table ||
+                            props.filters.incense) && (
                             <div className="mt-5 space-y-3">
                                 {props.results.length === 0 ? (
                                     <p className="rounded-2xl bg-slate-50 p-5 text-sm text-slate-600">
@@ -560,7 +634,9 @@ function CustomerMediaWorkspace(props: PageProps) {
                                                 </p>
                                             </div>
                                             <Link
-                                                href={`/content/media/customer?booking=${result.id}&q=${encodeURIComponent(props.filters.q)}`}
+                                                href={selectBookingUrl(
+                                                    result.id,
+                                                )}
                                                 aria-label={`Pilih booking ${result.bookingNumber}`}
                                                 className="inline-flex min-h-11 items-center justify-center rounded-full border border-[var(--color-brand)] px-5 text-sm font-semibold text-[var(--color-brand)]"
                                             >
