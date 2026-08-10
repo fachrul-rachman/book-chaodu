@@ -49,10 +49,10 @@ it('shows internal company rows in reports', function () {
     expect($rows->pluck('booking_number')->all())->toContain(
         'INTERNAL-A18',
         'INTERNAL-A28',
-        'INTERNAL-A38',
         'INTERNAL-HIO-1',
         'INTERNAL-HIO-2',
     )
+        ->not->toContain('INTERNAL-A38')
         ->and($rows->firstWhere('booking_number', 'INTERNAL-A18')['customer_name'])->toBe('Internal Perusahaan')
         ->and($rows->firstWhere('booking_number', 'INTERNAL-HIO-1')['package_name'])->toBe('Hio Internal');
 });

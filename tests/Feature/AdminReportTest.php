@@ -117,18 +117,18 @@ it('shows approved bookings only in reports', function () {
         'CD-APPROVED-1',
         'INTERNAL-A18',
         'INTERNAL-A28',
-        'INTERNAL-A38',
         'INTERNAL-HIO-1',
         'INTERNAL-HIO-2',
     )
+        ->not->toContain('INTERNAL-A38')
         ->and(collect($props['finance']['rows'])->pluck('booking_number')->all())->toContain(
             'CD-APPROVED-1',
             'INTERNAL-A18',
             'INTERNAL-A28',
-            'INTERNAL-A38',
             'INTERNAL-HIO-1',
             'INTERNAL-HIO-2',
-        );
+        )
+        ->not->toContain('INTERNAL-A38');
 });
 
 it('shows approved customer names and prayer paper links in customer report', function () {
