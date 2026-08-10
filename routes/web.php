@@ -22,6 +22,9 @@ use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\Checker\CheckInController;
 use App\Http\Controllers\Checker\DashboardController as CheckerDashboardController;
 use App\Http\Controllers\Content\DashboardController as ContentDashboardController;
+use App\Http\Controllers\Content\GlobalMediaController;
+use App\Http\Controllers\Content\GlobalMediaOrderController;
+use App\Http\Controllers\Content\GlobalMediaUploadController;
 use App\Http\Controllers\PackageImageController;
 use App\Http\Controllers\PrayerPaperPreviewImageController;
 use App\Http\Controllers\PrayerPaperTemplateImageController;
@@ -132,6 +135,29 @@ Route::middleware('auth')->group(function () {
     Route::middleware('role:CONTENT_TEAM')->group(function () {
         Route::get('/content', ContentDashboardController::class)
             ->name('content.dashboard');
+        Route::get('/content/media/global', [GlobalMediaController::class, 'index'])
+            ->name('content.global-media.index');
+        Route::post('/content/media/global/uploads', [GlobalMediaUploadController::class, 'store'])
+            ->middleware('throttle:gallery-uploads')
+            ->name('content.global-media.uploads.store');
+        Route::post('/content/media/global/{media}/parts', [GlobalMediaUploadController::class, 'signPart'])
+            ->middleware('throttle:gallery-upload-parts')
+            ->name('content.global-media.parts.store');
+        Route::post('/content/media/global/{media}/complete', [GlobalMediaUploadController::class, 'complete'])
+            ->middleware('throttle:gallery-uploads')
+            ->name('content.global-media.uploads.complete');
+        Route::patch('/content/media/global/{media}', [GlobalMediaController::class, 'update'])
+            ->middleware('throttle:gallery-mutations')
+            ->name('content.global-media.update');
+        Route::patch('/content/media/global/{media}/status', [GlobalMediaController::class, 'changeStatus'])
+            ->middleware('throttle:gallery-mutations')
+            ->name('content.global-media.status');
+        Route::delete('/content/media/global/{media}', [GlobalMediaController::class, 'destroy'])
+            ->middleware('throttle:gallery-mutations')
+            ->name('content.global-media.destroy');
+        Route::put('/content/media/global-order', GlobalMediaOrderController::class)
+            ->middleware('throttle:gallery-mutations')
+            ->name('content.global-media.order');
     });
 });
 

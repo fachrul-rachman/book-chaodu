@@ -29,6 +29,10 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property int|null $height
  * @property string|null $duration_seconds
  * @property string|null $caption
+ * @property int|null $sort_order
+ * @property string|null $upload_mode
+ * @property string|null $upload_token
+ * @property string|null $upload_id
  * @property string|null $error_message
  * @property int|null $uploaded_by
  */
@@ -51,6 +55,11 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
     'height',
     'duration_seconds',
     'caption',
+    'sort_order',
+    'upload_token',
+    'upload_mode',
+    'upload_id',
+    'upload_expires_at',
     'error_message',
     'uploaded_by',
     'published_at',
@@ -70,6 +79,8 @@ class GalleryMedia extends Model
             'width' => 'integer',
             'height' => 'integer',
             'duration_seconds' => 'decimal:3',
+            'sort_order' => 'integer',
+            'upload_expires_at' => 'datetime',
             'uploaded_by' => 'integer',
             'published_at' => 'datetime',
         ];

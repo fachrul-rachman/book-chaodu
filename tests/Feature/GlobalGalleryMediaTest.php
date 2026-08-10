@@ -3,10 +3,13 @@
 use App\Enums\GalleryMediaScope;
 use App\Enums\GalleryMediaStatus;
 use App\Enums\GalleryMediaType;
+use App\Jobs\ProcessGalleryImage;
 use App\Models\GalleryMedia;
 use App\Models\GalleryMediaDeletion;
 use App\Models\User;
 use App\Services\GalleryDirectUploadService;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Storage;
 use Inertia\Testing\AssertableInertia as Assert;
 
@@ -67,6 +70,7 @@ it('initiates direct single and multipart uploads with trusted metadata', functi
 
     $this->actingAs($uploader)
         ->postJson(route('content.global-media.uploads.store'), [
+            'upload_token' => (string) str()->uuid(),
             'original_filename' => 'pembukaan.jpg',
             'mime_type' => 'image/jpeg',
             'size_bytes' => 1024,
@@ -77,6 +81,7 @@ it('initiates direct single and multipart uploads with trusted metadata', functi
 
     $this->actingAs($uploader)
         ->postJson(route('content.global-media.uploads.store'), [
+            'upload_token' => (string) str()->uuid(),
             'original_filename' => 'acara.mp4',
             'mime_type' => 'video/mp4',
             'size_bytes' => 101 * 1024 * 1024,
@@ -89,6 +94,7 @@ it('initiates direct single and multipart uploads with trusted metadata', functi
 });
 
 it('rejects unsupported files, oversized files, and long captions', function (array $payload, string $field) {
+    $payload['upload_token'] = (string) str()->uuid();
     $this->actingAs(User::factory()->contentTeam()->create())
         ->postJson(route('content.global-media.uploads.store'), $payload)
         ->assertUnprocessable()
@@ -123,6 +129,7 @@ it('signs multipart parts and completes a verified mp4 upload', function () {
         'size_bytes' => 16,
         'upload_mode' => 'MULTIPART',
         'upload_id' => 'upload-123',
+        'upload_expires_at' => now()->addMinutes(15),
         'published_at' => null,
     ]);
     Storage::disk('gallery-test')->put($media->original_path, "\x00\x00\x00\x10ftypisom0000");
@@ -146,11 +153,32 @@ it('signs multipart parts and completes a verified mp4 upload', function () {
         ->and($media->published_at)->not->toBeNull();
 });
 
+it('uses the upload token to make repeated initiation idempotent', function () {
+    $uploader = User::factory()->contentTeam()->create();
+    $token = (string) str()->uuid();
+    $direct = Mockery::mock(GalleryDirectUploadService::class);
+    $direct->shouldReceive('initiate')->twice()->andReturn(['mode' => 'single', 'url' => 'https://upload.test', 'headers' => []]);
+    $this->app->instance(GalleryDirectUploadService::class, $direct);
+    $payload = [
+        'upload_token' => $token,
+        'original_filename' => 'foto.png',
+        'mime_type' => 'image/png',
+        'size_bytes' => 1024,
+    ];
+
+    $first = $this->actingAs($uploader)->postJson(route('content.global-media.uploads.store'), $payload)->assertCreated();
+    $second = $this->postJson(route('content.global-media.uploads.store'), $payload)->assertCreated();
+
+    expect($second->json('media.id'))->toBe($first->json('media.id'))
+        ->and(GalleryMedia::query()->count())->toBe(1);
+});
+
 it('rejects uploaded bytes whose signature does not match the declared type', function () {
     $media = globalGalleryMedia([
         'status' => GalleryMediaStatus::Processing,
         'size_bytes' => 9,
         'upload_mode' => 'SINGLE',
+        'upload_expires_at' => now()->addMinutes(15),
         'published_at' => null,
     ]);
     Storage::disk('gallery-test')->put($media->original_path, 'not-image');
@@ -161,6 +189,49 @@ it('rejects uploaded bytes whose signature does not match the declared type', fu
 
     Storage::disk('gallery-test')->assertMissing($media->original_path);
     expect($media->refresh()->status)->toBe(GalleryMediaStatus::Failed);
+});
+
+it('treats repeated completion after success as idempotent', function () {
+    $media = globalGalleryMedia();
+
+    $this->actingAs(User::factory()->contentTeam()->create())
+        ->postJson(route('content.global-media.uploads.complete', $media), ['parts' => []])
+        ->assertOk()
+        ->assertJsonPath('media.status', 'READY');
+
+    expect(GalleryMedia::query()->count())->toBe(1);
+});
+
+it('queues and creates a private thumbnail for a valid photo', function () {
+    Queue::fake();
+    $bytes = UploadedFile::fake()->image('foto.png', 1200, 800)->getContent();
+    $media = globalGalleryMedia([
+        'status' => GalleryMediaStatus::Processing,
+        'mime_type' => 'image/png',
+        'extension' => 'png',
+        'stored_filename' => 'original.png',
+        'original_filename' => 'foto.png',
+        'size_bytes' => strlen($bytes),
+        'upload_mode' => 'SINGLE',
+        'upload_expires_at' => now()->addMinutes(15),
+        'published_at' => null,
+    ]);
+    Storage::disk('gallery-test')->put($media->original_path, $bytes);
+
+    $this->actingAs(User::factory()->contentTeam()->create())
+        ->postJson(route('content.global-media.uploads.complete', $media), ['parts' => []])
+        ->assertOk()
+        ->assertJsonPath('media.status', 'PROCESSING');
+
+    Queue::assertPushed(ProcessGalleryImage::class, fn (ProcessGalleryImage $job) => $job->mediaId === $media->id);
+    (new ProcessGalleryImage($media->id))->handle();
+
+    $media->refresh();
+    expect($media->status)->toBe(GalleryMediaStatus::Ready)
+        ->and($media->width)->toBe(1200)
+        ->and($media->height)->toBe(800)
+        ->and($media->thumbnail_path)->toEndWith('/thumbnail.webp');
+    Storage::disk('gallery-test')->assertExists($media->thumbnail_path);
 });
 
 it('updates captions and manual order for global media', function () {
@@ -179,6 +250,31 @@ it('updates captions and manual order for global media', function () {
     expect($first->refresh()->caption)->toBe('Acara pembukaan')
         ->and($first->sort_order)->toBe(2)
         ->and($second->refresh()->sort_order)->toBe(1);
+});
+
+it('can hide and republish global media', function () {
+    $media = globalGalleryMedia();
+    $user = User::factory()->contentTeam()->create();
+
+    $this->actingAs($user)
+        ->patchJson(route('content.global-media.status', $media), ['status' => 'HIDDEN'])
+        ->assertOk()
+        ->assertJsonPath('media.status', 'HIDDEN');
+
+    $this->patchJson(route('content.global-media.status', $media), ['status' => 'READY'])
+        ->assertOk()
+        ->assertJsonPath('media.status', 'READY');
+});
+
+it('blocks non content users from global media mutations', function () {
+    $this->actingAs(User::factory()->admin()->create())
+        ->postJson(route('content.global-media.uploads.store'), [
+            'upload_token' => (string) str()->uuid(),
+            'original_filename' => 'foto.jpg',
+            'mime_type' => 'image/jpeg',
+            'size_bytes' => 1024,
+        ])
+        ->assertForbidden();
 });
 
 it('permanently deletes every object and records who deleted the media', function () {

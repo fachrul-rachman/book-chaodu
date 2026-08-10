@@ -80,5 +80,12 @@ class AppServiceProvider extends ServiceProvider
             ]));
         });
 
+        RateLimiter::for('gallery-uploads', fn (Request $request): Limit => Limit::perMinute(30)
+            ->by((string) $request->user()->id));
+        RateLimiter::for('gallery-upload-parts', fn (Request $request): Limit => Limit::perMinute(300)
+            ->by((string) $request->user()->id));
+        RateLimiter::for('gallery-mutations', fn (Request $request): Limit => Limit::perMinute(120)
+            ->by((string) $request->user()->id));
+
     }
 }

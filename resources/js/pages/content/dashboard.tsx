@@ -54,9 +54,12 @@ export default function ContentTeamDashboard() {
                                     Foto dan video acara yang akan tampil di
                                     seluruh album customer.
                                 </p>
-                                <p className="mt-5 text-sm font-medium text-slate-500">
-                                    Tersedia pada modul upload berikutnya.
-                                </p>
+                                <Link
+                                    href="/content/media/global"
+                                    className="mt-5 inline-flex min-h-11 items-center rounded-full bg-[var(--color-brand)] px-5 py-2 text-sm font-semibold text-white"
+                                >
+                                    Kelola media global
+                                </Link>
                             </article>
 
                             <article className="rounded-[24px] border border-[var(--color-border)] bg-white/90 p-6 shadow-sm">
