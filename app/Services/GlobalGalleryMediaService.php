@@ -139,13 +139,14 @@ class GlobalGalleryMediaService
     public function reorder(array $ids): void
     {
         DB::transaction(function () use ($ids): void {
-            $count = GalleryMedia::query()
+            $lockedIds = GalleryMedia::query()
                 ->where('scope', GalleryMediaScope::Global)
                 ->whereIn('id', $ids)
+                ->select('id')
                 ->lockForUpdate()
-                ->count();
+                ->pluck('id');
 
-            if ($count !== count($ids)) {
+            if ($lockedIds->count() !== count($ids)) {
                 throw ValidationException::withMessages(['media_ids' => 'Daftar media global tidak valid.']);
             }
 
