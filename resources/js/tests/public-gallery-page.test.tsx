@@ -196,6 +196,11 @@ describe('Album customer', () => {
                 }),
             )
             .mockResolvedValueOnce(
+                new Response(JSON.stringify({ status: 'PENDING' }), {
+                    headers: { 'Content-Type': 'application/json' },
+                }),
+            )
+            .mockResolvedValueOnce(
                 new Response(
                     JSON.stringify({
                         status: 'READY',
@@ -220,6 +225,13 @@ describe('Album customer', () => {
         expect(
             screen.getByText('Sedang menyiapkan file ZIP…'),
         ).toBeInTheDocument();
+
+        await act(async () => {
+            vi.advanceTimersByTime(2000);
+            await Promise.resolve();
+        });
+
+        expect(screen.getByText('Sedang menyiapkan file ZIP…')).toBeInTheDocument();
 
         await act(async () => {
             vi.advanceTimersByTime(2000);
