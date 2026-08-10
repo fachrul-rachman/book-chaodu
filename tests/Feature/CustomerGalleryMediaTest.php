@@ -6,6 +6,7 @@ use App\Enums\GalleryMediaStatus;
 use App\Enums\GalleryMediaType;
 use App\Enums\PackageCode;
 use App\Enums\SlotStatus;
+use App\Jobs\ProcessGalleryVideo;
 use App\Models\Booking;
 use App\Models\GalleryMedia;
 use App\Models\GalleryMediaDeletion;
@@ -14,6 +15,7 @@ use App\Models\Package;
 use App\Models\TableSlot;
 use App\Models\User;
 use App\Services\GalleryDirectUploadService;
+use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Storage;
 use Inertia\Testing\AssertableInertia as Assert;
 
@@ -194,6 +196,7 @@ it('prevents managing media from another booking through a manipulated URL', fun
 });
 
 it('completes video upload and manages caption visibility order and permanent deletion', function () {
+    Queue::fake();
     $booking = customerGalleryBooking();
     $video = customerGalleryMedia($booking, [
         'media_type' => GalleryMediaType::Video,
@@ -214,7 +217,9 @@ it('completes video upload and manages caption visibility order and permanent de
 
     $this->actingAs($user)
         ->postJson(route('content.customer-media.uploads.complete', [$booking, $video]), ['parts' => []])
-        ->assertOk()->assertJsonPath('media.status', 'READY');
+        ->assertOk()->assertJsonPath('media.status', 'PROCESSING');
+    Queue::assertPushed(ProcessGalleryVideo::class, fn (ProcessGalleryVideo $job) => $job->mediaId === $video->id);
+    $video->forceFill(['status' => GalleryMediaStatus::Ready, 'published_at' => now()])->save();
     $this->patchJson(route('content.customer-media.update', [$booking, $video]), ['caption' => 'Meja customer'])
         ->assertOk();
     $this->patchJson(route('content.customer-media.status', [$booking, $video]), ['status' => 'HIDDEN'])

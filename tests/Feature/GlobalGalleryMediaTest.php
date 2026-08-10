@@ -4,6 +4,7 @@ use App\Enums\GalleryMediaScope;
 use App\Enums\GalleryMediaStatus;
 use App\Enums\GalleryMediaType;
 use App\Jobs\ProcessGalleryImage;
+use App\Jobs\ProcessGalleryVideo;
 use App\Models\GalleryMedia;
 use App\Models\GalleryMediaDeletion;
 use App\Models\User;
@@ -122,6 +123,7 @@ it('rejects unsupported files, oversized files, and long captions', function (ar
 ]);
 
 it('signs multipart parts and completes a verified mp4 upload', function () {
+    Queue::fake();
     $media = globalGalleryMedia([
         'media_type' => GalleryMediaType::Video,
         'status' => GalleryMediaStatus::Processing,
@@ -150,10 +152,11 @@ it('signs multipart parts and completes a verified mp4 upload', function () {
 
     $this->postJson(route('content.global-media.uploads.complete', $media), [
         'parts' => [['part_number' => 1, 'etag' => 'etag-1']],
-    ])->assertOk()->assertJsonPath('media.status', 'READY');
+    ])->assertOk()->assertJsonPath('media.status', 'PROCESSING');
 
-    expect($media->refresh()->status)->toBe(GalleryMediaStatus::Ready)
-        ->and($media->published_at)->not->toBeNull();
+    expect($media->refresh()->status)->toBe(GalleryMediaStatus::Processing)
+        ->and($media->published_at)->toBeNull();
+    Queue::assertPushed(ProcessGalleryVideo::class, fn (ProcessGalleryVideo $job) => $job->mediaId === $media->id);
 });
 
 it('uses the upload token to make repeated initiation idempotent', function () {
