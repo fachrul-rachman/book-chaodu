@@ -19,6 +19,7 @@ const pageProps = {
             height: 800,
             previewUrl: '/chaodu/CD-ALBUM01/media/10',
             viewerUrl: '/chaodu/CD-ALBUM01/media/10/viewer',
+            downloadUrl: '/chaodu/CD-ALBUM01/media/10/download',
         },
         {
             id: 11,
@@ -29,8 +30,16 @@ const pageProps = {
             height: null,
             previewUrl: null,
             viewerUrl: '/chaodu/CD-ALBUM01/media/11/viewer',
+            downloadUrl: '/chaodu/CD-ALBUM01/media/11/download',
         },
     ],
+    downloadAll: {
+        status: 'IDLE',
+        totalSizeBytes: 2048,
+        requestUrl: '/chaodu/CD-ALBUM01/archive',
+        statusUrl: '/chaodu/CD-ALBUM01/archive',
+        downloadUrl: null,
+    },
 };
 
 const populatedMedia = [...pageProps.media];
@@ -43,6 +52,14 @@ vi.mock('@inertiajs/react', () => ({
 describe('Album customer', () => {
     beforeEach(() => {
         pageProps.media = [...populatedMedia];
+        pageProps.downloadAll = {
+            status: 'IDLE',
+            totalSizeBytes: 2048,
+            requestUrl: '/chaodu/CD-ALBUM01/archive',
+            statusUrl: '/chaodu/CD-ALBUM01/archive',
+            downloadUrl: null,
+        };
+        vi.restoreAllMocks();
     });
 
     afterEach(() => {
@@ -155,6 +172,70 @@ describe('Album customer', () => {
         ).toBeInTheDocument();
         expect(
             screen.getByRole('button', { name: 'Media berikutnya' }),
+        ).toBeInTheDocument();
+    });
+
+    it('offers an accessible original download for the selected media', () => {
+        render(<PublicGalleryPage />);
+        fireEvent.click(
+            screen.getByRole('button', { name: 'Buka Doa pembukaan' }),
+        );
+
+        expect(
+            screen.getByRole('link', { name: 'Download media ini' }),
+        ).toHaveAttribute('href', '/chaodu/CD-ALBUM01/media/10/download');
+    });
+
+    it('requests an archive, announces progress, and exposes the ready zip', async () => {
+        const fetchMock = vi
+            .spyOn(window, 'fetch')
+            .mockResolvedValueOnce(
+                new Response(JSON.stringify({ status: 'PENDING' }), {
+                    status: 202,
+                    headers: { 'Content-Type': 'application/json' },
+                }),
+            )
+            .mockResolvedValueOnce(
+                new Response(
+                    JSON.stringify({
+                        status: 'READY',
+                        downloadUrl: '/chaodu/CD-ALBUM01/archive/download',
+                    }),
+                    { headers: { 'Content-Type': 'application/json' } },
+                ),
+            );
+        vi.useFakeTimers();
+        render(<PublicGalleryPage />);
+
+        fireEvent.click(
+            screen.getByRole('button', { name: /Siapkan download semua/i }),
+        );
+        await act(async () => Promise.resolve());
+
+        expect(fetchMock).toHaveBeenNthCalledWith(
+            1,
+            '/chaodu/CD-ALBUM01/archive',
+            expect.objectContaining({ method: 'POST' }),
+        );
+        expect(screen.getByText('Sedang menyiapkan file ZIP…')).toBeInTheDocument();
+
+        await act(async () => {
+            vi.advanceTimersByTime(2000);
+            await Promise.resolve();
+        });
+
+        expect(
+            screen.getByRole('link', { name: 'Download ZIP' }),
+        ).toHaveAttribute('href', '/chaodu/CD-ALBUM01/archive/download');
+    });
+
+    it('shows a retry action when archive creation fails', () => {
+        pageProps.downloadAll.status = 'FAILED';
+        render(<PublicGalleryPage />);
+
+        expect(screen.getByText('ZIP belum berhasil dibuat.')).toBeInTheDocument();
+        expect(
+            screen.getByRole('button', { name: 'Coba lagi' }),
         ).toBeInTheDocument();
     });
 });
