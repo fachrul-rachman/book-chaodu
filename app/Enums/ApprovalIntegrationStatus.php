@@ -8,4 +8,5 @@ enum ApprovalIntegrationStatus: string
     case Processing = 'PROCESSING';
     case Succeeded = 'SUCCEEDED';
     case Failed = 'FAILED';
+    case Skipped = 'SKIPPED';
 }

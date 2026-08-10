@@ -49,16 +49,11 @@ type BookingDetail = {
         status: string;
         file_url: string | null;
     }>;
+    album_url: string | null;
     approval_integration: {
         qr_status: string;
         qr_error: string | null;
         qr_url: string | null;
-        drive_status: string;
-        drive_error: string | null;
-        drive_url: string | null;
-        notion_status: string;
-        notion_error: string | null;
-        notion_url: string | null;
         approval_email_status: string;
         approval_email_error: string | null;
         approval_email_sent_at: string | null;
@@ -267,6 +262,33 @@ export default function AdminBookingShowPage() {
                         </div>
                     </section>
 
+                    {booking.album_url ? (
+                        <section className="rounded-[24px] border border-amber-200 bg-amber-50 p-6 shadow-sm">
+                            <p className="text-xs font-semibold uppercase tracking-wide text-amber-800">
+                                Album customer
+                            </p>
+                            <div className="mt-2 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                                <div>
+                                    <h2 className="text-lg font-semibold text-amber-950">
+                                        Foto dan video acara
+                                    </h2>
+                                    <p className="mt-1 text-sm leading-6 text-amber-900">
+                                        Link ini juga dikirim melalui email
+                                        approval dan dapat dibuka tanpa login.
+                                    </p>
+                                </div>
+                                <a
+                                    href={booking.album_url}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className="inline-flex min-h-12 shrink-0 items-center justify-center rounded-full bg-[#8a2d1f] px-5 text-sm font-semibold text-white focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-[#8a2d1f]"
+                                >
+                                    Buka album customer
+                                </a>
+                            </div>
+                        </section>
+                    ) : null}
+
                     {integration ? (
                         <section className="space-y-4 rounded-[24px] border border-[var(--color-border)] bg-white/90 p-6 shadow-sm">
                             <h2 className="text-lg font-semibold">
@@ -280,20 +302,6 @@ export default function AdminBookingShowPage() {
                                     status: integration.qr_status,
                                     error: integration.qr_error,
                                     url: integration.qr_url,
-                                },
-                                {
-                                    key: 'drive',
-                                    title: 'Google Drive',
-                                    status: integration.drive_status,
-                                    error: integration.drive_error,
-                                    url: integration.drive_url,
-                                },
-                                {
-                                    key: 'notion',
-                                    title: 'Notion',
-                                    status: integration.notion_status,
-                                    error: integration.notion_error,
-                                    url: integration.notion_url,
                                 },
                                 {
                                     key: 'approval_email',

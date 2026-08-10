@@ -90,25 +90,17 @@
                             <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
                                 <tr>
                                     <td style="padding-top:24px; font-size:16px; line-height:24px; font-weight:bold;">
-                                        Akses dokumen
+                                        Album dokumentasi
                                     </td>
                                 </tr>
                                 <tr>
                                     <td style="padding-top:12px;">
-                                        <table role="presentation" cellpadding="0" cellspacing="0" border="0">
-                                            <tr>
-                                                <td style="padding-right:10px; padding-bottom:10px;">
-                                                    <a href="{{ $googleDriveUrl }}" style="display:inline-block; padding:12px 18px; background:#981b1f; color:#ffffff; text-decoration:none; border-radius:999px; font-size:14px; font-weight:bold;">
-                                                        Buka Google Drive
-                                                    </a>
-                                                </td>
-                                                <td style="padding-bottom:10px;">
-                                                    <a href="{{ $notionUrl }}" style="display:inline-block; padding:12px 18px; background:#f3e7d7; color:#7b211f; text-decoration:none; border-radius:999px; font-size:14px; font-weight:bold;">
-                                                        Buka Notion
-                                                    </a>
-                                                </td>
-                                            </tr>
-                                        </table>
+                                        <a href="{{ $albumUrl }}" style="display:inline-block; padding:12px 18px; background:#981b1f; color:#ffffff; text-decoration:none; border-radius:999px; font-size:14px; font-weight:bold;">
+                                            Buka album foto dan video
+                                        </a>
+                                        <div style="font-size:13px; line-height:20px; color:#7a6251; margin-top:8px;">
+                                            Simpan link pribadi ini untuk melihat dokumentasi terbaru.
+                                        </div>
                                     </td>
                                 </tr>
                             </table>

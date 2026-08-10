@@ -12,6 +12,7 @@ use App\Models\Booking;
 use App\Models\IncenseSlot;
 use App\Models\TableSlot;
 use App\Services\AdminBookingUpdateService;
+use App\Services\GalleryAlbumUrlService;
 use App\Services\InternalCompanySlotService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -22,6 +23,7 @@ class BookingController extends Controller
 {
     public function __construct(
         private readonly InternalCompanySlotService $internalCompanySlotService,
+        private readonly GalleryAlbumUrlService $galleryAlbumUrlService,
     ) {}
 
     public function index(Request $request): Response
@@ -201,25 +203,20 @@ class BookingController extends Controller
                     ? $booking->prayer_paper_status->value
                     : null,
                 'prayer_papers' => $prayerPapers,
+                'album_url' => $booking->status === BookingStatus::Approved
+                    ? $this->galleryAlbumUrlService->forBooking($booking)
+                    : null,
                 'approval_integration' => $approvalIntegration ? [
                     'qr_status' => $approvalIntegration->qr_status->value,
                     'qr_error' => $approvalIntegration->qr_error,
                     'qr_url' => $approvalIntegration->qr_image_path
                         ? route('admin.bookings.qr.show', $booking)
                         : null,
-                    'drive_status' => $approvalIntegration->drive_status->value,
-                    'drive_error' => $approvalIntegration->drive_error,
-                    'drive_url' => $approvalIntegration->drive_url,
-                    'notion_status' => $approvalIntegration->notion_status->value,
-                    'notion_error' => $approvalIntegration->notion_error,
-                    'notion_url' => $approvalIntegration->notion_url,
                     'approval_email_status' => $approvalIntegration->approval_email_status->value,
                     'approval_email_error' => $approvalIntegration->approval_email_error,
                     'approval_email_sent_at' => optional($approvalIntegration->approval_email_sent_at)->format('d M Y H:i'),
                     'retry_urls' => [
                         ApprovalIntegrationComponent::Qr->value => route('admin.bookings.integrations.retry', [$booking, ApprovalIntegrationComponent::Qr->value]),
-                        ApprovalIntegrationComponent::Drive->value => route('admin.bookings.integrations.retry', [$booking, ApprovalIntegrationComponent::Drive->value]),
-                        ApprovalIntegrationComponent::Notion->value => route('admin.bookings.integrations.retry', [$booking, ApprovalIntegrationComponent::Notion->value]),
                         ApprovalIntegrationComponent::ApprovalEmail->value => route('admin.bookings.integrations.retry', [$booking, ApprovalIntegrationComponent::ApprovalEmail->value]),
                     ],
                 ] : null,

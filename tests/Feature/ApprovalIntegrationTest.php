@@ -352,3 +352,37 @@ it('shows the album URL in Admin without Drive or Notion retry actions', functio
                 ApprovalIntegrationComponent::ApprovalEmail->value,
             ])));
 });
+
+it('preserves legacy Drive and Notion identifiers while an old booking gains an album URL', function () {
+    $booking = createApprovalPendingBooking([
+        'idempotency_key' => 'approval-module9-legacy-data',
+    ]);
+    $integration = ApprovalIntegration::query()->create([
+        'booking_id' => $booking->id,
+        'qr_status' => ApprovalIntegrationStatus::Pending,
+        'drive_status' => ApprovalIntegrationStatus::Succeeded,
+        'drive_external_id' => 'legacy-drive-id',
+        'drive_url' => 'https://drive.test/legacy-folder',
+        'notion_status' => ApprovalIntegrationStatus::Succeeded,
+        'notion_external_id' => 'legacy-notion-id',
+        'notion_url' => 'https://notion.test/legacy-page',
+        'approval_email_status' => ApprovalIntegrationStatus::Pending,
+    ]);
+    $driveClient = Mockery::mock(GoogleDriveClient::class);
+    $driveClient->shouldNotReceive('ensureFolder');
+    $notionClient = Mockery::mock(NotionClient::class);
+    $notionClient->shouldNotReceive('ensureBookingPage');
+    app()->instance(GoogleDriveClient::class, $driveClient);
+    app()->instance(NotionClient::class, $notionClient);
+
+    $admin = User::factory()->admin()->create();
+    $this->actingAs($admin)->post(route('admin.bookings.approve', $booking))->assertRedirect();
+
+    expect($integration->fresh()?->drive_external_id)->toBe('legacy-drive-id')
+        ->and($integration->fresh()?->drive_url)->toBe('https://drive.test/legacy-folder')
+        ->and($integration->fresh()?->notion_external_id)->toBe('legacy-notion-id')
+        ->and($integration->fresh()?->notion_url)->toBe('https://notion.test/legacy-page');
+
+    $this->get(route('public.gallery.show', ['bookingNumber' => $booking->booking_number]))
+        ->assertOk();
+});

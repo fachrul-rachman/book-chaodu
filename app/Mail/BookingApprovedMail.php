@@ -3,7 +3,6 @@
 namespace App\Mail;
 
 use App\Enums\PackageCode;
-use App\Models\ApprovalIntegration;
 use App\Models\Booking;
 use Illuminate\Bus\Queueable;
 use Illuminate\Mail\Mailable;
@@ -15,8 +14,8 @@ class BookingApprovedMail extends Mailable
 
     public function __construct(
         public readonly Booking $booking,
-        public readonly ApprovalIntegration $integration,
         private readonly string $qrContent,
+        private readonly string $albumUrl,
     ) {}
 
     public function build(): self
@@ -35,8 +34,7 @@ class BookingApprovedMail extends Mailable
                 'customerName' => $this->booking->customer_name,
                 'guestCount' => $this->booking->attendee_count,
                 'slotRows' => $slotRows,
-                'googleDriveUrl' => $this->integration->drive_url,
-                'notionUrl' => $this->integration->notion_url,
+                'albumUrl' => $this->albumUrl,
                 'year' => Carbon::now()->year,
             ])
             ->attachData(

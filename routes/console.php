@@ -174,7 +174,7 @@ Artisan::command('prayer-papers:retry {booking? : Nomor booking}', function (
     return Command::SUCCESS;
 })->purpose('Mengulang pembuatan file final kertas doa yang gagal atau belum jadi.');
 
-Artisan::command('approval-integrations:retry {booking : Nomor booking} {component? : qr|drive|notion|approval_email}', function (
+Artisan::command('approval-integrations:retry {booking : Nomor booking} {component? : qr|approval_email}', function (
     ApprovalIntegrationService $approvalIntegrationService,
 ) {
     $booking = Booking::query()

@@ -117,7 +117,7 @@ Route::middleware('auth')->group(function () {
         Route::post('/admin/booking/{booking}/tolak', BookingRejectionController::class)
             ->name('admin.bookings.reject');
         Route::post('/admin/booking/{booking}/integrasi/{component}/retry', BookingIntegrationRetryController::class)
-            ->whereIn('component', ['qr', 'drive', 'notion', 'approval_email'])
+            ->whereIn('component', ['qr', 'approval_email'])
             ->name('admin.bookings.integrations.retry');
         Route::get('/admin/booking/{booking}/bukti', PaymentProofFileController::class)
             ->name('admin.bookings.proof.show');

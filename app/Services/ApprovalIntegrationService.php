@@ -26,8 +26,8 @@ class ApprovalIntegrationService
             ['booking_id' => $booking->id],
             [
                 'qr_status' => ApprovalIntegrationStatus::Pending,
-                'drive_status' => ApprovalIntegrationStatus::Pending,
-                'notion_status' => ApprovalIntegrationStatus::Pending,
+                'drive_status' => ApprovalIntegrationStatus::Skipped,
+                'notion_status' => ApprovalIntegrationStatus::Skipped,
                 'approval_email_status' => ApprovalIntegrationStatus::Pending,
             ],
         );
@@ -42,14 +42,6 @@ class ApprovalIntegrationService
             $integration = $this->runComponent($booking, $integration, ApprovalIntegrationComponent::Qr);
         }
 
-        if ($integration->drive_status !== ApprovalIntegrationStatus::Succeeded) {
-            $integration = $this->runComponent($booking, $integration, ApprovalIntegrationComponent::Drive);
-        }
-
-        if ($integration->notion_status !== ApprovalIntegrationStatus::Succeeded) {
-            $integration = $this->runComponent($booking, $integration, ApprovalIntegrationComponent::Notion);
-        }
-
         if ($integration->approval_email_status !== ApprovalIntegrationStatus::Succeeded) {
             $integration = $this->runComponent($booking, $integration, ApprovalIntegrationComponent::ApprovalEmail);
         }
@@ -59,6 +51,11 @@ class ApprovalIntegrationService
 
     public function retry(Booking $booking, ApprovalIntegrationComponent $component): ApprovalIntegration
     {
+        abort_unless(in_array($component, [
+            ApprovalIntegrationComponent::Qr,
+            ApprovalIntegrationComponent::ApprovalEmail,
+        ], true), 404);
+
         $integration = $this->ensureRow($booking);
 
         return $this->runComponent($this->loadBooking($booking), $integration, $component);
@@ -147,10 +144,8 @@ class ApprovalIntegrationService
     {
         if (
             $integration->qr_status !== ApprovalIntegrationStatus::Succeeded
-            || $integration->drive_status !== ApprovalIntegrationStatus::Succeeded
-            || $integration->notion_status !== ApprovalIntegrationStatus::Succeeded
         ) {
-            throw new \RuntimeException('Email approval menunggu QR, Google Drive, dan Notion selesai.');
+            throw new \RuntimeException('Email approval menunggu QR selesai.');
         }
 
         $qrDisk = Storage::disk((string) config('phase7.storage_disk'));
@@ -162,7 +157,7 @@ class ApprovalIntegrationService
             throw new \RuntimeException('File QR belum tersedia.');
         }
 
-        $this->approvalEmailService->sendApprovedEmail($booking, $integration, $qrContent);
+        $this->approvalEmailService->sendApprovedEmail($booking, $qrContent);
 
         $integration->forceFill([
             'approval_email_sent_at' => now(),
