@@ -125,9 +125,100 @@ it('opens an approved album by exact booking number with global and owned media 
                 'bookingNumber' => $booking->booking_number,
                 'media' => $global->id,
             ]))
+            ->where('media.0.viewerUrl', route('public.gallery.media.viewer', [
+                'bookingNumber' => $booking->booking_number,
+                'media' => $global->id,
+            ]))
             ->missing('album.customerName')
             ->missing('media.0.originalPath')
             ->missing('media.0.storageDisk'));
+});
+
+it('serves a screen-sized image preview instead of the original in the viewer', function () {
+    $booking = publicAlbumBooking();
+    $image = publicAlbumMedia([
+        'preview_path' => 'gallery/global/viewer-image/preview.webp',
+        'original_path' => 'gallery/global/viewer-image/original.jpg',
+        'thumbnail_path' => 'gallery/global/viewer-image/thumbnail.webp',
+    ]);
+    Storage::disk('gallery-test')->put($image->original_path, 'large-original');
+    Storage::disk('gallery-test')->put($image->thumbnail_path, 'small-thumbnail');
+    Storage::disk('gallery-test')->put($image->preview_path, 'screen-preview');
+
+    $this->get(route('public.gallery.media.viewer', [
+        'bookingNumber' => $booking->booking_number,
+        'media' => $image->id,
+    ]))->assertOk()
+        ->assertHeader('Content-Type', 'image/webp')
+        ->assertHeader('Content-Disposition', 'inline; filename=media-'.$image->uuid.'.webp')
+        ->assertStreamedContent('screen-preview');
+});
+
+it('streams video with byte range support and safe inline headers', function () {
+    $booking = publicAlbumBooking();
+    $bytes = '0123456789abcdef';
+    $video = publicAlbumMedia([
+        'media_type' => GalleryMediaType::Video,
+        'original_path' => 'gallery/global/viewer-video/original.mp4',
+        'thumbnail_path' => null,
+        'original_filename' => 'acara.mp4',
+        'stored_filename' => 'original.mp4',
+        'mime_type' => 'video/mp4',
+        'extension' => 'mp4',
+        'size_bytes' => strlen($bytes),
+    ]);
+    Storage::disk('gallery-test')->put($video->original_path, $bytes);
+
+    $this->withHeader('Range', 'bytes=4-9')
+        ->get(route('public.gallery.media.viewer', [
+            'bookingNumber' => $booking->booking_number,
+            'media' => $video->id,
+        ]))
+        ->assertStatus(206)
+        ->assertHeader('Content-Type', 'video/mp4')
+        ->assertHeader('Accept-Ranges', 'bytes')
+        ->assertHeader('Content-Range', 'bytes 4-9/16')
+        ->assertHeader('Content-Length', '6')
+        ->assertHeader('Content-Disposition', 'inline; filename=media-'.$video->uuid.'.mp4')
+        ->assertStreamedContent('456789');
+
+    $this->get(route('public.gallery.media.viewer', [
+        'bookingNumber' => $booking->booking_number,
+        'media' => $video->id,
+    ]))->assertOk()
+        ->assertHeader('Content-Length', '16')
+        ->assertStreamedContent($bytes);
+
+    $this->withHeader('Range', 'bytes=99-100')
+        ->get(route('public.gallery.media.viewer', [
+            'bookingNumber' => $booking->booking_number,
+            'media' => $video->id,
+        ]))
+        ->assertStatus(416)
+        ->assertHeader('Content-Range', 'bytes */16');
+});
+
+it('blocks viewer access to hidden media and media owned by another booking', function () {
+    $bookingA = publicAlbumBooking();
+    $bookingB = publicAlbumBooking(['booking_number' => 'CD-ALBUM02']);
+    $ownedB = publicAlbumMedia([
+        'scope' => GalleryMediaScope::Booking,
+        'booking_id' => $bookingB->id,
+        'original_path' => 'gallery/bookings/'.$bookingB->id.'/viewer/original.jpg',
+        'thumbnail_path' => 'gallery/bookings/'.$bookingB->id.'/viewer/thumbnail.webp',
+    ]);
+    $hidden = publicAlbumMedia([
+        'status' => GalleryMediaStatus::Hidden,
+        'original_path' => 'gallery/global/viewer-hidden/original.jpg',
+        'thumbnail_path' => 'gallery/global/viewer-hidden/thumbnail.webp',
+    ]);
+
+    foreach ([$ownedB, $hidden] as $forbidden) {
+        $this->get(route('public.gallery.media.viewer', [
+            'bookingNumber' => $bookingA->booking_number,
+            'media' => $forbidden->id,
+        ]))->assertNotFound();
+    }
 });
 
 it('returns the same safe not found response for unavailable albums', function (BookingStatus $status) {
@@ -211,5 +302,7 @@ it('protects album and media delivery routes with separate public rate limits', 
     expect(Route::getRoutes()->getByName('public.gallery.show')?->gatherMiddleware())
         ->toContain('throttle:public-gallery-album')
         ->and(Route::getRoutes()->getByName('public.gallery.media.preview')?->gatherMiddleware())
+        ->toContain('throttle:public-gallery-media')
+        ->and(Route::getRoutes()->getByName('public.gallery.media.viewer')?->gatherMiddleware())
         ->toContain('throttle:public-gallery-media');
 });
