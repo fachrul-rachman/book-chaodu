@@ -21,6 +21,9 @@ use App\Http\Controllers\Admin\TableLayoutController;
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\Checker\CheckInController;
 use App\Http\Controllers\Checker\DashboardController as CheckerDashboardController;
+use App\Http\Controllers\Content\CustomerMediaController;
+use App\Http\Controllers\Content\CustomerMediaOrderController;
+use App\Http\Controllers\Content\CustomerMediaUploadController;
 use App\Http\Controllers\Content\DashboardController as ContentDashboardController;
 use App\Http\Controllers\Content\GlobalMediaController;
 use App\Http\Controllers\Content\GlobalMediaOrderController;
@@ -158,6 +161,30 @@ Route::middleware('auth')->group(function () {
         Route::put('/content/media/global-order', GlobalMediaOrderController::class)
             ->middleware('throttle:gallery-mutations')
             ->name('content.global-media.order');
+        Route::get('/content/media/customer', [CustomerMediaController::class, 'index'])
+            ->middleware('throttle:gallery-mutations')
+            ->name('content.customer-media.index');
+        Route::post('/content/media/customer/{booking}/uploads', [CustomerMediaUploadController::class, 'store'])
+            ->middleware('throttle:gallery-uploads')
+            ->name('content.customer-media.uploads.store');
+        Route::post('/content/media/customer/{booking}/{media}/parts', [CustomerMediaUploadController::class, 'signPart'])
+            ->middleware('throttle:gallery-upload-parts')
+            ->name('content.customer-media.parts.store');
+        Route::post('/content/media/customer/{booking}/{media}/complete', [CustomerMediaUploadController::class, 'complete'])
+            ->middleware('throttle:gallery-uploads')
+            ->name('content.customer-media.uploads.complete');
+        Route::patch('/content/media/customer/{booking}/{media}', [CustomerMediaController::class, 'update'])
+            ->middleware('throttle:gallery-mutations')
+            ->name('content.customer-media.update');
+        Route::patch('/content/media/customer/{booking}/{media}/status', [CustomerMediaController::class, 'changeStatus'])
+            ->middleware('throttle:gallery-mutations')
+            ->name('content.customer-media.status');
+        Route::delete('/content/media/customer/{booking}/{media}', [CustomerMediaController::class, 'destroy'])
+            ->middleware('throttle:gallery-mutations')
+            ->name('content.customer-media.destroy');
+        Route::put('/content/media/customer/{booking}/order', CustomerMediaOrderController::class)
+            ->middleware('throttle:gallery-mutations')
+            ->name('content.customer-media.order');
     });
 });
 

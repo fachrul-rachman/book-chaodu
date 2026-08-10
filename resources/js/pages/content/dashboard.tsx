@@ -70,9 +70,12 @@ export default function ContentTeamDashboard() {
                                     Cari nomor booking lalu kelola foto dan
                                     video khusus customer.
                                 </p>
-                                <p className="mt-5 text-sm font-medium text-slate-500">
-                                    Tersedia pada modul upload berikutnya.
-                                </p>
+                                <Link
+                                    href="/content/media/customer"
+                                    className="mt-5 inline-flex min-h-11 items-center rounded-full border border-[var(--color-brand)] px-5 py-2 text-sm font-semibold text-[var(--color-brand)]"
+                                >
+                                    Cari booking customer
+                                </Link>
                             </article>
                         </div>
                     </section>

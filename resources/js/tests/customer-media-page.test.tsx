@@ -22,7 +22,13 @@ const pageProps = {
 
 vi.mock('@inertiajs/react', () => ({
     Head: () => null,
-    Link: ({ children }: { children: React.ReactNode }) => <button>{children}</button>,
+    Link: ({
+        children,
+        'aria-label': ariaLabel,
+    }: {
+        children: React.ReactNode;
+        'aria-label'?: string;
+    }) => <button aria-label={ariaLabel}>{children}</button>,
     router: { get: vi.fn(), reload: vi.fn() },
     usePage: () => ({ props: pageProps }),
 }));
@@ -33,12 +39,18 @@ describe('Media Customer', () => {
     it('searches bookings and shows only operational information', () => {
         render(<CustomerMediaPage />);
 
-        expect(screen.getByRole('heading', { name: 'Media Customer' })).toBeInTheDocument();
-        expect(screen.getByLabelText('Cari nomor booking atau nama customer')).toHaveValue('Budi');
+        expect(
+            screen.getByRole('heading', { name: 'Media Customer' }),
+        ).toBeInTheDocument();
+        expect(
+            screen.getByLabelText('Cari nomor booking atau nama customer'),
+        ).toHaveValue('Budi');
         expect(screen.getByText('CD-CUSTOMER01')).toBeInTheDocument();
         expect(screen.getByText(/Meja A18/)).toBeInTheDocument();
         expect(screen.getByText(/Hio 1/)).toBeInTheDocument();
         expect(screen.queryByText(/628123/)).not.toBeInTheDocument();
-        expect(screen.getByRole('button', { name: /Pilih booking CD-CUSTOMER01/ })).toBeInTheDocument();
+        expect(
+            screen.getByRole('button', { name: /Pilih booking CD-CUSTOMER01/ }),
+        ).toBeInTheDocument();
     });
 });
