@@ -39,6 +39,7 @@ use App\Http\Controllers\PublicBookingPaymentPageController;
 use App\Http\Controllers\PublicBookingSuccessController;
 use App\Http\Controllers\PublicGalleryAlbumController;
 use App\Http\Controllers\PublicGalleryMediaController;
+use App\Http\Controllers\PublicGalleryViewerMediaController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', PublicBookingPageController::class)->name('home');
@@ -58,6 +59,10 @@ Route::get('/chaodu/{bookingNumber}/media/{media}', PublicGalleryMediaController
     ->whereNumber('media')
     ->middleware('throttle:public-gallery-media')
     ->name('public.gallery.media.preview');
+Route::get('/chaodu/{bookingNumber}/media/{media}/viewer', PublicGalleryViewerMediaController::class)
+    ->whereNumber('media')
+    ->middleware('throttle:public-gallery-media')
+    ->name('public.gallery.media.viewer');
 
 Route::redirect('/login', '/masuk');
 

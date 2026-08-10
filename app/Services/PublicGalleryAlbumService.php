@@ -63,17 +63,16 @@ class PublicGalleryAlbumService
                     'media' => $media->id,
                 ])
                 : null,
+            'viewerUrl' => route('public.gallery.media.viewer', [
+                'bookingNumber' => $booking->booking_number,
+                'media' => $media->id,
+            ]),
         ];
     }
 
     public function previewPath(Booking $booking, GalleryMedia $media): string
     {
-        abort_unless($media->status === GalleryMediaStatus::Ready, 404);
-        $canAccess = match ($media->scope) {
-            GalleryMediaScope::Global => true,
-            GalleryMediaScope::Booking => $media->booking_id === $booking->id,
-        };
-        abort_unless($canAccess, 404);
+        $this->assertCanAccess($booking, $media);
 
         $path = $media->thumbnail_path ?: $media->preview_path;
 
@@ -82,6 +81,18 @@ class PublicGalleryAlbumService
         }
 
         abort_unless(is_string($path) && $path !== '', 404);
+
+        return $path;
+    }
+
+    public function viewerPath(Booking $booking, GalleryMedia $media): string
+    {
+        $this->assertCanAccess($booking, $media);
+        $path = $media->media_type === GalleryMediaType::Video
+            ? $media->original_path
+            : ($media->preview_path ?: $media->thumbnail_path ?: $media->original_path);
+
+        abort_unless($path !== '', 404);
 
         return $path;
     }
@@ -102,6 +113,16 @@ class PublicGalleryAlbumService
         return $media->thumbnail_path !== null
             || $media->preview_path !== null
             || $media->media_type === GalleryMediaType::Image;
+    }
+
+    private function assertCanAccess(Booking $booking, GalleryMedia $media): void
+    {
+        abort_unless($media->status === GalleryMediaStatus::Ready, 404);
+        $canAccess = match ($media->scope) {
+            GalleryMediaScope::Global => true,
+            GalleryMediaScope::Booking => $media->booking_id === $booking->id,
+        };
+        abort_unless($canAccess, 404);
     }
 
     private function eventDateLabel(): string

@@ -182,10 +182,11 @@ it('streams video with byte range support and safe inline headers', function () 
         ->assertHeader('Content-Disposition', 'inline; filename=media-'.$video->uuid.'.mp4')
         ->assertStreamedContent('456789');
 
-    $this->get(route('public.gallery.media.viewer', [
-        'bookingNumber' => $booking->booking_number,
-        'media' => $video->id,
-    ]))->assertOk()
+    $this->withHeader('Range', '')
+        ->get(route('public.gallery.media.viewer', [
+            'bookingNumber' => $booking->booking_number,
+            'media' => $video->id,
+        ]))->assertOk()
         ->assertHeader('Content-Length', '16')
         ->assertStreamedContent($bytes);
 
