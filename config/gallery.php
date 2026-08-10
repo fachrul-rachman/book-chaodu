@@ -2,6 +2,10 @@
 
 return [
     'storage_disk' => env('GALLERY_STORAGE_DISK', 'r2_gallery'),
+    'event_name' => env('GALLERY_EVENT_NAME', 'Chao Du'),
+    'event_date' => env('GALLERY_EVENT_DATE'),
+    'album_title' => env('GALLERY_ALBUM_TITLE', 'Album Dokumentasi Acara'),
+    'preview_cache_seconds' => 300,
     'photo_max_bytes' => 30 * 1024 * 1024,
     'video_max_bytes' => 1024 * 1024 * 1024,
     'single_upload_max_bytes' => 100 * 1024 * 1024,

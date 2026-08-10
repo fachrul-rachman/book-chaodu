@@ -37,6 +37,8 @@ use App\Http\Controllers\Printer\PrayerPaperFileController as PrinterPrayerPaper
 use App\Http\Controllers\PublicBookingPageController;
 use App\Http\Controllers\PublicBookingPaymentPageController;
 use App\Http\Controllers\PublicBookingSuccessController;
+use App\Http\Controllers\PublicGalleryAlbumController;
+use App\Http\Controllers\PublicGalleryMediaController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', PublicBookingPageController::class)->name('home');
@@ -49,6 +51,13 @@ Route::get('/booking/berhasil/{bookingNumber}', PublicBookingSuccessController::
     ->name('public.booking.success');
 Route::get('/booking/pembayaran/{bookingNumber}', PublicBookingPaymentPageController::class)
     ->name('public.booking.payment.show');
+Route::get('/chaodu/{bookingNumber}', PublicGalleryAlbumController::class)
+    ->middleware('throttle:public-gallery-album')
+    ->name('public.gallery.show');
+Route::get('/chaodu/{bookingNumber}/media/{media}', PublicGalleryMediaController::class)
+    ->whereNumber('media')
+    ->middleware('throttle:public-gallery-media')
+    ->name('public.gallery.media.preview');
 
 Route::redirect('/login', '/masuk');
 

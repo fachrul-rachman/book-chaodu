@@ -86,6 +86,10 @@ class AppServiceProvider extends ServiceProvider
             ->by((string) $request->user()->id));
         RateLimiter::for('gallery-mutations', fn (Request $request): Limit => Limit::perMinute(120)
             ->by((string) $request->user()->id));
+        RateLimiter::for('public-gallery-album', fn (Request $request): Limit => Limit::perMinute(30)
+            ->by((string) $request->ip()));
+        RateLimiter::for('public-gallery-media', fn (Request $request): Limit => Limit::perMinute(240)
+            ->by((string) $request->ip()));
 
     }
 }
