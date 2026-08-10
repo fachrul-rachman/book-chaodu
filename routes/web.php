@@ -21,6 +21,7 @@ use App\Http\Controllers\Admin\TableLayoutController;
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\Checker\CheckInController;
 use App\Http\Controllers\Checker\DashboardController as CheckerDashboardController;
+use App\Http\Controllers\Content\DashboardController as ContentDashboardController;
 use App\Http\Controllers\PackageImageController;
 use App\Http\Controllers\PrayerPaperPreviewImageController;
 use App\Http\Controllers\PrayerPaperTemplateImageController;
@@ -126,6 +127,11 @@ Route::middleware('auth')->group(function () {
             ->name('printer.prayer-paper-preview.download');
         Route::get('/printer/kertas-doa/{prayerPaper}', PrinterPrayerPaperFileController::class)
             ->name('printer.prayer-papers.show');
+    });
+
+    Route::middleware('role:CONTENT_TEAM')->group(function () {
+        Route::get('/content', ContentDashboardController::class)
+            ->name('content.dashboard');
     });
 });
 

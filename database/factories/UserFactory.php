@@ -66,4 +66,11 @@ class UserFactory extends Factory
             'role' => UserRole::Printer,
         ]);
     }
+
+    public function contentTeam(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'role' => UserRole::ContentTeam,
+        ]);
+    }
 }

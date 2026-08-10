@@ -64,6 +64,7 @@ class AuthenticatedSessionController extends Controller
             UserRole::Admin => route('admin.dashboard'),
             UserRole::Checker => route('checker.dashboard'),
             UserRole::Printer => route('printer.dashboard'),
+            UserRole::ContentTeam => route('content.dashboard'),
         };
     }
 }

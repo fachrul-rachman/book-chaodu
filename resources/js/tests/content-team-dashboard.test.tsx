@@ -1,5 +1,5 @@
 import { render, screen } from '@testing-library/react';
-import type { AnchorHTMLAttributes } from 'react';
+import type { AnchorHTMLAttributes, ButtonHTMLAttributes } from 'react';
 import { vi } from 'vitest';
 import ContentTeamDashboard from '@/pages/content/dashboard';
 
@@ -8,12 +8,20 @@ vi.mock('@inertiajs/react', () => ({
     Link: ({
         children,
         href,
+        as,
         ...props
-    }: AnchorHTMLAttributes<HTMLAnchorElement>) => (
-        <a href={href} {...props}>
-            {children}
-        </a>
-    ),
+    }: AnchorHTMLAttributes<HTMLAnchorElement> & {
+        as?: string;
+    }) =>
+        as === 'button' ? (
+            <button {...(props as ButtonHTMLAttributes<HTMLButtonElement>)}>
+                {children}
+            </button>
+        ) : (
+            <a href={href} {...props}>
+                {children}
+            </a>
+        ),
     usePage: () => ({
         props: {
             auth: {
