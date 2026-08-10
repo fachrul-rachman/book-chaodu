@@ -52,10 +52,11 @@ class BookingController extends Controller
         }
 
         if ($search !== null) {
-            $query->where(function ($builder) use ($search): void {
+            $pattern = '%'.mb_strtolower($search).'%';
+            $query->where(function ($builder) use ($pattern): void {
                 $builder
-                    ->where('booking_number', 'ilike', '%'.$search.'%')
-                    ->orWhere('customer_name', 'ilike', '%'.$search.'%');
+                    ->whereRaw('LOWER(booking_number) LIKE ?', [$pattern])
+                    ->orWhereRaw('LOWER(customer_name) LIKE ?', [$pattern]);
             });
         }
 

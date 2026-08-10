@@ -47,13 +47,10 @@ class CheckerLookupService
             ->with($this->relations())
             ->where('status', BookingStatus::Approved)
             ->where(function ($query) use ($normalized, $phone): void {
-                $query->where('customer_name', 'ilike', '%'.$normalized.'%');
+                $query->whereRaw('LOWER(customer_name) LIKE ?', ['%'.mb_strtolower($normalized).'%']);
 
                 if ($phone !== null) {
-                    $query->orWhereRaw(
-                        "regexp_replace(customer_phone, '[^0-9]', '', 'g') = ?",
-                        [$phone],
-                    );
+                    $query->orWhere('customer_phone', '+'.$phone);
                 }
             })
             ->latest('id')
