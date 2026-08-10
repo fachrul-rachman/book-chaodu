@@ -12,6 +12,7 @@ use Illuminate\Console\Command;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 
 Artisan::command('inspire', function () {
     $this->comment(Inspiring::quote());
@@ -75,6 +76,74 @@ Artisan::command('storage:r2-check {--path=healthcheck.txt}', function () {
 
     return 0;
 })->purpose('Memeriksa koneksi Cloudflare R2 tanpa menampilkan secret.');
+
+Artisan::command('storage:gallery-check {--write}', function () {
+    $diskName = config('gallery.storage_disk');
+
+    if (! is_string($diskName) || $diskName === '') {
+        $this->error('Disk gallery belum dikonfigurasi.');
+
+        return Command::FAILURE;
+    }
+
+    $config = config('filesystems.disks.'.$diskName);
+
+    if (! is_array($config)) {
+        $this->error('Konfigurasi disk gallery tidak ditemukan.');
+
+        return Command::FAILURE;
+    }
+
+    if (($config['driver'] ?? null) === 's3') {
+        foreach (['key', 'secret', 'bucket', 'endpoint'] as $field) {
+            if (blank($config[$field] ?? null)) {
+                $this->error("Konfigurasi gallery belum lengkap pada field: {$field}.");
+
+                return Command::FAILURE;
+            }
+        }
+    }
+
+    $disk = Storage::disk($diskName);
+
+    try {
+        if (! $this->option('write')) {
+            $disk->exists('healthchecks/.connection-check');
+            $this->info('Koneksi baca gallery berhasil.');
+
+            return Command::SUCCESS;
+        }
+
+        $path = 'healthchecks/'.Str::uuid().'.txt';
+        $written = false;
+
+        try {
+            $written = $disk->put($path, 'gallery-storage-check', [
+                'visibility' => 'private',
+                'ContentType' => 'text/plain',
+            ]);
+
+            if (! $written || ! $disk->exists($path)) {
+                $this->error('File pemeriksaan gallery tidak berhasil ditulis.');
+
+                return Command::FAILURE;
+            }
+        } finally {
+            if ($written) {
+                $disk->delete($path);
+            }
+        }
+    } catch (Throwable $throwable) {
+        report($throwable);
+        $this->error('Koneksi gallery gagal diuji. Periksa konfigurasi dan log aplikasi.');
+
+        return Command::FAILURE;
+    }
+
+    $this->info('Koneksi tulis dan hapus gallery berhasil.');
+
+    return Command::SUCCESS;
+})->purpose('Memeriksa koneksi storage gallery tanpa menampilkan credential.');
 
 Artisan::command('prayer-papers:retry {booking? : Nomor booking}', function (
     PrayerPaperGenerationService $generationService,

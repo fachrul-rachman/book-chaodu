@@ -144,4 +144,12 @@ class Booking extends Model
     {
         return $this->hasMany(IncenseSlot::class);
     }
+
+    /**
+     * @return HasMany<GalleryMedia, $this>
+     */
+    public function galleryMedia(): HasMany
+    {
+        return $this->hasMany(GalleryMedia::class);
+    }
 }

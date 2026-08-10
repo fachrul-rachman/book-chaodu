@@ -10,7 +10,9 @@ use App\Models\GalleryMedia;
 use App\Models\Package;
 use App\Models\User;
 use App\Services\GalleryMediaService;
+use Illuminate\Console\Command;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 
@@ -132,7 +134,7 @@ it('rejects a global media target that contains a booking', function () {
     ))->toThrow(DomainException::class);
 
     expect(GalleryMedia::query()->count())->toBe(0);
-    Storage::disk('gallery-test')->assertCount(0);
+    Storage::disk('gallery-test')->assertDirectoryEmpty('/');
 });
 
 it('rejects booking media without a booking target', function () {
@@ -146,7 +148,21 @@ it('rejects booking media without a booking target', function () {
     ))->toThrow(DomainException::class);
 
     expect(GalleryMedia::query()->count())->toBe(0);
-    Storage::disk('gallery-test')->assertCount(0);
+    Storage::disk('gallery-test')->assertDirectoryEmpty('/');
+});
+
+it('rejects files that are neither images nor videos before storing metadata', function () {
+    $uploader = User::factory()->contentTeam()->create();
+    $file = UploadedFile::fake()->create('catatan.pdf', 100, 'application/pdf');
+
+    expect(fn () => app(GalleryMediaService::class)->storeOriginal(
+        $file,
+        GalleryMediaScope::Global,
+        $uploader,
+    ))->toThrow(RuntimeException::class, 'Tipe media gallery tidak didukung.');
+
+    expect(GalleryMedia::query()->count())->toBe(0);
+    Storage::disk('gallery-test')->assertDirectoryEmpty('/');
 });
 
 it('removes the uploaded object when saving metadata fails', function () {
@@ -164,7 +180,7 @@ it('removes the uploaded object when saving metadata fails', function () {
             $uploader,
         ))->toThrow(RuntimeException::class, 'Database gagal.');
 
-        Storage::disk('gallery-test')->assertCount(0);
+        Storage::disk('gallery-test')->assertDirectoryEmpty('/');
     } finally {
         GalleryMedia::flushEventListeners();
     }
@@ -181,11 +197,11 @@ it('checks gallery storage with a temporary object and removes it afterwards', f
         'region' => 'auto',
     ]);
 
-    $this->artisan('storage:gallery-check', ['--write' => true])
-        ->expectsOutput('Koneksi tulis dan hapus gallery berhasil.')
-        ->assertSuccessful();
+    expect(Artisan::call('storage:gallery-check', ['--write' => true]))
+        ->toBe(Command::SUCCESS)
+        ->and(Artisan::output())->toContain('Koneksi tulis dan hapus gallery berhasil.');
 
-    Storage::disk('gallery-test')->assertCount(0);
+    Storage::disk('gallery-test')->assertDirectoryEmpty('/');
 });
 
 it('fails the gallery storage check when required configuration is missing', function () {
@@ -197,7 +213,7 @@ it('fails the gallery storage check when required configuration is missing', fun
         'endpoint' => null,
     ]);
 
-    $this->artisan('storage:gallery-check')
-        ->expectsOutput('Konfigurasi gallery belum lengkap pada field: key.')
-        ->assertFailed();
+    expect(Artisan::call('storage:gallery-check'))
+        ->toBe(Command::FAILURE)
+        ->and(Artisan::output())->toContain('Konfigurasi gallery belum lengkap pada field: key.');
 });

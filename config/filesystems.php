@@ -73,6 +73,18 @@ return [
             'report' => false,
         ],
 
+        'r2_gallery' => [
+            'driver' => 's3',
+            'key' => env('R2_GALLERY_ACCESS_KEY_ID'),
+            'secret' => env('R2_GALLERY_SECRET_ACCESS_KEY'),
+            'region' => env('R2_GALLERY_DEFAULT_REGION', 'auto'),
+            'bucket' => env('R2_GALLERY_BUCKET'),
+            'endpoint' => env('R2_GALLERY_ENDPOINT'),
+            'use_path_style_endpoint' => (bool) env('R2_GALLERY_USE_PATH_STYLE_ENDPOINT', true),
+            'throw' => true,
+            'report' => false,
+        ],
+
     ],
 
     /*
