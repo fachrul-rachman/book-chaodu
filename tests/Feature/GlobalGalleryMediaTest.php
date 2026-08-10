@@ -9,7 +9,10 @@ use App\Models\GalleryMediaDeletion;
 use App\Models\User;
 use App\Services\GalleryDirectUploadService;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Database\Query\Builder as QueryBuilder;
+use Illuminate\Database\Query\Grammars\PostgresGrammar;
 use Illuminate\Support\Facades\Queue;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Inertia\Testing\AssertableInertia as Assert;
 
@@ -250,6 +253,29 @@ it('updates captions and manual order for global media', function () {
     expect($first->refresh()->caption)->toBe('Acara pembukaan')
         ->and($first->sort_order)->toBe(2)
         ->and($second->refresh()->sort_order)->toBe(1);
+});
+
+it('never applies a row lock to the aggregate used while reordering', function () {
+    $connection = DB::connection();
+    $connection->setQueryGrammar(new class($connection) extends PostgresGrammar
+    {
+        protected function compileLock(QueryBuilder $query, $value): string
+        {
+            if ($query->aggregate !== null) {
+                throw new RuntimeException('FOR UPDATE is not allowed with aggregate functions.');
+            }
+
+            return '';
+        }
+    });
+    $first = globalGalleryMedia();
+    $second = globalGalleryMedia();
+
+    $this->actingAs(User::factory()->contentTeam()->create())
+        ->putJson(route('content.global-media.order'), [
+            'media_ids' => [$second->id, $first->id],
+        ])
+        ->assertOk();
 });
 
 it('can hide and republish global media', function () {
