@@ -109,8 +109,8 @@ function bookingPayload(array $overrides = []): array
             'mandarin_name' => '',
             'source_image' => null,
         ],
-        'vegetarian_quantity' => '1',
-        'non_vegetarian_quantity' => '1',
+        'vegetarian_quantity' => '0',
+        'non_vegetarian_quantity' => '2',
         'sender_name' => 'Budi',
         'use_manual_virtual_account' => '0',
         'manual_virtual_account_number' => '',
@@ -163,8 +163,8 @@ it('creates a prayer booking and reserves the first table slot', function () {
         ->and($booking->customer_phone)->toBe('+6281234567890')
         ->and($booking->package_code_snapshot)->toBe(PackageCode::Prayer->value)
         ->and($booking->names()->count())->toBe(1)
-        ->and($booking->meal?->vegetarian_quantity)->toBe(1)
-        ->and($booking->meal?->non_vegetarian_quantity)->toBe(1)
+        ->and($booking->meal?->vegetarian_quantity)->toBe(0)
+        ->and($booking->meal?->non_vegetarian_quantity)->toBe(2)
         ->and($booking->payment?->proof_path)->toStartWith('booking-files/booking-key-1/')
         ->and($booking->payment?->virtual_account_number)->toBe('900001')
         ->and(TableSlot::query()->where('booking_id', $booking->id)->value('code'))->toBe('F18')
@@ -195,8 +195,8 @@ it('creates a combo booking with table, incense, and both name groups', function
             'indonesian_name' => 'Keluarga Tan',
             'mandarin_name' => '',
         ],
-        'vegetarian_quantity' => '2',
-        'non_vegetarian_quantity' => '2',
+        'vegetarian_quantity' => '0',
+        'non_vegetarian_quantity' => '4',
     ]);
     reserveVirtualAccountForPayload($payload);
 
@@ -241,13 +241,35 @@ it('allows zero meal quantities in public booking', function () {
         ->and($booking->meal?->non_vegetarian_quantity)->toBe(0);
 });
 
+it('rejects vegetarian meals for a new public booking', function () {
+    activatePackage(PackageCode::Prayer);
+
+    $payload = bookingPayload([
+        'idempotency_key' => 'booking-vegetarian-unavailable',
+        'vegetarian_quantity' => '1',
+        'non_vegetarian_quantity' => '1',
+    ]);
+
+    $this->post(route('api.public.bookings.store'), $payload, [
+        'Accept' => 'application/json',
+    ])
+        ->assertStatus(422)
+        ->assertJsonValidationErrors(['vegetarian_quantity'])
+        ->assertJsonPath(
+            'errors.vegetarian_quantity.0',
+            'Menu vegetarian tidak tersedia untuk booking baru.',
+        );
+
+    expect(Booking::query()->count())->toBe(0);
+});
+
 it('rejects meal quantity above package quota', function () {
     activatePackage(PackageCode::Prayer);
 
     $payload = bookingPayload([
         'idempotency_key' => 'meal-over-quota',
-        'vegetarian_quantity' => '111',
-        'non_vegetarian_quantity' => '0',
+        'vegetarian_quantity' => '0',
+        'non_vegetarian_quantity' => '111',
     ]);
 
     $this->post(route('api.public.bookings.store'), $payload, [
@@ -255,7 +277,6 @@ it('rejects meal quantity above package quota', function () {
     ])
         ->assertStatus(422)
         ->assertJsonValidationErrors([
-            'vegetarian_quantity',
             'non_vegetarian_quantity',
         ]);
 });
@@ -433,8 +454,8 @@ it('stores separate source photos for each name', function () {
             'mandarin_name' => '陈家',
             'source_image' => UploadedFile::fake()->image('incense.jpg'),
         ],
-        'vegetarian_quantity' => '2',
-        'non_vegetarian_quantity' => '2',
+        'vegetarian_quantity' => '0',
+        'non_vegetarian_quantity' => '4',
     ]);
     reserveVirtualAccountForPayload($payload);
 

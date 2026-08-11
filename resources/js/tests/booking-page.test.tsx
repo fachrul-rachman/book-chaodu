@@ -201,13 +201,20 @@ it('shows the package payment number on the payment step', async () => {
             screen.getByRole('heading', { name: 'Pilihan makanan' }),
         ).toBeInTheDocument();
     });
-    fireEvent.change(screen.getByRole('spinbutton', { name: 'Vegetarian' }), {
-        target: { value: '1' },
-    });
+    expect(
+        screen.getByText(
+            'Menu yang tersedia untuk booking baru adalah non-vegetarian.',
+        ),
+    ).toBeInTheDocument();
+    expect(
+        screen.queryByRole('spinbutton', { name: 'Vegetarian' }),
+    ).not.toBeInTheDocument();
     fireEvent.change(
-        screen.getByRole('spinbutton', { name: 'Non-vegetarian' }),
+        screen.getByRole('spinbutton', {
+            name: 'Jumlah makanan non-vegetarian',
+        }),
         {
-            target: { value: '1' },
+            target: { value: '2' },
         },
     );
     fireEvent.click(screen.getByRole('button', { name: /Lanjut/ }));
@@ -324,11 +331,10 @@ it('lets customer continue with 0 meal quantities', async () => {
         ).toBeInTheDocument();
     });
 
-    fireEvent.change(screen.getByRole('spinbutton', { name: 'Vegetarian' }), {
-        target: { value: '0' },
-    });
     fireEvent.change(
-        screen.getByRole('spinbutton', { name: 'Non-vegetarian' }),
+        screen.getByRole('spinbutton', {
+            name: 'Jumlah makanan non-vegetarian',
+        }),
         {
             target: { value: '0' },
         },
