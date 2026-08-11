@@ -4,6 +4,7 @@ namespace App\Http\Requests\Public;
 
 use App\Enums\PackageCode;
 use App\Models\Package;
+use App\Services\VegetarianCapacityService;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Validation\Rule;
@@ -40,7 +41,7 @@ class SubmitBookingRequest extends FormRequest
             'incense_name.indonesian_name' => ['nullable', 'string', 'max:120'],
             'incense_name.mandarin_name' => ['nullable', 'string', 'max:120'],
             'incense_name.source_image' => ['nullable', File::image()->types(['jpg', 'jpeg', 'png'])->max($ocrUploadMaxKb)],
-            'vegetarian_quantity' => ['required', 'integer', Rule::in([0])],
+            'vegetarian_quantity' => ['required', 'integer', 'min:0'],
             'non_vegetarian_quantity' => ['required', 'integer', 'min:0'],
             'sender_name' => ['nullable', 'string', 'max:120'],
             'transfer_date' => ['nullable', 'date', 'before_or_equal:today'],
@@ -105,6 +106,20 @@ class SubmitBookingRequest extends FormRequest
                 }
 
                 $mealTotal = (int) $this->input('non_vegetarian_quantity', 0);
+                $vegetarianQuantity = (int) $this->input('vegetarian_quantity', 0);
+                $mealTotal += $vegetarianQuantity;
+
+                $vegetarianCapacity = app(VegetarianCapacityService::class);
+                $vegetarianRemaining = $vegetarianCapacity->remainingForIdempotencyKey(
+                    $this->string('idempotency_key')->toString(),
+                );
+
+                if ($vegetarianQuantity > $vegetarianRemaining) {
+                    $validator->errors()->add(
+                        'vegetarian_quantity',
+                        $vegetarianCapacity->unavailableMessage($vegetarianRemaining),
+                    );
+                }
 
                 if ($mealTotal > $package->meal_quota) {
                     $validator->errors()->add(
@@ -162,7 +177,6 @@ class SubmitBookingRequest extends FormRequest
         return [
             'customer_phone_local.regex' => 'Nomor telepon harus dimulai dengan angka 1 sampai 9 dan panjangnya benar.',
             'confirmation_checked.accepted' => 'Silakan centang konfirmasi sebelum kirim.',
-            'vegetarian_quantity.in' => 'Menu vegetarian tidak tersedia untuk booking baru.',
         ];
     }
 

@@ -17,6 +17,7 @@ class PublicBookingCatalog
      *         upload_max_mb:int,
      *         ocr_upload_max_mb:int
      *     },
+     *     meal: array{vegetarian_capacity:int, vegetarian_remaining:int},
      *     preview: array<string, array<string, mixed>>
      * }
      */
@@ -26,6 +27,7 @@ class PublicBookingCatalog
         $packageAvailability = collect($availability['packages'])->keyBy('code');
         $templateService = app(PrayerPaperTemplateService::class);
         $virtualAccountService = app(VirtualAccountService::class);
+        $vegetarianCapacityService = app(VegetarianCapacityService::class);
         $prayerTemplate = $templateService->previewFor(PrayerPaperType::A);
         $incenseTemplate = $templateService->previewFor(PrayerPaperType::B);
         $settings = AppSetting::getMany([
@@ -63,6 +65,10 @@ class PublicBookingCatalog
             'limits' => [
                 'upload_max_mb' => max(1, (int) ($settings['upload_max_mb'] ?? config('phase3.upload_max_mb'))),
                 'ocr_upload_max_mb' => max(1, (int) config('phase4.ocr_upload_max_mb')),
+            ],
+            'meal' => [
+                'vegetarian_capacity' => $vegetarianCapacityService->capacity(),
+                'vegetarian_remaining' => $vegetarianCapacityService->remaining(),
             ],
             'preview' => [
                 ...config('phase4.preview'),

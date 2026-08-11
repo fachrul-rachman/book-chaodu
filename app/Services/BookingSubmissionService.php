@@ -25,6 +25,7 @@ class BookingSubmissionService
         private readonly VirtualAccountService $virtualAccountService,
         private readonly BookingPaymentEmailService $bookingPaymentEmailService,
         private readonly BookingPaymentSubmissionService $bookingPaymentSubmissionService,
+        private readonly VegetarianCapacityService $vegetarianCapacityService,
     ) {}
 
     /**
@@ -63,6 +64,12 @@ class BookingSubmissionService
 
         try {
             $booking = DB::transaction(function () use ($payload, $package, $nameImagePaths): Booking {
+                $vegetarianQuantity = (int) $payload['vegetarian_quantity'];
+
+                if ($vegetarianQuantity > 0) {
+                    $this->vegetarianCapacityService->lockForReservation();
+                }
+
                 $booking = Booking::query()->create([
                     'booking_number' => $this->generateBookingNumber(),
                     'idempotency_key' => $payload['idempotency_key'],
@@ -83,9 +90,11 @@ class BookingSubmissionService
                 $this->createNames($booking->id, $package->code, $payload, $nameImagePaths);
 
                 $booking->meal()->create([
-                    'vegetarian_quantity' => $payload['vegetarian_quantity'],
+                    'vegetarian_quantity' => $vegetarianQuantity,
                     'non_vegetarian_quantity' => $payload['non_vegetarian_quantity'],
                 ]);
+
+                $this->vegetarianCapacityService->ensureReservationFits($vegetarianQuantity);
 
                 $this->virtualAccountService->assignAvailableToBooking(
                     $booking,

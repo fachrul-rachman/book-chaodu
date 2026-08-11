@@ -3,6 +3,7 @@
 return [
     'private_upload_disk' => env('BOOKING_PRIVATE_DISK', 'local'),
     'max_attendee_count' => (int) env('BOOKING_MAX_ATTENDEE_COUNT', 20),
+    'vegetarian_capacity' => (int) env('BOOKING_VEGETARIAN_CAPACITY', 85),
     'upload_max_mb' => (int) env('BOOKING_UPLOAD_MAX_MB', 5),
     'submit_rate_limit_max_attempts' => (int) env('BOOKING_SUBMIT_RATE_LIMIT_MAX_ATTEMPTS', 6),
     'submit_rate_limit_decay_seconds' => (int) env('BOOKING_SUBMIT_RATE_LIMIT_DECAY_SECONDS', 60),
