@@ -317,6 +317,29 @@ it('rejects vegetarian meals above the remaining global capacity', function () {
         ->toBeFalse();
 });
 
+it('keeps a vegetarian booking idempotent after it fills the capacity', function () {
+    activatePackage(PackageCode::Prayer);
+    config()->set('phase3.vegetarian_capacity', 1);
+
+    $payload = bookingPayload([
+        'idempotency_key' => 'booking-fills-vegetarian-capacity',
+        'vegetarian_quantity' => '1',
+        'non_vegetarian_quantity' => '1',
+    ]);
+    reserveVirtualAccountForPayload($payload);
+
+    $this->post(route('api.public.bookings.store'), $payload, [
+        'Accept' => 'application/json',
+    ])->assertCreated();
+
+    $this->post(route('api.public.bookings.store'), $payload, [
+        'Accept' => 'application/json',
+    ])->assertCreated();
+
+    expect(Booking::query()->where('idempotency_key', 'booking-fills-vegetarian-capacity')->count())
+        ->toBe(1);
+});
+
 it('shows vegetarian capacity and excludes rejected bookings from usage', function () {
     config()->set('phase3.vegetarian_capacity', 3);
     reserveVegetarianMeals(1, BookingStatus::Approved);
