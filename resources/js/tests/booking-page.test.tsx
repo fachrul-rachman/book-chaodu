@@ -180,7 +180,7 @@ it('shows two prayer paper previews when two deceased names are filled', () => {
     expect(screen.queryByText('Contoh kertas doa')).not.toBeInTheDocument();
 });
 
-it('shows the package payment number on the payment step', async () => {
+it('shows only the non-vegetarian meal choice', async () => {
     render(<PublicBookingPage />);
 
     fillStepOne();
@@ -220,15 +220,10 @@ it('shows the package payment number on the payment step', async () => {
     fireEvent.click(screen.getByRole('button', { name: /Lanjut/ }));
 
     await waitFor(() => {
-        expect(screen.getByText(/Nomor VA:/)).toBeInTheDocument();
+        expect(
+            screen.getByRole('heading', { name: 'Informasi tambahan' }),
+        ).toBeInTheDocument();
     });
-    expect(screen.getByText('900001')).toBeInTheDocument();
-    expect(
-        screen.getByRole('button', { name: 'Salin nomor VA' }),
-    ).toBeInTheDocument();
-    expect(
-        screen.getByRole('button', { name: 'Salin nominal bayar' }),
-    ).toBeInTheDocument();
 });
 
 it('fills mandarin name from photo and keeps it editable', async () => {
@@ -343,7 +338,7 @@ it('lets customer continue with 0 meal quantities', async () => {
     fireEvent.click(screen.getByRole('button', { name: /Lanjut/ }));
 
     expect(
-        screen.getByRole('heading', { name: 'Pembayaran' }),
+        screen.getByRole('heading', { name: 'Informasi tambahan' }),
     ).toBeInTheDocument();
 });
 

@@ -88,7 +88,6 @@ type FormState = {
     package_code: '' | PackageItem['code'];
     deceased_names: NameEntry[];
     incense_name: NameEntry;
-    vegetarian_quantity: string;
     non_vegetarian_quantity: string;
     sender_name: string;
     use_manual_virtual_account: boolean;
@@ -712,7 +711,6 @@ export default function PublicBookingPage() {
         package_code: '',
         deceased_names: [blankName(), blankName()],
         incense_name: blankName(),
-        vegetarian_quantity: '0',
         non_vegetarian_quantity: '0',
         sender_name: '',
         use_manual_virtual_account: false,
@@ -818,7 +816,6 @@ export default function PublicBookingPage() {
             document.body.style.overflow = previousOverflow;
         };
     }, [showFlyerModal]);
-
 
     /* ── Form helpers (unchanged logic) ── */
     const clearErrors = (prefixes: string[]) => {
@@ -983,7 +980,6 @@ export default function PublicBookingPage() {
 
     const choosePackage = (item: PackageItem) => {
         setField('package_code', item.code);
-        setField('vegetarian_quantity', '0');
         setField('non_vegetarian_quantity', '0');
     };
 
@@ -1208,13 +1204,9 @@ export default function PublicBookingPage() {
         }
 
         if (currentStep === 3 && selectedPackage) {
-            const mealTotal =
-                Number(form.vegetarian_quantity || 0) +
-                Number(form.non_vegetarian_quantity || 0);
+            const mealTotal = Number(form.non_vegetarian_quantity || 0);
 
             if (mealTotal > selectedPackage.meal_quota) {
-                nextErrors.vegetarian_quantity =
-                    `Total makanan maksimal ${selectedPackage.meal_quota} porsi.`;
                 nextErrors.non_vegetarian_quantity =
                     `Total makanan maksimal ${selectedPackage.meal_quota} porsi.`;
             }
@@ -1258,7 +1250,6 @@ export default function PublicBookingPage() {
         setStep((current) => Math.max(current - 1, 1));
     };
 
-
     /* ── Submit (unchanged) ── */
     const submit = async (event: FormEvent<HTMLFormElement>) => {
         event.preventDefault();
@@ -1277,7 +1268,7 @@ export default function PublicBookingPage() {
         payload.append('customer_email', form.customer_email);
         payload.append('attendee_count', form.attendee_count);
         payload.append('package_code', form.package_code);
-        payload.append('vegetarian_quantity', form.vegetarian_quantity);
+        payload.append('vegetarian_quantity', '0');
         payload.append('non_vegetarian_quantity', form.non_vegetarian_quantity);
         payload.append('referral_source', form.referral_source);
         payload.append('agent_name', form.agent_name);
@@ -1388,9 +1379,7 @@ export default function PublicBookingPage() {
     };
 
     /* ── Derived values ── */
-    const currentMealTotal =
-        Number(form.vegetarian_quantity || 0) +
-        Number(form.non_vegetarian_quantity || 0);
+    const currentMealTotal = Number(form.non_vegetarian_quantity || 0);
     const prayerPreviewNames = form.deceased_names
         .map((entry) => pickPrayerName(entry))
         .filter(
@@ -1881,35 +1870,19 @@ export default function PublicBookingPage() {
                                         Pilihan makanan
                                     </h2>
                                     <p className="mt-2 text-sm leading-6 text-[#5C3D2E]">
+                                        Menu yang tersedia untuk booking baru
+                                        adalah non-vegetarian.
+                                    </p>
+                                    <p className="mt-1 text-sm leading-6 text-[#5C3D2E]">
                                         {selectedPackage
-                                            ? `Total maksimal ${selectedPackage.meal_quota} porsi.`
+                                            ? `Total maksimal ${selectedPackage.meal_quota} porsi sesuai paket Anda.`
                                             : 'Pilih paket terlebih dahulu.'}
                                     </p>
 
-                                    <div className="mt-5 grid gap-4 md:grid-cols-2">
+                                    <div className="mt-5 max-w-md">
                                         <label className="block">
                                             <span className="mb-2 block text-base font-medium text-[#2C1810]">
-                                                Vegetarian
-                                            </span>
-                                            <input
-                                                type="number"
-                                                min={0}
-                                                step={1}
-                                                value={form.vegetarian_quantity}
-                                                onChange={(e) =>
-                                                    setField(
-                                                        'vegetarian_quantity',
-                                                        onlyDigits(
-                                                            e.target.value,
-                                                        ),
-                                                    )
-                                                }
-                                                className={inputCls}
-                                            />
-                                        </label>
-                                        <label className="block">
-                                            <span className="mb-2 block text-base font-medium text-[#2C1810]">
-                                                Non-vegetarian
+                                                Jumlah makanan non-vegetarian
                                             </span>
                                             <input
                                                 type="number"
@@ -1942,9 +1915,6 @@ export default function PublicBookingPage() {
                                                 : '. Boleh diisi 0.'}
                                         </p>
                                     </div>
-                                    <ErrorText
-                                        value={errors.vegetarian_quantity}
-                                    />
                                     <ErrorText
                                         value={errors.non_vegetarian_quantity}
                                     />
@@ -2358,11 +2328,9 @@ export default function PublicBookingPage() {
                                                 Makanan
                                             </p>
                                             <p className="text-base text-[#2C1810]">
-                                                {form.vegetarian_quantity || 0}{' '}
-                                                vegetarian dan{' '}
                                                 {form.non_vegetarian_quantity ||
                                                     0}{' '}
-                                                non-vegetarian
+                                                porsi non-vegetarian
                                             </p>
                                         </div>
 

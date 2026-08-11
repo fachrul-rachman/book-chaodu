@@ -146,8 +146,8 @@ it('sends complete customer data after payment is submitted with the booking', f
             'mandarin_name' => '陳氏家族',
             'source_image' => null,
         ],
-        'vegetarian_quantity' => '1',
-        'non_vegetarian_quantity' => '3',
+        'vegetarian_quantity' => '0',
+        'non_vegetarian_quantity' => '4',
         'referral_source' => 'AGENT',
         'agent_name' => 'Budi Agent',
     ]), [
@@ -170,8 +170,8 @@ it('sends complete customer data after payment is submitted with the booking', f
             && str_contains((string) ($fields['🙏 Nama Mendiang 1']['value'] ?? ''), '陳亞國')
             && str_contains((string) ($fields['🙏 Nama Mendiang 2']['value'] ?? ''), 'Lim Mei Mei')
             && str_contains((string) ($fields['🧧 Nama Hio']['value'] ?? ''), '陳氏家族')
-            && ($fields['🥬 Vegetarian']['value'] ?? null) === '1 porsi'
-            && ($fields['🍗 Nonvegetarian']['value'] ?? null) === '3 porsi'
+            && ($fields['🥬 Vegetarian']['value'] ?? null) === '0 porsi'
+            && ($fields['🍗 Nonvegetarian']['value'] ?? null) === '4 porsi'
             && ($fields['🪑 Nomor Meja']['value'] ?? null) !== '-'
             && ($fields['🧧 Nomor Hio']['value'] ?? null) !== '-'
             && ($fields['📣 Sumber']['value'] ?? null) === 'Agent'

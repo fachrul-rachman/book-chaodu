@@ -40,7 +40,7 @@ class SubmitBookingRequest extends FormRequest
             'incense_name.indonesian_name' => ['nullable', 'string', 'max:120'],
             'incense_name.mandarin_name' => ['nullable', 'string', 'max:120'],
             'incense_name.source_image' => ['nullable', File::image()->types(['jpg', 'jpeg', 'png'])->max($ocrUploadMaxKb)],
-            'vegetarian_quantity' => ['required', 'integer', 'min:0'],
+            'vegetarian_quantity' => ['required', 'integer', Rule::in([0])],
             'non_vegetarian_quantity' => ['required', 'integer', 'min:0'],
             'sender_name' => ['nullable', 'string', 'max:120'],
             'transfer_date' => ['nullable', 'date', 'before_or_equal:today'],
@@ -104,14 +104,9 @@ class SubmitBookingRequest extends FormRequest
                     }
                 }
 
-                $mealTotal = (int) $this->input('vegetarian_quantity', 0)
-                    + (int) $this->input('non_vegetarian_quantity', 0);
+                $mealTotal = (int) $this->input('non_vegetarian_quantity', 0);
 
                 if ($mealTotal > $package->meal_quota) {
-                    $validator->errors()->add(
-                        'vegetarian_quantity',
-                        "Total makanan maksimal {$package->meal_quota} porsi.",
-                    );
                     $validator->errors()->add(
                         'non_vegetarian_quantity',
                         "Total makanan maksimal {$package->meal_quota} porsi.",
@@ -167,6 +162,7 @@ class SubmitBookingRequest extends FormRequest
         return [
             'customer_phone_local.regex' => 'Nomor telepon harus dimulai dengan angka 1 sampai 9 dan panjangnya benar.',
             'confirmation_checked.accepted' => 'Silakan centang konfirmasi sebelum kirim.',
+            'vegetarian_quantity.in' => 'Menu vegetarian tidak tersedia untuk booking baru.',
         ];
     }
 
