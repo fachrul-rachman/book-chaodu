@@ -5,6 +5,7 @@ import PublicBookingPage from '@/pages/public/booking';
 
 const fetchMock = vi.fn();
 const writeTextMock = vi.fn();
+let vegetarianRemaining = 16;
 
 vi.mock('@inertiajs/react', () => ({
     Head: () => null,
@@ -59,6 +60,10 @@ vi.mock('@inertiajs/react', () => ({
                 upload_max_mb: 5,
                 ocr_upload_max_mb: 5,
             },
+            meal: {
+                vegetarian_capacity: 85,
+                vegetarian_remaining: vegetarianRemaining,
+            },
             captcha: {
                 enabled: false,
                 site_key: null,
@@ -96,6 +101,7 @@ vi.mock('@inertiajs/react', () => ({
 }));
 
 beforeEach(() => {
+    vegetarianRemaining = 16;
     fetchMock.mockReset();
     writeTextMock.mockReset();
     fetchMock.mockImplementation(async () => {
@@ -180,7 +186,7 @@ it('shows two prayer paper previews when two deceased names are filled', () => {
     expect(screen.queryByText('Contoh kertas doa')).not.toBeInTheDocument();
 });
 
-it('shows only the non-vegetarian meal choice', async () => {
+it('shows vegetarian choice while capacity remains', async () => {
     render(<PublicBookingPage />);
 
     fillStepOne();
@@ -201,20 +207,16 @@ it('shows only the non-vegetarian meal choice', async () => {
             screen.getByRole('heading', { name: 'Pilihan makanan' }),
         ).toBeInTheDocument();
     });
-    expect(
-        screen.getByText(
-            'Menu yang tersedia untuk booking baru adalah non-vegetarian.',
-        ),
-    ).toBeInTheDocument();
-    expect(
-        screen.queryByRole('spinbutton', { name: 'Vegetarian' }),
-    ).not.toBeInTheDocument();
+    expect(screen.getByText('Sisa kuota vegetarian: 16 porsi.')).toBeInTheDocument();
+    fireEvent.change(screen.getByRole('spinbutton', { name: 'Vegetarian' }), {
+        target: { value: '1' },
+    });
     fireEvent.change(
         screen.getByRole('spinbutton', {
             name: 'Jumlah makanan non-vegetarian',
         }),
         {
-            target: { value: '2' },
+            target: { value: '1' },
         },
     );
     fireEvent.click(screen.getByRole('button', { name: /Lanjut/ }));
@@ -224,6 +226,37 @@ it('shows only the non-vegetarian meal choice', async () => {
             screen.getByRole('heading', { name: 'Informasi tambahan' }),
         ).toBeInTheDocument();
     });
+});
+
+it('hides vegetarian choice when global capacity is exhausted', async () => {
+    vegetarianRemaining = 0;
+    render(<PublicBookingPage />);
+
+    fillStepOne();
+    fireEvent.click(screen.getByRole('button', { name: /Lanjut/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Sembahyang/i }));
+    fireEvent.change(
+        screen.getByRole('textbox', { name: 'Nama Indonesia 1' }),
+        { target: { value: 'Nama Satu' } },
+    );
+    await act(async () => {
+        fireEvent.click(screen.getByRole('button', { name: /Lanjut/ }));
+    });
+
+    await waitFor(() => {
+        expect(
+            screen.getByRole('heading', { name: 'Pilihan makanan' }),
+        ).toBeInTheDocument();
+    });
+
+    expect(
+        screen.getByText(
+            'Kuota vegetarian sudah penuh. Booking baru hanya dapat memilih makanan non-vegetarian.',
+        ),
+    ).toBeInTheDocument();
+    expect(
+        screen.queryByRole('spinbutton', { name: 'Vegetarian' }),
+    ).not.toBeInTheDocument();
 });
 
 it('fills mandarin name from photo and keeps it editable', async () => {

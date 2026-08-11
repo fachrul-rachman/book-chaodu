@@ -18,11 +18,13 @@ use App\Services\VirtualAccountService;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
+use Inertia\Testing\AssertableInertia as Assert;
 
 beforeEach(function () {
     config()->set('phase3.private_upload_disk', 'booking-private');
     config()->set('phase3.submit_rate_limit_max_attempts', 6);
     config()->set('phase3.submit_rate_limit_decay_seconds', 60);
+    config()->set('phase3.vegetarian_capacity', 85);
     config()->set('phase4.private_upload_disk', 'booking-private');
     config()->set('phase4.ocr_rate_limit_max_attempts', 6);
     config()->set('phase4.ocr_rate_limit_decay_seconds', 60);
@@ -121,6 +123,34 @@ function bookingPayload(array $overrides = []): array
         'confirmation_checked' => '1',
         'captcha_token' => '',
     ], $overrides);
+}
+
+function reserveVegetarianMeals(int $quantity, BookingStatus $status = BookingStatus::Pending): Booking
+{
+    $package = Package::query()->where('code', PackageCode::Prayer)->firstOrFail();
+    $sequence = Booking::query()->count() + 1;
+
+    $booking = Booking::query()->create([
+        'booking_number' => "CD-VEG-$sequence",
+        'idempotency_key' => "vegetarian-capacity-$sequence",
+        'package_id' => $package->id,
+        'package_code_snapshot' => $package->code->value,
+        'package_name_snapshot' => $package->name,
+        'package_price_snapshot' => $package->price ?? '0',
+        'customer_name' => "Customer $sequence",
+        'customer_phone' => '+6281234567890',
+        'customer_email' => "customer$sequence@example.com",
+        'attendee_count' => 1,
+        'referral_source' => 'TEMAN',
+        'status' => $status,
+    ]);
+
+    $booking->meal()->create([
+        'vegetarian_quantity' => $quantity,
+        'non_vegetarian_quantity' => 0,
+    ]);
+
+    return $booking;
 }
 
 function reserveVirtualAccountForPayload(array $payload): void
@@ -241,13 +271,36 @@ it('allows zero meal quantities in public booking', function () {
         ->and($booking->meal?->non_vegetarian_quantity)->toBe(0);
 });
 
-it('rejects vegetarian meals for a new public booking', function () {
+it('allows vegetarian meals while global capacity remains', function () {
     activatePackage(PackageCode::Prayer);
+    config()->set('phase3.vegetarian_capacity', 3);
+    reserveVegetarianMeals(2);
 
     $payload = bookingPayload([
-        'idempotency_key' => 'booking-vegetarian-unavailable',
+        'idempotency_key' => 'booking-last-vegetarian-slot',
         'vegetarian_quantity' => '1',
         'non_vegetarian_quantity' => '1',
+    ]);
+    reserveVirtualAccountForPayload($payload);
+
+    $this->post(route('api.public.bookings.store'), $payload, [
+        'Accept' => 'application/json',
+    ])
+        ->assertCreated();
+
+    expect(Booking::query()->where('idempotency_key', 'booking-last-vegetarian-slot')->firstOrFail()->meal?->vegetarian_quantity)
+        ->toBe(1);
+});
+
+it('rejects vegetarian meals above the remaining global capacity', function () {
+    activatePackage(PackageCode::Prayer);
+    config()->set('phase3.vegetarian_capacity', 3);
+    reserveVegetarianMeals(2);
+
+    $payload = bookingPayload([
+        'idempotency_key' => 'booking-over-vegetarian-capacity',
+        'vegetarian_quantity' => '2',
+        'non_vegetarian_quantity' => '0',
     ]);
 
     $this->post(route('api.public.bookings.store'), $payload, [
@@ -257,10 +310,23 @@ it('rejects vegetarian meals for a new public booking', function () {
         ->assertJsonValidationErrors(['vegetarian_quantity'])
         ->assertJsonPath(
             'errors.vegetarian_quantity.0',
-            'Menu vegetarian tidak tersedia untuk booking baru.',
+            'Kuota vegetarian tersisa 1 porsi.',
         );
 
-    expect(Booking::query()->count())->toBe(0);
+    expect(Booking::query()->where('idempotency_key', 'booking-over-vegetarian-capacity')->exists())
+        ->toBeFalse();
+});
+
+it('shows vegetarian capacity and excludes rejected bookings from usage', function () {
+    config()->set('phase3.vegetarian_capacity', 3);
+    reserveVegetarianMeals(1, BookingStatus::Approved);
+    reserveVegetarianMeals(2, BookingStatus::Rejected);
+
+    $this->get(route('home'))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('meal.vegetarian_capacity', 3)
+            ->where('meal.vegetarian_remaining', 2));
 });
 
 it('rejects meal quantity above package quota', function () {
