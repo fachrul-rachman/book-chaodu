@@ -46,7 +46,7 @@ class SlotLockingTest extends TestCase
         $lockConnection = DB::connection('pgsql_lock_test');
         $lockConnection->beginTransaction();
         $lockConnection->selectOne(
-            "select id from table_slots where status = 'AVAILABLE' order by allocation_order limit 1 for update"
+            "select id from table_slots where status = 'AVAILABLE' and code not in ('A18', 'A28') order by allocation_order limit 1 for update"
         );
 
         $result = app(SlotAllocator::class)->reserveForPackage(PackageCode::Prayer, 401);
@@ -54,6 +54,6 @@ class SlotLockingTest extends TestCase
         $lockConnection->rollBack();
         DB::purge('pgsql_lock_test');
 
-        $this->assertSame('F18', $result['table_code']);
+        $this->assertSame('A58', $result['table_code']);
     }
 }

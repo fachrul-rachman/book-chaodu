@@ -18,7 +18,7 @@ it('keeps internal company slots unavailable for public allocation', function ()
 
     app(SlotAllocator::class)->reserveForPackage(PackageCode::Combo, $bookingId);
 
-    expect(TableSlot::query()->where('booking_id', $bookingId)->value('code'))->toBe('F18')
+    expect(TableSlot::query()->where('booking_id', $bookingId)->value('code'))->toBe('A38')
         ->and(IncenseSlot::query()->where('booking_id', $bookingId)->value('number'))->toBe(3)
         ->and(TableSlot::query()->where('code', 'A18')->value('booking_id'))->toBeNull()
         ->and(IncenseSlot::query()->where('number', 1)->value('booking_id'))->toBeNull();

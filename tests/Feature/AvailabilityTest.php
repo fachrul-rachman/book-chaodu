@@ -24,15 +24,15 @@ it('seeds table slots in the required order', function () {
 
     expect($codes)->toBe([
         'A18',
-        'F18',
-        'B18',
-        'G18',
-        'D18',
-        'H18',
-        'E18',
-        'J18',
         'A28',
-        'F28',
+        'A38',
+        'A58',
+        'A68',
+        'A78',
+        'A88',
+        'A98',
+        'A108',
+        'A118',
     ]);
 });
 
@@ -59,12 +59,12 @@ it('reserves the first table slot in order and can release it back', function ()
     $allocator = app(SlotAllocator::class);
 
     $first = $allocator->reserveForPackage(PackageCode::Prayer, 101);
-    expect($first['table_code'])->toBe('F18');
+    expect($first['table_code'])->toBe('A38');
 
     $allocator->releaseByBookingId(101);
 
     $second = $allocator->reserveForPackage(PackageCode::Prayer, 102);
-    expect($second['table_code'])->toBe('F18');
+    expect($second['table_code'])->toBe('A38');
 });
 
 it('reserves table and incense together for combo', function () {
@@ -74,7 +74,7 @@ it('reserves table and incense together for combo', function () {
     $result = $allocator->reserveForPackage(PackageCode::Combo, 201);
 
     expect($result)->toBe([
-        'table_code' => 'F18',
+        'table_code' => 'A38',
         'incense_number' => 3,
     ]);
 });

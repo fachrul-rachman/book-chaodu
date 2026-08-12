@@ -323,8 +323,8 @@ it('replaces a reserved table slot safely', function () {
         ])
         ->assertRedirect();
 
-    expect(TableSlot::query()->where('code', 'F18')->value('status'))->toBe(SlotStatus::Available)
-        ->and(TableSlot::query()->where('code', 'F18')->value('booking_id'))->toBeNull()
+    expect(TableSlot::query()->where('code', 'A38')->value('status'))->toBe(SlotStatus::Available)
+        ->and(TableSlot::query()->where('code', 'A38')->value('booking_id'))->toBeNull()
         ->and(TableSlot::query()->where('code', 'B18')->value('status'))->toBe(SlotStatus::Reserved)
         ->and(TableSlot::query()->where('code', 'B18')->value('booking_id'))->toBe($booking->id);
 });
@@ -369,8 +369,8 @@ it('rejects a booking with reason and releases reserved slots', function () {
 
     expect($booking->status)->toBe(BookingStatus::Rejected)
         ->and($booking->rejection_reason)->toBe('Bukti transfer belum sesuai.')
-        ->and(TableSlot::query()->where('code', 'F18')->value('status'))->toBe(SlotStatus::Available)
-        ->and(TableSlot::query()->where('code', 'F18')->value('booking_id'))->toBeNull();
+        ->and(TableSlot::query()->where('code', 'A38')->value('status'))->toBe(SlotStatus::Available)
+        ->and(TableSlot::query()->where('code', 'A38')->value('booking_id'))->toBeNull();
 });
 
 it('keeps rejection safe from double requests', function () {
