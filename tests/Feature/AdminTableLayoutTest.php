@@ -86,3 +86,13 @@ it('shows table layout with slot colors data and booking information', function 
         ->and($slotB18['status'])->toBe(SlotStatus::Assigned->value)
         ->and($slotB18['booking_number'])->toBe('CD-APPROVED1');
 });
+
+it('exposes the environment toggle for hiding temporarily closed tables', function () {
+    config()->set('table_slots.show_closed_slots', false);
+    $this->seed();
+    $admin = User::factory()->admin()->create();
+
+    $response = $this->actingAs($admin)->get(route('admin.table-layout'));
+
+    expect($response->viewData('page')['props']['show_closed_slots'])->toBeFalse();
+});

@@ -57,7 +57,8 @@ it('creates a minimal A18 internal booking with its fixed incense pair and galle
         ->and($booking->tableSlots()->value('code'))->toBe('A18')
         ->and($booking->incenseSlots()->value('number'))->toBe(1)
         ->and($booking->prayerPapers()->count())->toBe(3)
-        ->and(GalleryMedia::query()->where('booking_id', $booking->id)->count())->toBe(3);
+        ->and(GalleryMedia::query()->where('booking_id', $booking->id)->count())->toBe(4)
+        ->and(GalleryMedia::query()->where('source_table_layout_booking_id', $booking->id)->exists())->toBeTrue();
 });
 
 it('pairs A28 with incense 2 even when A18 has not been booked', function () {
