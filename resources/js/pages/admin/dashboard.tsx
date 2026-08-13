@@ -1,4 +1,4 @@
-import { Head, Link, usePage } from '@inertiajs/react';
+import { Head, Link, useForm, usePage } from '@inertiajs/react';
 import type { Auth } from '@/types';
 
 type Availability = {
@@ -7,7 +7,7 @@ type Availability = {
 };
 
 export default function AdminDashboard() {
-    const { auth, availability, booking_counts } = usePage<{
+    const { auth, availability, booking_counts, registration, flash } = usePage<{
         auth: Auth;
         availability: Availability;
         booking_counts: {
@@ -15,8 +15,24 @@ export default function AdminDashboard() {
             approved: number;
             rejected: number;
         };
+        registration: { is_closed: boolean };
+        flash?: { status?: string | null };
     }>().props;
     const user = auth.user!;
+    const registrationForm = useForm({
+        is_closed: registration.is_closed,
+    });
+
+    const toggleRegistration = () => {
+        const nextValue = !registration.is_closed;
+
+        if (!window.confirm(nextValue ? 'Tutup pendaftaran publik sekarang?' : 'Buka kembali pendaftaran publik?')) {
+            return;
+        }
+
+        registrationForm.transform(() => ({ is_closed: nextValue }));
+        registrationForm.put('/admin/pendaftaran', { preserveScroll: true });
+    };
 
     return (
         <>
@@ -48,6 +64,39 @@ export default function AdminDashboard() {
                             >
                                 Keluar
                             </Link>
+                        </div>
+                    </section>
+
+                    {flash?.status ? (
+                        <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
+                            {flash.status}
+                        </div>
+                    ) : null}
+
+                    <section className="rounded-[24px] border border-[var(--color-border)] bg-white/90 p-6 shadow-sm sm:p-7">
+                        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                            <div>
+                                <h2 className="text-lg font-semibold text-slate-900">
+                                    Pendaftaran publik
+                                </h2>
+                                <p className="mt-1 text-sm leading-6 text-slate-600">
+                                    {registration.is_closed
+                                        ? 'Form customer sedang ditutup. Booking lama tetap dapat diproses.'
+                                        : 'Form customer sedang dibuka dan menerima booking baru.'}
+                                </p>
+                            </div>
+                            <button
+                                type="button"
+                                role="switch"
+                                aria-checked={registration.is_closed}
+                                onClick={toggleRegistration}
+                                disabled={registrationForm.processing}
+                                className={`min-h-12 rounded-full px-5 py-3 text-sm font-semibold text-white disabled:opacity-60 ${registration.is_closed ? 'bg-rose-600' : 'bg-emerald-600'}`}
+                            >
+                                {registration.is_closed
+                                    ? 'Pendaftaran ditutup'
+                                    : 'Pendaftaran dibuka'}
+                            </button>
                         </div>
                     </section>
 

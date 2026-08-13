@@ -17,6 +17,7 @@ use App\Http\Controllers\Admin\PrayerPaperMarkingImageController;
 use App\Http\Controllers\Admin\PrayerPaperPreviewController;
 use App\Http\Controllers\Admin\PrayerPaperPreviewDownloadController;
 use App\Http\Controllers\Admin\PrayerPaperTextSettingController;
+use App\Http\Controllers\Admin\RegistrationController;
 use App\Http\Controllers\Admin\ReportController;
 use App\Http\Controllers\Admin\ReportExportController;
 use App\Http\Controllers\Admin\SettingController;
@@ -105,6 +106,8 @@ Route::middleware('auth')->group(function () {
     Route::middleware('role:ADMIN')->group(function () {
         Route::get('/admin', DashboardController::class)
             ->name('admin.dashboard');
+        Route::put('/admin/pendaftaran', [RegistrationController::class, 'update'])
+            ->name('admin.registration.update');
         Route::get('/admin/paket', [PackageController::class, 'index'])
             ->name('admin.packages.index');
         Route::post('/admin/paket/{package}', [PackageController::class, 'update'])

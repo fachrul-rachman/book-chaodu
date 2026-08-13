@@ -16,13 +16,13 @@ Route::post('/public/ocr', [PublicOcrController::class, 'store'])
     ->middleware('throttle:public-ocr')
     ->name('api.public.ocr.store');
 Route::post('/public/virtual-accounts/reserve', [PublicVirtualAccountReservationController::class, 'store'])
-    ->middleware('throttle:virtual-account-reserve')
+    ->middleware(['booking.open', 'throttle:virtual-account-reserve'])
     ->name('api.public.virtual-accounts.reserve');
 Route::delete('/public/virtual-accounts/release', [PublicVirtualAccountReservationController::class, 'destroy'])
     ->middleware('throttle:virtual-account-reserve')
     ->name('api.public.virtual-accounts.release');
 Route::post('/public/bookings', [PublicBookingController::class, 'store'])
-    ->middleware('throttle:booking-submit')
+    ->middleware(['booking.open', 'throttle:booking-submit'])
     ->name('api.public.bookings.store');
 Route::post('/public/bookings/{booking}/payment', [PublicBookingPaymentController::class, 'store'])
     ->middleware('throttle:booking-submit')

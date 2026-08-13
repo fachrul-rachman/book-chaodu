@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Middleware\EnsurePublicBookingIsOpen;
 use App\Http\Middleware\EnsureUserHasRole;
 use App\Http\Middleware\HandleInertiaRequests;
 use App\Http\Middleware\ProtectGalleryPrivacy;
@@ -34,6 +35,7 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
 
         $middleware->alias([
+            'booking.open' => EnsurePublicBookingIsOpen::class,
             'gallery.private' => ProtectGalleryPrivacy::class,
             'role' => EnsureUserHasRole::class,
         ]);

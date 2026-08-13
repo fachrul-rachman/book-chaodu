@@ -6,15 +6,21 @@ use App\Enums\BookingStatus;
 use App\Http\Controllers\Controller;
 use App\Models\Booking;
 use App\Services\AvailabilityService;
+use App\Services\PublicBookingRegistrationService;
 use Inertia\Inertia;
 use Inertia\Response;
 
 class DashboardController extends Controller
 {
-    public function __invoke(AvailabilityService $availabilityService): Response
-    {
+    public function __invoke(
+        AvailabilityService $availabilityService,
+        PublicBookingRegistrationService $registration,
+    ): Response {
         return Inertia::render('admin/dashboard', [
             'availability' => $availabilityService->summary(),
+            'registration' => [
+                'is_closed' => $registration->isClosed(),
+            ],
             'booking_counts' => [
                 'pending' => Booking::query()->where('status', BookingStatus::Pending)->whereHas('payment')->count(),
                 'approved' => Booking::query()->where('status', BookingStatus::Approved)->count(),

@@ -47,6 +47,9 @@ type PrayerPreviewTemplate = PreviewTemplate & {
 };
 
 type Props = {
+    registration: {
+        is_closed: boolean;
+    };
     packages: PackageItem[];
     payment: {
         bank_name: string | null;
@@ -690,7 +693,7 @@ const inputCls =
 /* ─── Main page ───────────────────────────────────────────────────────────── */
 
 export default function PublicBookingPage() {
-    const { packages, payment, limits, meal, captcha, preview } =
+    const { packages, payment, limits, meal, captcha, preview, registration } =
         usePage<Props>().props;
     const [step, setStep] = useState(1);
     const [processing, setProcessing] = useState(false);
@@ -1433,6 +1436,28 @@ export default function PublicBookingPage() {
     };
 
     /* ── Render ─────────────────────────────────────────────────────────────── */
+    if (registration.is_closed) {
+        return (
+            <>
+                <Head title="Pendaftaran ditutup" />
+                <main className="flex min-h-screen items-center justify-center bg-[#FFF8EE] px-4 py-12">
+                    <section className="w-full max-w-xl rounded-[28px] border border-[#E8D5C0] bg-white p-8 text-center shadow-sm sm:p-12">
+                        <p className="text-sm font-semibold tracking-wide text-[#8B1A1A] uppercase">
+                            Pendaftaran Chao Du
+                        </p>
+                        <h1 className="mt-3 text-3xl font-semibold text-[#2C1810]">
+                            Pendaftaran sedang ditutup
+                        </h1>
+                        <p className="mt-4 text-base leading-7 text-[#6B4D3E]">
+                            Saat ini kami belum menerima booking baru. Terima
+                            kasih atas pengertiannya.
+                        </p>
+                    </section>
+                </main>
+            </>
+        );
+    }
+
     return (
         <>
             <Head title="Booking" />
