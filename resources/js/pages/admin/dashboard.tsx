@@ -81,7 +81,20 @@ export default function AdminDashboard() {
                         <h2 className="mb-3 text-sm font-semibold tracking-wide text-slate-500 uppercase">
                             Booking
                         </h2>
-                        <div className="grid gap-4 sm:grid-cols-3">
+                        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                            <Link
+                                href="/admin/booking/internal-perusahaan"
+                                className="rounded-[24px] border border-sky-200 bg-sky-50 p-6 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md"
+                            >
+                                <h3 className="text-lg font-semibold text-sky-900">
+                                    Booking internal
+                                </h3>
+                                <p className="mt-2 text-sm leading-6 text-sky-800/80">
+                                    Buat booking A18 atau A28 beserta kertas dan
+                                    albumnya.
+                                </p>
+                            </Link>
+
                             <Link
                                 href="/admin/booking?status=PENDING"
                                 className="rounded-[24px] border border-amber-200 bg-amber-50 p-6 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md"

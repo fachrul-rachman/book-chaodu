@@ -2,15 +2,16 @@
 
 declare(strict_types=1);
 
+use App\Enums\BookingStatus;
 use App\Enums\PackageCode;
 use App\Enums\SlotStatus;
-use App\Models\IncenseSlot;
 use App\Models\Booking;
 use App\Models\GalleryMedia;
+use App\Models\IncenseSlot;
 use App\Models\TableSlot;
 use App\Models\User;
-use App\Services\SlotAllocator;
 use App\Services\PrayerPaperRenderer;
+use App\Services\SlotAllocator;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 
@@ -46,7 +47,7 @@ it('creates a minimal A18 internal booking with its fixed incense pair and galle
 
     $booking = Booking::query()->where('customer_name', 'Amin Supriyadi Liu')->firstOrFail();
 
-    expect($booking->status)->toBe(\App\Enums\BookingStatus::Approved)
+    expect($booking->status)->toBe(BookingStatus::Approved)
         ->and($booking->customer_phone)->toBeNull()
         ->and($booking->customer_email)->toBeNull()
         ->and($booking->attendee_count)->toBeNull()

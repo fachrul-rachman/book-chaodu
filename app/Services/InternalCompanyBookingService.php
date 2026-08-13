@@ -36,19 +36,27 @@ class InternalCompanyBookingService
             ]);
         }
 
+        $incenseNumber = $this->internalCompanySlotService->incenseNumberForTableCode($payload['table_code']);
+
+        if ($incenseNumber === null) {
+            throw ValidationException::withMessages([
+                'table_code' => 'Nomor meja Internal Perusahaan tidak valid.',
+            ]);
+        }
+
         try {
-            $booking = DB::transaction(function () use ($payload, $package, $adminId): Booking {
+            $booking = DB::transaction(function () use ($payload, $package, $adminId, $incenseNumber): Booking {
                 $booking = Booking::query()->create([
                     'booking_number' => $this->generateBookingNumber(),
                     'idempotency_key' => 'internal-company-'.Str::uuid(),
                     'package_id' => $package->id,
                     'package_code_snapshot' => $package->code->value,
                     'package_name_snapshot' => $package->name,
-                    'package_price_snapshot' => $package->price ?? '0',
+                    'package_price_snapshot' => '0',
                     'customer_name' => $payload['customer_name'],
-                    'customer_phone' => $payload['customer_phone'],
-                    'customer_email' => $payload['customer_email'],
-                    'attendee_count' => $payload['attendee_count'],
+                    'customer_phone' => null,
+                    'customer_email' => null,
+                    'attendee_count' => null,
                     'referral_source' => $this->internalCompanySlotService->sourceValue(),
                     'agent_name' => null,
                     'status' => BookingStatus::Approved,
@@ -59,12 +67,11 @@ class InternalCompanyBookingService
 
                 $this->createNames($booking, $payload);
 
-                $booking->meal()->create([
-                    'vegetarian_quantity' => $payload['vegetarian_quantity'],
-                    'non_vegetarian_quantity' => $payload['non_vegetarian_quantity'],
-                ]);
-
-                $this->slotAllocator->assignInternalCompanySlots($booking->id);
+                $this->slotAllocator->assignInternalCompanySlots(
+                    $booking->id,
+                    $payload['table_code'],
+                    $incenseNumber,
+                );
                 $this->prayerPaperGenerationService->createPendingRows($booking);
 
                 return $booking->fresh(['names', 'meal', 'tableSlots', 'incenseSlots', 'prayerPapers']) ?? $booking;

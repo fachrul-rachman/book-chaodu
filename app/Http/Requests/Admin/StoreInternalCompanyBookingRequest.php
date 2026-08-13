@@ -2,9 +2,9 @@
 
 namespace App\Http\Requests\Admin;
 
-use App\Enums\PackageCode;
-use App\Models\Package;
+use App\Services\InternalCompanySlotService;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\Validator;
 
 class StoreInternalCompanyBookingRequest extends FormRequest
@@ -20,12 +20,8 @@ class StoreInternalCompanyBookingRequest extends FormRequest
     public function rules(): array
     {
         return [
+            'table_code' => ['required', 'string', Rule::in(app(InternalCompanySlotService::class)->tableCodes())],
             'customer_name' => ['required', 'string', 'max:120'],
-            'customer_phone' => ['required', 'regex:/^\+62[1-9][0-9]{7,14}$/'],
-            'customer_email' => ['required', 'email:rfc,dns', 'max:120'],
-            'attendee_count' => ['required', 'integer', 'min:1'],
-            'vegetarian_quantity' => ['required', 'integer', 'min:0'],
-            'non_vegetarian_quantity' => ['required', 'integer', 'min:0'],
             'deceased_names' => ['required', 'array', 'max:2'],
             'deceased_names.*.position' => ['required', 'integer', 'in:1,2'],
             'deceased_names.*.indonesian_name' => ['nullable', 'string', 'max:120'],
@@ -44,16 +40,6 @@ class StoreInternalCompanyBookingRequest extends FormRequest
     {
         return [
             function (Validator $validator): void {
-                $package = Package::query()
-                    ->where('code', PackageCode::Combo)
-                    ->first();
-
-                if (! $package) {
-                    $validator->errors()->add('booking', 'Paket internal belum tersedia.');
-
-                    return;
-                }
-
                 $filledDeceasedNames = collect($this->input('deceased_names', []))
                     ->filter(fn (array $name): bool => filled($name['indonesian_name'] ?? null) || filled($name['mandarin_name'] ?? null))
                     ->count();
@@ -68,13 +54,6 @@ class StoreInternalCompanyBookingRequest extends FormRequest
                     $validator->errors()->add('incense_name', 'Isi nama untuk hio.');
                 }
 
-                $mealTotal = (int) $this->input('vegetarian_quantity', 0)
-                    + (int) $this->input('non_vegetarian_quantity', 0);
-
-                if ($mealTotal > $package->meal_quota) {
-                    $validator->errors()->add('vegetarian_quantity', "Total makanan maksimal {$package->meal_quota} porsi.");
-                    $validator->errors()->add('non_vegetarian_quantity', "Total makanan maksimal {$package->meal_quota} porsi.");
-                }
             },
         ];
     }
@@ -98,9 +77,8 @@ class StoreInternalCompanyBookingRequest extends FormRequest
         $incenseName = $this->input('incense_name', []);
 
         $this->merge([
+            'table_code' => strtoupper(trim((string) $this->input('table_code'))),
             'customer_name' => trim((string) $this->input('customer_name')),
-            'customer_phone' => preg_replace('/\s+/', '', (string) $this->input('customer_phone')),
-            'customer_email' => strtolower(trim((string) $this->input('customer_email'))),
             'deceased_names' => $deceasedNames,
             'incense_name' => [
                 'position' => 1,

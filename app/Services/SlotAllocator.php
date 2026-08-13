@@ -55,11 +55,25 @@ class SlotAllocator
     /**
      * @return array{table_code:string, incense_number:int}
      */
-    public function assignInternalCompanySlots(int $bookingId): array
+    public function assignInternalCompanySlots(int $bookingId, string $tableCode, int $incenseNumber): array
     {
-        return DB::transaction(function () use ($bookingId): array {
-            $tableSlot = $this->lockFirstAvailableInternalTableSlot();
-            $incenseSlot = $this->lockFirstAvailableInternalIncenseSlot();
+        return DB::transaction(function () use ($bookingId, $tableCode, $incenseNumber): array {
+            if (! $this->internalCompanySlotService->isInternalTableCode($tableCode)
+                || ! $this->internalCompanySlotService->isInternalIncenseNumber($incenseNumber)
+                || $this->internalCompanySlotService->incenseNumberForTableCode($tableCode) !== $incenseNumber) {
+                throw new SlotUnavailableException('Pasangan nomor meja dan hio Internal Perusahaan tidak valid.');
+            }
+
+            $tableSlot = TableSlot::query()
+                ->where('code', $tableCode)
+                ->where('status', SlotStatus::Available)
+                ->lockForUpdate()
+                ->first();
+            $incenseSlot = IncenseSlot::query()
+                ->where('number', $incenseNumber)
+                ->where('status', SlotStatus::Available)
+                ->lockForUpdate()
+                ->first();
 
             if (! $tableSlot) {
                 throw new SlotUnavailableException('Nomor meja khusus Internal Perusahaan sudah habis.');
@@ -207,26 +221,6 @@ class SlotAllocator
         return IncenseSlot::query()
             ->where('status', SlotStatus::Available)
             ->whereNotIn('number', $this->internalCompanySlotService->incenseNumbers())
-            ->orderBy('allocation_order')
-            ->lock('FOR UPDATE SKIP LOCKED')
-            ->first();
-    }
-
-    private function lockFirstAvailableInternalTableSlot(): ?TableSlot
-    {
-        return TableSlot::query()
-            ->where('status', SlotStatus::Available)
-            ->whereIn('code', $this->internalCompanySlotService->tableCodes())
-            ->orderBy('allocation_order')
-            ->lock('FOR UPDATE SKIP LOCKED')
-            ->first();
-    }
-
-    private function lockFirstAvailableInternalIncenseSlot(): ?IncenseSlot
-    {
-        return IncenseSlot::query()
-            ->where('status', SlotStatus::Available)
-            ->whereIn('number', $this->internalCompanySlotService->incenseNumbers())
             ->orderBy('allocation_order')
             ->lock('FOR UPDATE SKIP LOCKED')
             ->first();

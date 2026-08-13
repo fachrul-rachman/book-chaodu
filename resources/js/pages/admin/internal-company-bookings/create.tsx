@@ -10,73 +10,62 @@ type Props = {
     errors: Record<string, string | undefined>;
 };
 
+type Name = {
+    position: number;
+    indonesian_name: string;
+    mandarin_name: string;
+};
+
 export default function AdminInternalCompanyBookingCreatePage() {
     const { internal_company, errors } = usePage<Props>().props;
     const form = useForm({
+        table_code: '',
         customer_name: '',
-        customer_phone: '+62',
-        customer_email: '',
-        attendee_count: '1',
-        vegetarian_quantity: '0',
-        non_vegetarian_quantity: '0',
         deceased_names: [
             { position: 1, indonesian_name: '', mandarin_name: '' },
             { position: 2, indonesian_name: '', mandarin_name: '' },
-        ],
-        incense_name: {
-            position: 1,
-            indonesian_name: '',
-            mandarin_name: '',
-        },
+        ] as Name[],
+        incense_name: { position: 1, indonesian_name: '', mandarin_name: '' },
     });
 
-    const submit = (event: FormEvent<HTMLFormElement>) => {
+    const submit = (event: FormEvent) => {
         event.preventDefault();
-
-        form.transform((data) => ({
-            ...data,
-            attendee_count: Number(data.attendee_count),
-            vegetarian_quantity: Number(data.vegetarian_quantity),
-            non_vegetarian_quantity: Number(data.non_vegetarian_quantity),
-        }));
-
         form.post('/admin/booking/internal-perusahaan');
+    };
+
+    const updatePrayerName = (
+        index: number,
+        key: 'indonesian_name' | 'mandarin_name',
+        value: string,
+    ) => {
+        form.setData(
+            'deceased_names',
+            form.data.deceased_names.map((name, nameIndex) =>
+                nameIndex === index ? { ...name, [key]: value } : name,
+            ),
+        );
     };
 
     return (
         <>
             <Head title="Booking Internal Perusahaan" />
-
-            <main className="min-h-screen px-4 py-8 sm:px-6">
-                <div className="mx-auto max-w-5xl space-y-6">
-                    <div className="flex items-center justify-between gap-4">
-                        <div>
-                            <h1 className="text-3xl font-semibold">
-                                Booking {internal_company.label}
-                            </h1>
-                            <p className="mt-2 text-sm leading-6 text-slate-700">
-                                Booking ini langsung jadi dan hanya memakai slot
-                                khusus kantor.
-                            </p>
-                        </div>
-
+            <main className="min-h-screen bg-[var(--color-background)] px-4 py-8 text-[var(--color-foreground)] sm:px-6">
+                <div className="mx-auto max-w-3xl space-y-6">
+                    <div>
                         <Link
-                            href="/admin"
-                            className="rounded-full border border-[var(--color-brand)] px-4 py-2 text-sm font-semibold text-[var(--color-brand)]"
+                            href="/admin/booking"
+                            className="text-sm font-semibold text-[var(--color-brand)]"
                         >
-                            Kembali
+                            Kembali ke daftar booking
                         </Link>
+                        <h1 className="mt-3 text-3xl font-bold">
+                            Booking Internal Perusahaan
+                        </h1>
+                        <p className="mt-2 text-sm text-[var(--color-muted-foreground)]">
+                            Booking langsung disetujui. Kertas doa dan hio akan
+                            dibuat otomatis lalu masuk ke album galeri.
+                        </p>
                     </div>
-
-                    <section className="rounded-[24px] border border-sky-200 bg-sky-50 p-5 text-sm text-sky-900">
-                        <p className="font-semibold">{internal_company.label}</p>
-                        <p className="mt-2">
-                            Meja khusus: {internal_company.table_codes.join(', ')}
-                        </p>
-                        <p className="mt-1">
-                            Hio khusus: {internal_company.incense_numbers.join(', ')}
-                        </p>
-                    </section>
 
                     {Object.keys(errors).length > 0 ? (
                         <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
@@ -86,61 +75,54 @@ export default function AdminInternalCompanyBookingCreatePage() {
 
                     <form
                         onSubmit={submit}
-                        className="space-y-6 rounded-[24px] border border-[var(--color-border)] bg-white/90 p-6 shadow-sm"
+                        className="space-y-6 rounded-[24px] border border-[var(--color-border)] bg-white p-6 shadow-sm"
                     >
                         <div className="grid gap-4 sm:grid-cols-2">
                             <label className="block">
                                 <span className="mb-2 block text-sm font-medium">
-                                    Nama pemesan
+                                    Nomor meja
+                                </span>
+                                <select
+                                    aria-label="Nomor meja"
+                                    required
+                                    value={form.data.table_code}
+                                    onChange={(event) =>
+                                        form.setData(
+                                            'table_code',
+                                            event.target.value,
+                                        )
+                                    }
+                                    className="w-full rounded-2xl border border-[var(--color-border)] bg-white px-4 py-3 text-base"
+                                >
+                                    <option value="">Pilih nomor meja</option>
+                                    {internal_company.table_codes.map(
+                                        (code, index) => (
+                                            <option key={code} value={code}>
+                                                {code} — Hio{' '}
+                                                {
+                                                    internal_company
+                                                        .incense_numbers[index]
+                                                }
+                                            </option>
+                                        ),
+                                    )}
+                                </select>
+                            </label>
+
+                            <label className="block">
+                                <span className="mb-2 block text-sm font-medium">
+                                    Nama customer
                                 </span>
                                 <input
+                                    aria-label="Nama customer"
+                                    required
                                     type="text"
                                     value={form.data.customer_name}
                                     onChange={(event) =>
-                                        form.setData('customer_name', event.target.value)
-                                    }
-                                    className="w-full rounded-2xl border border-[var(--color-border)] bg-white px-4 py-3 text-base"
-                                />
-                            </label>
-
-                            <label className="block">
-                                <span className="mb-2 block text-sm font-medium">
-                                    Email
-                                </span>
-                                <input
-                                    type="email"
-                                    value={form.data.customer_email}
-                                    onChange={(event) =>
-                                        form.setData('customer_email', event.target.value)
-                                    }
-                                    className="w-full rounded-2xl border border-[var(--color-border)] bg-white px-4 py-3 text-base"
-                                />
-                            </label>
-
-                            <label className="block">
-                                <span className="mb-2 block text-sm font-medium">
-                                    Nomor telepon
-                                </span>
-                                <input
-                                    type="text"
-                                    value={form.data.customer_phone}
-                                    onChange={(event) =>
-                                        form.setData('customer_phone', event.target.value)
-                                    }
-                                    className="w-full rounded-2xl border border-[var(--color-border)] bg-white px-4 py-3 text-base"
-                                />
-                            </label>
-
-                            <label className="block">
-                                <span className="mb-2 block text-sm font-medium">
-                                    Jumlah hadir
-                                </span>
-                                <input
-                                    type="number"
-                                    min={1}
-                                    value={form.data.attendee_count}
-                                    onChange={(event) =>
-                                        form.setData('attendee_count', event.target.value)
+                                        form.setData(
+                                            'customer_name',
+                                            event.target.value,
+                                        )
                                     }
                                     className="w-full rounded-2xl border border-[var(--color-border)] bg-white px-4 py-3 text-base"
                                 />
@@ -149,123 +131,98 @@ export default function AdminInternalCompanyBookingCreatePage() {
 
                         <div className="grid gap-4 sm:grid-cols-2">
                             {form.data.deceased_names.map((name, index) => (
-                                <div
+                                <fieldset
                                     key={name.position}
                                     className="space-y-3 rounded-2xl border border-[var(--color-border)] p-4"
                                 >
-                                    <p className="text-sm font-semibold">
-                                        Nama sembahyang {index + 1}
-                                    </p>
-                                    <input
-                                        type="text"
-                                        value={name.indonesian_name}
-                                        onChange={(event) =>
-                                            form.setData(
-                                                'deceased_names',
-                                                form.data.deceased_names.map((item, itemIndex) =>
-                                                    itemIndex === index
-                                                        ? {
-                                                              ...item,
-                                                              indonesian_name: event.target.value,
-                                                          }
-                                                        : item,
-                                                ),
-                                            )
-                                        }
-                                        placeholder="Nama Indonesia"
-                                        className="w-full rounded-2xl border border-[var(--color-border)] bg-white px-4 py-3 text-base"
-                                    />
-                                    <input
-                                        type="text"
-                                        value={name.mandarin_name}
-                                        onChange={(event) =>
-                                            form.setData(
-                                                'deceased_names',
-                                                form.data.deceased_names.map((item, itemIndex) =>
-                                                    itemIndex === index
-                                                        ? {
-                                                              ...item,
-                                                              mandarin_name: event.target.value,
-                                                          }
-                                                        : item,
-                                                ),
-                                            )
-                                        }
-                                        placeholder="Nama Mandarin"
-                                        className="w-full rounded-2xl border border-[var(--color-border)] bg-white px-4 py-3 text-base"
-                                    />
-                                </div>
+                                    <legend className="px-1 text-sm font-semibold">
+                                        Nama doa {index + 1}
+                                    </legend>
+                                    <label className="block text-sm">
+                                        Nama Indonesia
+                                        <input
+                                            type="text"
+                                            value={name.indonesian_name}
+                                            onChange={(event) =>
+                                                updatePrayerName(
+                                                    index,
+                                                    'indonesian_name',
+                                                    event.target.value,
+                                                )
+                                            }
+                                            className="mt-2 w-full rounded-2xl border border-[var(--color-border)] px-4 py-3 text-base"
+                                        />
+                                    </label>
+                                    <label className="block text-sm">
+                                        Nama Mandarin
+                                        <input
+                                            type="text"
+                                            value={name.mandarin_name}
+                                            onChange={(event) =>
+                                                updatePrayerName(
+                                                    index,
+                                                    'mandarin_name',
+                                                    event.target.value,
+                                                )
+                                            }
+                                            className="mt-2 w-full rounded-2xl border border-[var(--color-border)] px-4 py-3 text-base"
+                                        />
+                                    </label>
+                                </fieldset>
                             ))}
                         </div>
 
-                        <div className="space-y-3 rounded-2xl border border-[var(--color-border)] p-4">
-                            <p className="text-sm font-semibold">Nama hio</p>
-                            <input
-                                type="text"
-                                value={form.data.incense_name.indonesian_name}
-                                onChange={(event) =>
-                                    form.setData('incense_name', {
-                                        ...form.data.incense_name,
-                                        indonesian_name: event.target.value,
-                                    })
-                                }
-                                placeholder="Nama Indonesia"
-                                className="w-full rounded-2xl border border-[var(--color-border)] bg-white px-4 py-3 text-base"
-                            />
-                            <input
-                                type="text"
-                                value={form.data.incense_name.mandarin_name}
-                                onChange={(event) =>
-                                    form.setData('incense_name', {
-                                        ...form.data.incense_name,
-                                        mandarin_name: event.target.value,
-                                    })
-                                }
-                                placeholder="Nama Mandarin"
-                                className="w-full rounded-2xl border border-[var(--color-border)] bg-white px-4 py-3 text-base"
-                            />
-                        </div>
-
-                        <div className="grid gap-4 sm:grid-cols-2">
-                            <label className="block">
-                                <span className="mb-2 block text-sm font-medium">
-                                    Makanan vegetarian
-                                </span>
-                                <input
-                                    type="number"
-                                    min={0}
-                                    value={form.data.vegetarian_quantity}
-                                    onChange={(event) =>
-                                        form.setData('vegetarian_quantity', event.target.value)
-                                    }
-                                    className="w-full rounded-2xl border border-[var(--color-border)] bg-white px-4 py-3 text-base"
-                                />
-                            </label>
-
-                            <label className="block">
-                                <span className="mb-2 block text-sm font-medium">
-                                    Makanan non vegetarian
-                                </span>
-                                <input
-                                    type="number"
-                                    min={0}
-                                    value={form.data.non_vegetarian_quantity}
-                                    onChange={(event) =>
-                                        form.setData('non_vegetarian_quantity', event.target.value)
-                                    }
-                                    className="w-full rounded-2xl border border-[var(--color-border)] bg-white px-4 py-3 text-base"
-                                />
-                            </label>
-                        </div>
+                        <fieldset className="space-y-3 rounded-2xl border border-[var(--color-border)] p-4">
+                            <legend className="px-1 text-sm font-semibold">
+                                Nama hio
+                            </legend>
+                            <div className="grid gap-4 sm:grid-cols-2">
+                                <label className="block text-sm">
+                                    Nama Indonesia
+                                    <input
+                                        type="text"
+                                        value={
+                                            form.data.incense_name
+                                                .indonesian_name
+                                        }
+                                        onChange={(event) =>
+                                            form.setData('incense_name', {
+                                                ...form.data.incense_name,
+                                                indonesian_name:
+                                                    event.target.value,
+                                            })
+                                        }
+                                        className="mt-2 w-full rounded-2xl border border-[var(--color-border)] px-4 py-3 text-base"
+                                    />
+                                </label>
+                                <label className="block text-sm">
+                                    Nama Mandarin
+                                    <input
+                                        type="text"
+                                        value={
+                                            form.data.incense_name.mandarin_name
+                                        }
+                                        onChange={(event) =>
+                                            form.setData('incense_name', {
+                                                ...form.data.incense_name,
+                                                mandarin_name:
+                                                    event.target.value,
+                                            })
+                                        }
+                                        className="mt-2 w-full rounded-2xl border border-[var(--color-border)] px-4 py-3 text-base"
+                                    />
+                                </label>
+                            </div>
+                        </fieldset>
 
                         <button
                             type="submit"
                             disabled={form.processing}
-                            className="rounded-full bg-[var(--color-brand)] px-5 py-3 text-sm font-semibold text-white disabled:opacity-60"
+                            className="min-h-12 rounded-full bg-[var(--color-brand)] px-6 py-3 text-sm font-semibold text-white disabled:opacity-60"
                         >
                             {form.processing
                                 ? 'Menyimpan...'
-                                : 'Buat booking Internal Perusahaan'}
+                                : 'Buat booking internal'}
                         </button>
                     </form>
                 </div>

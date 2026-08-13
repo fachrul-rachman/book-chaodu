@@ -48,6 +48,17 @@ class InternalCompanySlotService
         return in_array((int) $number, $this->incenseNumbers(), true);
     }
 
+    public function incenseNumberForTableCode(string $tableCode): ?int
+    {
+        $index = array_search($tableCode, $this->tableCodes(), true);
+
+        if ($index === false) {
+            return null;
+        }
+
+        return $this->incenseNumbers()[$index] ?? null;
+    }
+
     public function isInternalBooking(?Booking $booking): bool
     {
         return $booking?->referral_source === $this->sourceValue();

@@ -8,6 +8,7 @@ use App\Http\Controllers\Admin\BookingRejectionController;
 use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\GallerySettingController;
 use App\Http\Controllers\Admin\GalleryWallpaperController;
+use App\Http\Controllers\Admin\InternalCompanyBookingController;
 use App\Http\Controllers\Admin\PackageController;
 use App\Http\Controllers\Admin\PaymentProofFileController;
 use App\Http\Controllers\Admin\PrayerPaperFileController;
@@ -110,6 +111,10 @@ Route::middleware('auth')->group(function () {
             ->name('admin.packages.update');
         Route::get('/admin/booking', [BookingController::class, 'index'])
             ->name('admin.bookings.index');
+        Route::get('/admin/booking/internal-perusahaan', [InternalCompanyBookingController::class, 'create'])
+            ->name('admin.internal-company-bookings.create');
+        Route::post('/admin/booking/internal-perusahaan', [InternalCompanyBookingController::class, 'store'])
+            ->name('admin.internal-company-bookings.store');
         Route::get('/admin/booking/{booking}', [BookingController::class, 'show'])
             ->name('admin.bookings.show');
         Route::put('/admin/booking/{booking}', [BookingController::class, 'update'])

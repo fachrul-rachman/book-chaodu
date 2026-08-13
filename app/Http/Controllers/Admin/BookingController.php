@@ -283,7 +283,7 @@ class BookingController extends Controller
      *     id:int,
      *     booking_number:string,
      *     customer_name:string,
-     *     customer_phone:string,
+     *     customer_phone:string|null,
      *     package_name:string,
      *     status:string,
      *     table_slot:string|null,

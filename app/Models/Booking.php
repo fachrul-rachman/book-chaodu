@@ -19,9 +19,9 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
  * @property string $package_name_snapshot
  * @property string $package_price_snapshot
  * @property string $customer_name
- * @property string $customer_phone
- * @property string $customer_email
- * @property int $attendee_count
+ * @property string|null $customer_phone
+ * @property string|null $customer_email
+ * @property int|null $attendee_count
  * @property string $referral_source
  * @property string|null $agent_name
  * @property BookingStatus $status
