@@ -9,6 +9,7 @@ use App\Enums\PackageCode;
 use App\Mail\BookingApprovedMail;
 use App\Models\ApprovalIntegration;
 use App\Models\Booking;
+use App\Models\GalleryMedia;
 use App\Models\Package;
 use App\Models\User;
 use App\Models\VirtualAccount;
@@ -26,9 +27,11 @@ beforeEach(function () {
     config()->set('phase5.storage_disk', 'prayer-paper-files');
     config()->set('phase5.enabled', true);
     config()->set('phase7.storage_disk', 'approval-files');
+    config()->set('gallery.storage_disk', 'approval-gallery-files');
     Storage::fake('booking-private');
     Storage::fake('prayer-paper-files');
     Storage::fake('approval-files');
+    Storage::fake('approval-gallery-files');
     Mail::fake();
 
     $this->seed();
@@ -152,6 +155,10 @@ it('runs QR and album approval email without creating Drive or Notion resources'
         ->and($calls['email'])->toBe(1);
 
     Storage::disk('approval-files')->assertExists('approval-qr/'.$booking->booking_number.'.png');
+    $paperMedia = GalleryMedia::query()->where('booking_id', $booking->id)->firstOrFail();
+    expect($paperMedia->source_prayer_paper_id)->not->toBeNull()
+        ->and($paperMedia->caption)->toBe('Kertas Doa');
+    Storage::disk('approval-gallery-files')->assertExists($paperMedia->original_path);
 });
 
 it('does not rerun approval effects that already succeeded', function () {
