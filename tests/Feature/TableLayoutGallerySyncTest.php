@@ -71,6 +71,29 @@ it('stores one personalized table layout image in an approved booking gallery id
         ->and($dimensions[1])->toBe(1000);
 });
 
+it('renders pink tables, blue row labels, orange internal tables, and hides E J labels', function () {
+    $slots = TableSlot::query()->orderByDesc('number')->orderBy('allocation_order')->get();
+    $bytes = app(TableLayoutImageRenderer::class)->render($slots, 'A58');
+    $image = imagecreatefromstring($bytes);
+
+    expect($image)->not->toBeFalse()
+        ->and(imagecolorsforindex($image, imagecolorat($image, 810, 750)))->toMatchArray(['red' => 23, 'green' => 150, 'blue' => 199])
+        ->and(imagecolorsforindex($image, imagecolorat($image, 120, 750)))->toMatchArray(['red' => 255, 'green' => 255, 'blue' => 255])
+        ->and(imagecolorsforindex($image, imagecolorat($image, 1200, 750)))->toMatchArray(['red' => 255, 'green' => 255, 'blue' => 255]);
+
+    $colors = [];
+
+    for ($x = 0; $x < imagesx($image); $x += 4) {
+        for ($y = 0; $y < imagesy($image); $y += 4) {
+            $rgb = imagecolorsforindex($image, imagecolorat($image, $x, $y));
+            $colors["{$rgb['red']},{$rgb['green']},{$rgb['blue']}"] = true;
+        }
+    }
+
+    expect($colors)->toHaveKeys(['253,159,201', '23,150,199', '251,146,60']);
+    imagedestroy($image);
+});
+
 it('does not create a table layout image for a booking without a table', function () {
     $booking = tableLayoutBooking('CD-WITHOUT-TABLE');
 

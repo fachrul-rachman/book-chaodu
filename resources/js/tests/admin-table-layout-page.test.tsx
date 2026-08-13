@@ -32,6 +32,37 @@ vi.mock('@inertiajs/react', () => ({
                         },
                     ],
                 },
+                {
+                    row_code: 'A',
+                    slots: [
+                        {
+                            id: 2,
+                            code: 'A38',
+                            number: 38,
+                            status: 'AVAILABLE',
+                            booking_id: null,
+                            booking_number: null,
+                            customer_name: null,
+                            is_internal_company: false,
+                            is_temporarily_closed: false,
+                        },
+                        {
+                            id: 3,
+                            code: 'A18',
+                            number: 18,
+                            status: 'ASSIGNED',
+                            booking_id: 99,
+                            booking_number: 'CD-INTERNAL',
+                            customer_name: 'Internal',
+                            is_internal_company: true,
+                            is_temporarily_closed: false,
+                        },
+                    ],
+                },
+                {
+                    row_code: 'E',
+                    slots: [],
+                },
             ],
         },
     }),
@@ -59,5 +90,19 @@ describe('Layout meja admin', () => {
             'bg-slate-500',
         );
         expect(screen.getByText('Ditutup sementara')).toBeInTheDocument();
+    });
+
+    it('uses blue row labels, pink available tables, and orange internal tables', () => {
+        render(<AdminTableLayoutPage />);
+
+        expect(screen.getByText('Row A')).toHaveClass('bg-[#1796C7]');
+        expect(screen.getByTitle('A38: masih kosong')).toHaveClass(
+            'bg-[#FD9FC9]',
+        );
+        expect(
+            screen.getByTitle('A18: Internal Perusahaan'),
+        ).toHaveClass('bg-orange-400');
+        expect(screen.queryByText('Row J')).not.toBeInTheDocument();
+        expect(screen.queryByText('Row E')).not.toBeInTheDocument();
     });
 });
