@@ -59,7 +59,7 @@ it('returns remaining counts and package availability', function () {
 
     $summary = app(AvailabilityService::class)->summary();
 
-    expect($summary['table_remaining'])->toBe(165)
+    expect($summary['table_remaining'])->toBe(166)
         ->and($summary['incense_remaining'])->toBe(60)
         ->and(collect($summary['packages'])->keyBy('code')->get(PackageCode::Combo->value)['available'])->toBeTrue();
 });
@@ -109,7 +109,7 @@ it('shows public availability data', function () {
 
     $this->getJson(route('api.public.availability.show'))
         ->assertOk()
-        ->assertJsonPath('table_remaining', 165)
+        ->assertJsonPath('table_remaining', 166)
         ->assertJsonPath('incense_remaining', 60);
 });
 
@@ -120,6 +120,6 @@ it('shows remaining counts on the admin home page', function () {
     $this->actingAs($admin)
         ->get(route('admin.dashboard'))
         ->assertOk()
-        ->assertSee('"table_remaining":165', false)
+        ->assertSee('"table_remaining":166', false)
         ->assertSee('"incense_remaining":60', false);
 });

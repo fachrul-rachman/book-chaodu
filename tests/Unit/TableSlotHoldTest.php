@@ -35,7 +35,8 @@ class TableSlotHoldTest extends TestCase
             })
             ->toSql();
 
-        $this->assertStringContainsString('TRUE', $sql);
+        $this->assertStringContainsString('number', $sql);
+        $this->assertStringContainsString('<=', $sql);
     }
 
     public function test_specific_table_codes_can_be_temporarily_held(): void
@@ -50,7 +51,7 @@ class TableSlotHoldTest extends TestCase
         $query = TableSlot::query()->notTemporarilyClosed();
 
         $this->assertStringContainsString('not in', strtolower($query->toSql()));
-        $this->assertSame(['B118', 'E98'], $query->getBindings());
+        $this->assertSame(['B118', 'E98'], array_slice($query->getBindings(), 0, 2));
     }
 
     public function test_extra_columns_outside_the_configured_count_are_temporarily_closed(): void

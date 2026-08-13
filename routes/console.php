@@ -13,6 +13,7 @@ use App\Services\DirectorDiscordRecapService;
 use App\Services\GalleryArchiveService;
 use App\Services\PrayerPaperGallerySyncService;
 use App\Services\PrayerPaperGenerationService;
+use App\Services\SlotCapacityService;
 use App\Services\TableLayoutGallerySyncService;
 use App\Services\VirtualAccountService;
 use Carbon\CarbonImmutable;
@@ -262,6 +263,13 @@ Artisan::command('gallery:sync-table-layouts {booking? : Nomor booking approved}
 
     return $failed === 0 ? Command::SUCCESS : Command::FAILURE;
 })->purpose('Membuat atau memperbarui denah meja personal untuk gallery booking approved.');
+
+Artisan::command('slots:sync-capacity', function (SlotCapacityService $capacityService) {
+    $result = $capacityService->sync();
+    $this->info("Sinkronisasi kapasitas selesai. Meja baru: {$result['tables_created']}, hio baru: {$result['incense_created']}.");
+
+    return Command::SUCCESS;
+})->purpose('Menambahkan kapasitas meja dan hio tanpa mengubah slot yang sudah terpakai.');
 
 Artisan::command('approval-integrations:retry {booking : Nomor booking} {component? : qr|approval_email}', function (
     ApprovalIntegrationService $approvalIntegrationService,

@@ -35,8 +35,10 @@ class TableSlot extends Model
     {
         $holdEjFrom88 = (bool) config('table_slots.hold_ej_from_88', true);
         $holdCodes = self::holdCodes();
+        $extraColumnLimit = self::extraColumnLimit();
+        $extraRows = self::extraRows();
 
-        if (! $holdEjFrom88 && $holdCodes === []) {
+        if (! $holdEjFrom88 && $holdCodes === [] && $extraRows === []) {
             return $query->whereRaw('TRUE');
         }
 
@@ -52,6 +54,13 @@ class TableSlot extends Model
             $query->whereNotIn('code', $holdCodes);
         }
 
+        if ($extraRows !== []) {
+            $query->where(function (Builder $query) use ($extraRows, $extraColumnLimit): void {
+                $query->whereNotIn('row_code', $extraRows)
+                    ->orWhere('number', '<=', $extraColumnLimit);
+            });
+        }
+
         return $query;
     }
 
@@ -61,7 +70,8 @@ class TableSlot extends Model
             (bool) config('table_slots.hold_ej_from_88', true)
             && in_array($this->row_code, ['E', 'J'], true)
             && $this->number >= 88
-        ) || in_array(strtoupper($this->code), self::holdCodes(), true);
+        ) || in_array(strtoupper($this->code), self::holdCodes(), true)
+            || (in_array($this->row_code, self::extraRows(), true) && $this->number > self::extraColumnLimit());
     }
 
     /** @return array<int, string> */
@@ -70,6 +80,19 @@ class TableSlot extends Model
         $codes = config('table_slots.hold_codes', []);
 
         return is_array($codes) ? array_values($codes) : [];
+    }
+
+    /** @return array<int, string> */
+    private static function extraRows(): array
+    {
+        $rows = config('table_slots.extra_rows', []);
+
+        return is_array($rows) ? array_values($rows) : [];
+    }
+
+    private static function extraColumnLimit(): int
+    {
+        return 258 + ((int) config('table_slots.extra_columns', 0) * 10);
     }
 
     protected function casts(): array

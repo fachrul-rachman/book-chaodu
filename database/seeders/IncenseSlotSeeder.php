@@ -5,10 +5,10 @@ namespace Database\Seeders;
 use App\Services\SlotCapacityService;
 use Illuminate\Database\Seeder;
 
-class TableSlotSeeder extends Seeder
+class IncenseSlotSeeder extends Seeder
 {
     public function run(): void
     {
-        app(SlotCapacityService::class)->syncTables();
+        app(SlotCapacityService::class)->syncIncense();
     }
 }
