@@ -73,12 +73,16 @@ export default function CheckerManualBookingCreatePage() {
         key: string,
         onText: (text: string) => void,
     ) => {
-        if (!file) return;
+        if (!file) {
+            return;
+        }
+
         if (file.size > ocr.max_mb * 1024 * 1024) {
             setOcrStatus((current) => ({
                 ...current,
                 [key]: `Ukuran foto maksimal ${ocr.max_mb} MB.`,
             }));
+
             return;
         }
 
