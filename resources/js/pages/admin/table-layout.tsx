@@ -24,7 +24,7 @@ type Props = {
 
 function slotTone(status: TableSlotItem['status']): string {
     if (status === 'ASSIGNED') {
-        return 'bg-[#FD9FC9] text-slate-900 border-pink-400';
+        return 'bg-[#1796C7] text-white border-sky-700';
     }
 
     if (status === 'RESERVED') {
@@ -109,7 +109,7 @@ export default function AdminTableLayoutPage() {
                                 <span>Sudah masuk booking</span>
                             </div>
                             <div className="flex items-center gap-2">
-                                <span className="h-4 w-4 rounded border border-pink-400 bg-[#FD9FC9]" />
+                                <span className="h-4 w-4 rounded border border-sky-700 bg-[#1796C7]" />
                                 <span>Sudah disetujui</span>
                             </div>
                             <div className="flex items-center gap-2">
@@ -172,7 +172,7 @@ export default function AdminTableLayoutPage() {
                                                     className="h-6"
                                                 />
                                             ) : (
-                                                <div className="rounded bg-[#1796C7] px-3 py-1 text-center text-xs font-semibold text-white">
+                                                <div className="rounded bg-[#FD9FC9] px-3 py-1 text-center text-xs font-semibold text-slate-900">
                                                     Row {row.row_code}
                                                 </div>
                                             )}
@@ -222,7 +222,7 @@ export default function AdminTableLayoutPage() {
                                                     className="h-6"
                                                 />
                                             ) : (
-                                                <div className="rounded bg-[#1796C7] px-3 py-1 text-center text-xs font-semibold text-white">
+                                                <div className="rounded bg-[#FD9FC9] px-3 py-1 text-center text-xs font-semibold text-slate-900">
                                                     Row {row.row_code}
                                                 </div>
                                             )}

@@ -32,15 +32,15 @@ class TableLayoutImageRenderer
             $ink = imagecolorallocate($image, 30, 41, 59);
             $border = imagecolorallocate($image, 148, 163, 184);
             $pink = imagecolorallocate($image, 253, 159, 201);
-            $pinkBorder = imagecolorallocate($image, 244, 114, 182);
             $blue = imagecolorallocate($image, 23, 150, 199);
+            $blueBorder = imagecolorallocate($image, 14, 116, 144);
             $gray = imagecolorallocate($image, 100, 116, 139);
             $lightGray = imagecolorallocate($image, 226, 232, 240);
             $lightBlue = imagecolorallocate($image, 186, 230, 253);
 
             imagefilledrectangle($image, 0, 0, self::WIDTH, self::HEIGHT, $white);
             $this->centeredText($image, 5, 36, 'DENAH MEJA ANDA', $ink, self::WIDTH / 2);
-            $this->centeredText($image, 4, 68, 'Meja Anda: '.$targetCode, $pinkBorder, self::WIDTH / 2);
+            $this->centeredText($image, 4, 68, 'Meja Anda: '.$targetCode, $blueBorder, self::WIDTH / 2);
 
             $this->labeledBox($image, 550, 105, 850, 170, 'MESIN KREMASI', $lightGray, $border, $ink);
 
@@ -66,12 +66,12 @@ class TableLayoutImageRenderer
                     }
 
                     $fill = match (true) {
-                        $isTarget => $pink,
+                        $isTarget => $blue,
                         $slot->isTemporarilyClosed() => $gray,
                         default => $white,
                     };
-                    $outline = $isTarget ? $pinkBorder : $border;
-                    $text = $slot->isTemporarilyClosed() && ! $isTarget ? $white : $ink;
+                    $outline = $isTarget ? $blueBorder : $border;
+                    $text = $isTarget || $slot->isTemporarilyClosed() ? $white : $ink;
                     imagefilledrectangle($image, $rowX[$rowIndex], $y, $rowX[$rowIndex] + $boxWidth, $y + $boxHeight, $fill);
                     imagerectangle($image, $rowX[$rowIndex], $y, $rowX[$rowIndex] + $boxWidth, $y + $boxHeight, $outline);
                     $this->centeredText($image, 2, $y + 4, (string) $slot->number, $text, $rowX[$rowIndex] + ($boxWidth / 2));
@@ -79,8 +79,8 @@ class TableLayoutImageRenderer
 
                 $labelY = $startY + ($maxSlots * ($boxHeight + $gap)) + 10;
                 if (! in_array($rowCode, ['E', 'J'], true)) {
-                    imagefilledrectangle($image, $rowX[$rowIndex], $labelY, $rowX[$rowIndex] + $boxWidth, $labelY + 24, $blue);
-                    $this->centeredText($image, 2, $labelY + 5, 'ROW '.$rowCode, $white, $rowX[$rowIndex] + ($boxWidth / 2));
+                    imagefilledrectangle($image, $rowX[$rowIndex], $labelY, $rowX[$rowIndex] + $boxWidth, $labelY + 24, $pink);
+                    $this->centeredText($image, 2, $labelY + 5, 'ROW '.$rowCode, $ink, $rowX[$rowIndex] + ($boxWidth / 2));
                 }
             }
 
