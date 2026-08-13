@@ -96,6 +96,12 @@ describe('Album customer', () => {
         expect(
             screen.getByRole('img', { name: 'Doa pembukaan' }),
         ).toHaveAttribute('loading', 'lazy');
+        expect(
+            screen.getByRole('img', { name: 'Doa pembukaan' }),
+        ).toHaveClass('object-contain');
+        expect(
+            screen.getByRole('img', { name: 'Doa pembukaan' }),
+        ).not.toHaveClass('object-cover');
         expect(screen.queryByText(/customer/i)).not.toBeInTheDocument();
         expect(screen.queryByText(/gallery\/global/i)).not.toBeInTheDocument();
     });
