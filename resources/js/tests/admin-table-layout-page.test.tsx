@@ -99,8 +99,16 @@ describe('Layout meja admin', () => {
         expect(screen.getByTitle('A38: masih kosong')).toHaveClass(
             'bg-[#FD9FC9]',
         );
+        expect(screen.getByTitle('A18: Internal Perusahaan')).toHaveClass(
+            'bg-orange-400',
+        );
         expect(
-            screen.getByTitle('A18: Internal Perusahaan'),
+            screen.getByText('Kosong').parentElement?.querySelector('span'),
+        ).toHaveClass('bg-[#FD9FC9]');
+        expect(
+            screen
+                .getByText('Internal Perusahaan')
+                .parentElement?.querySelector('span'),
         ).toHaveClass('bg-orange-400');
         expect(screen.queryByText('Row J')).not.toBeInTheDocument();
         expect(screen.queryByText('Row E')).not.toBeInTheDocument();

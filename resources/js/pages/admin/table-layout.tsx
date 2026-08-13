@@ -31,12 +31,12 @@ function slotTone(status: TableSlotItem['status']): string {
         return 'bg-amber-300 text-amber-950 border-amber-400';
     }
 
-    return 'bg-white text-slate-800 border-slate-300';
+    return 'bg-[#FD9FC9] text-slate-900 border-pink-400';
 }
 
 function slotClass(slot: TableSlotItem, showClosedSlots: boolean): string {
     if (slot.is_internal_company) {
-        return 'bg-sky-400 text-sky-950 border-sky-500';
+        return 'bg-orange-400 text-orange-950 border-orange-500';
     }
 
     if (slot.is_temporarily_closed) {
@@ -101,7 +101,7 @@ export default function AdminTableLayoutPage() {
                     <section className="rounded-[24px] border border-[var(--color-border)] bg-white/90 p-5 shadow-sm sm:p-6">
                         <div className="flex flex-wrap gap-3 text-sm text-slate-700">
                             <div className="flex items-center gap-2">
-                                <span className="h-4 w-4 rounded border border-slate-300 bg-white" />
+                                <span className="h-4 w-4 rounded border border-pink-400 bg-[#FD9FC9]" />
                                 <span>Kosong</span>
                             </div>
                             <div className="flex items-center gap-2">
@@ -113,7 +113,7 @@ export default function AdminTableLayoutPage() {
                                 <span>Sudah disetujui</span>
                             </div>
                             <div className="flex items-center gap-2">
-                                <span className="h-4 w-4 rounded border border-sky-500 bg-sky-400" />
+                                <span className="h-4 w-4 rounded border border-orange-500 bg-orange-400" />
                                 <span>Internal Perusahaan</span>
                             </div>
                             {show_closed_slots ? (
@@ -164,9 +164,18 @@ export default function AdminTableLayoutPage() {
                                                     ),
                                                 )}
                                             </div>
-                                            <div className="rounded bg-yellow-300 px-3 py-1 text-center text-xs font-semibold text-slate-900">
-                                                Row {row.row_code}
-                                            </div>
+                                            {['E', 'J'].includes(
+                                                row.row_code,
+                                            ) ? (
+                                                <div
+                                                    aria-hidden="true"
+                                                    className="h-6"
+                                                />
+                                            ) : (
+                                                <div className="rounded bg-[#1796C7] px-3 py-1 text-center text-xs font-semibold text-white">
+                                                    Row {row.row_code}
+                                                </div>
+                                            )}
                                         </div>
                                     ))}
                                 </div>
@@ -205,9 +214,18 @@ export default function AdminTableLayoutPage() {
                                                     ),
                                                 )}
                                             </div>
-                                            <div className="rounded bg-yellow-300 px-3 py-1 text-center text-xs font-semibold text-slate-900">
-                                                Row {row.row_code}
-                                            </div>
+                                            {['E', 'J'].includes(
+                                                row.row_code,
+                                            ) ? (
+                                                <div
+                                                    aria-hidden="true"
+                                                    className="h-6"
+                                                />
+                                            ) : (
+                                                <div className="rounded bg-[#1796C7] px-3 py-1 text-center text-xs font-semibold text-white">
+                                                    Row {row.row_code}
+                                                </div>
+                                            )}
                                         </div>
                                     ))}
                                 </div>

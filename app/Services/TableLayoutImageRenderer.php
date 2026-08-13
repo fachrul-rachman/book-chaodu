@@ -12,6 +12,8 @@ class TableLayoutImageRenderer
 
     public const HEIGHT = 1000;
 
+    public function __construct(private readonly InternalCompanySlotService $internalCompanySlotService) {}
+
     /**
      * @param  Collection<int, TableSlot>  $slots
      */
@@ -33,10 +35,14 @@ class TableLayoutImageRenderer
             $border = imagecolorallocate($image, 148, 163, 184);
             $green = imagecolorallocate($image, 16, 185, 129);
             $greenBorder = imagecolorallocate($image, 5, 150, 105);
+            $pink = imagecolorallocate($image, 253, 159, 201);
+            $pinkBorder = imagecolorallocate($image, 244, 114, 182);
+            $orange = imagecolorallocate($image, 251, 146, 60);
+            $orangeBorder = imagecolorallocate($image, 249, 115, 22);
+            $blue = imagecolorallocate($image, 23, 150, 199);
             $gray = imagecolorallocate($image, 100, 116, 139);
             $lightGray = imagecolorallocate($image, 226, 232, 240);
-            $blue = imagecolorallocate($image, 186, 230, 253);
-            $yellow = imagecolorallocate($image, 253, 224, 71);
+            $lightBlue = imagecolorallocate($image, 186, 230, 253);
 
             imagefilledrectangle($image, 0, 0, self::WIDTH, self::HEIGHT, $white);
             $this->centeredText($image, 5, 36, 'DENAH MEJA ANDA', $ink, self::WIDTH / 2);
@@ -65,8 +71,18 @@ class TableLayoutImageRenderer
                         continue;
                     }
 
-                    $fill = $isTarget ? $green : ($slot->isTemporarilyClosed() ? $gray : $white);
-                    $outline = $isTarget ? $greenBorder : $border;
+                    $isInternal = $this->internalCompanySlotService->isInternalTableCode($slot->code);
+                    $fill = match (true) {
+                        $isTarget => $green,
+                        $slot->isTemporarilyClosed() => $gray,
+                        $isInternal => $orange,
+                        default => $pink,
+                    };
+                    $outline = match (true) {
+                        $isTarget => $greenBorder,
+                        $isInternal => $orangeBorder,
+                        default => $pinkBorder,
+                    };
                     $text = $slot->isTemporarilyClosed() && ! $isTarget ? $white : $ink;
                     imagefilledrectangle($image, $rowX[$rowIndex], $y, $rowX[$rowIndex] + $boxWidth, $y + $boxHeight, $fill);
                     imagerectangle($image, $rowX[$rowIndex], $y, $rowX[$rowIndex] + $boxWidth, $y + $boxHeight, $outline);
@@ -74,11 +90,13 @@ class TableLayoutImageRenderer
                 }
 
                 $labelY = $startY + ($maxSlots * ($boxHeight + $gap)) + 10;
-                imagefilledrectangle($image, $rowX[$rowIndex], $labelY, $rowX[$rowIndex] + $boxWidth, $labelY + 24, $yellow);
-                $this->centeredText($image, 2, $labelY + 5, 'ROW '.$rowCode, $ink, $rowX[$rowIndex] + ($boxWidth / 2));
+                if (! in_array($rowCode, ['E', 'J'], true)) {
+                    imagefilledrectangle($image, $rowX[$rowIndex], $labelY, $rowX[$rowIndex] + $boxWidth, $labelY + 24, $blue);
+                    $this->centeredText($image, 2, $labelY + 5, 'ROW '.$rowCode, $white, $rowX[$rowIndex] + ($boxWidth / 2));
+                }
             }
 
-            $this->labeledBox($image, 550, 890, 850, 960, 'ALTAR', $blue, $border, $ink);
+            $this->labeledBox($image, 550, 890, 850, 960, 'ALTAR', $lightBlue, $border, $ink);
 
             ob_start();
             imagepng($image, null, 6);
