@@ -7,17 +7,18 @@ type Availability = {
 };
 
 export default function AdminDashboard() {
-    const { auth, availability, booking_counts, registration, flash } = usePage<{
-        auth: Auth;
-        availability: Availability;
-        booking_counts: {
-            pending: number;
-            approved: number;
-            rejected: number;
-        };
-        registration: { is_closed: boolean };
-        flash?: { status?: string | null };
-    }>().props;
+    const { auth, availability, booking_counts, registration, flash } =
+        usePage<{
+            auth: Auth;
+            availability: Availability;
+            booking_counts: {
+                pending: number;
+                approved: number;
+                rejected: number;
+            };
+            registration: { is_closed: boolean };
+            flash?: { status?: string | null };
+        }>().props;
     const user = auth.user!;
     const registrationForm = useForm({
         is_closed: registration.is_closed,
@@ -26,7 +27,13 @@ export default function AdminDashboard() {
     const toggleRegistration = () => {
         const nextValue = !registration.is_closed;
 
-        if (!window.confirm(nextValue ? 'Tutup pendaftaran publik sekarang?' : 'Buka kembali pendaftaran publik?')) {
+        if (
+            !window.confirm(
+                nextValue
+                    ? 'Tutup pendaftaran publik sekarang?'
+                    : 'Buka kembali pendaftaran publik?',
+            )
+        ) {
             return;
         }
 

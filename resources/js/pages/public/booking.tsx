@@ -47,7 +47,7 @@ type PrayerPreviewTemplate = PreviewTemplate & {
 };
 
 type Props = {
-    registration: {
+    registration?: {
         is_closed: boolean;
     };
     packages: PackageItem[];
@@ -55,7 +55,9 @@ type Props = {
         bank_name: string | null;
         bank_account_holder: string | null;
         virtual_account_mode: 'FIXED' | 'POOL';
-        accounts_by_package: Partial<Record<PackageItem['code'], string | null>>;
+        accounts_by_package: Partial<
+            Record<PackageItem['code'], string | null>
+        >;
         hold_minutes: number;
     };
     limits: {
@@ -475,7 +477,10 @@ function NameCard({
                             value={entry.indonesian_name}
                             disabled={indonesianLocked}
                             onChange={(event) =>
-                                onChangeName('indonesian_name', event.target.value)
+                                onChangeName(
+                                    'indonesian_name',
+                                    event.target.value,
+                                )
                             }
                             className={`w-full rounded-xl border-2 px-4 py-3 text-base text-[#2C1810] outline-none ${
                                 indonesianLocked
@@ -491,7 +496,10 @@ function NameCard({
                             value={entry.indonesian_name}
                             disabled={indonesianLocked}
                             onChange={(event) =>
-                                onChangeName('indonesian_name', event.target.value)
+                                onChangeName(
+                                    'indonesian_name',
+                                    event.target.value,
+                                )
                             }
                             className={`w-full rounded-xl border-2 px-4 py-3 text-base text-[#2C1810] outline-none ${
                                 indonesianLocked
@@ -518,7 +526,10 @@ function NameCard({
                             value={entry.mandarin_name}
                             disabled={mandarinLocked}
                             onChange={(event) =>
-                                onChangeName('mandarin_name', event.target.value)
+                                onChangeName(
+                                    'mandarin_name',
+                                    event.target.value,
+                                )
                             }
                             className={`w-full rounded-xl border-2 px-4 py-3 text-base text-[#2C1810] outline-none ${
                                 mandarinLocked
@@ -534,7 +545,10 @@ function NameCard({
                             value={entry.mandarin_name}
                             disabled={mandarinLocked}
                             onChange={(event) =>
-                                onChangeName('mandarin_name', event.target.value)
+                                onChangeName(
+                                    'mandarin_name',
+                                    event.target.value,
+                                )
                             }
                             className={`w-full rounded-xl border-2 px-4 py-3 text-base text-[#2C1810] outline-none ${
                                 mandarinLocked
@@ -598,14 +612,16 @@ function NameCard({
                     <button
                         type="button"
                         onClick={onReadPhoto}
-                        disabled={entry.read_status === 'reading' || mandarinLocked}
+                        disabled={
+                            entry.read_status === 'reading' || mandarinLocked
+                        }
                         className="mt-3 rounded-full border-2 border-[#8B1A1A] px-4 py-2 text-sm font-semibold text-[#8B1A1A] transition hover:bg-[#FDF8F0] disabled:opacity-50"
                     >
                         {mandarinLocked
                             ? 'Pakai nama Indonesia'
                             : entry.read_status === 'reading'
-                            ? 'Sedang membaca foto...'
-                            : readButtonLabel}
+                              ? 'Sedang membaca foto...'
+                              : readButtonLabel}
                     </button>
                     <PhotoReadStatus entry={entry} />
                     <ErrorText value={photoError} />
@@ -693,8 +709,15 @@ const inputCls =
 /* ─── Main page ───────────────────────────────────────────────────────────── */
 
 export default function PublicBookingPage() {
-    const { packages, payment, limits, meal, captcha, preview, registration } =
-        usePage<Props>().props;
+    const {
+        packages,
+        payment,
+        limits,
+        meal,
+        captcha,
+        preview,
+        registration = { is_closed: false },
+    } = usePage<Props>().props;
     const [step, setStep] = useState(1);
     const [processing, setProcessing] = useState(false);
     const [reservingVirtualAccount, setReservingVirtualAccount] =
@@ -746,8 +769,8 @@ export default function PublicBookingPage() {
         ? form.use_manual_virtual_account
             ? onlyDigits(form.manual_virtual_account_number) || null
             : isPoolVirtualAccount
-              ? virtualAccount?.account_number ?? null
-              : payment.accounts_by_package[selectedPackage.code] ?? null
+              ? (virtualAccount?.account_number ?? null)
+              : (payment.accounts_by_package[selectedPackage.code] ?? null)
         : null;
     const reservationExpired =
         isPoolVirtualAccount &&
@@ -870,19 +893,26 @@ export default function PublicBookingPage() {
                     return {
                         ...item,
                         indonesian_name: value,
-                        mandarin_name: value.trim() !== '' ? '' : item.mandarin_name,
-                        source_image: value.trim() !== '' ? null : item.source_image,
+                        mandarin_name:
+                            value.trim() !== '' ? '' : item.mandarin_name,
+                        source_image:
+                            value.trim() !== '' ? null : item.source_image,
                         source_image_preview:
-                            value.trim() !== '' ? null : item.source_image_preview,
-                        read_status: value.trim() !== '' ? 'idle' : item.read_status,
-                        read_message: value.trim() !== '' ? null : item.read_message,
+                            value.trim() !== ''
+                                ? null
+                                : item.source_image_preview,
+                        read_status:
+                            value.trim() !== '' ? 'idle' : item.read_status,
+                        read_message:
+                            value.trim() !== '' ? null : item.read_message,
                     };
                 }
 
                 return {
                     ...item,
                     mandarin_name: value,
-                    indonesian_name: value.trim() !== '' ? '' : item.indonesian_name,
+                    indonesian_name:
+                        value.trim() !== '' ? '' : item.indonesian_name,
                 };
             }),
         }));
@@ -896,8 +926,13 @@ export default function PublicBookingPage() {
     ) => {
         setForm((current) => {
             if (key === 'indonesian_name') {
-                if (value.trim() !== '' && current.incense_name.source_image_preview) {
-                    URL.revokeObjectURL(current.incense_name.source_image_preview);
+                if (
+                    value.trim() !== '' &&
+                    current.incense_name.source_image_preview
+                ) {
+                    URL.revokeObjectURL(
+                        current.incense_name.source_image_preview,
+                    );
                 }
 
                 return {
@@ -906,17 +941,25 @@ export default function PublicBookingPage() {
                         ...current.incense_name,
                         indonesian_name: value,
                         mandarin_name:
-                            value.trim() !== '' ? '' : current.incense_name.mandarin_name,
+                            value.trim() !== ''
+                                ? ''
+                                : current.incense_name.mandarin_name,
                         source_image:
-                            value.trim() !== '' ? null : current.incense_name.source_image,
+                            value.trim() !== ''
+                                ? null
+                                : current.incense_name.source_image,
                         source_image_preview:
                             value.trim() !== ''
                                 ? null
                                 : current.incense_name.source_image_preview,
                         read_status:
-                            value.trim() !== '' ? 'idle' : current.incense_name.read_status,
+                            value.trim() !== ''
+                                ? 'idle'
+                                : current.incense_name.read_status,
                         read_message:
-                            value.trim() !== '' ? null : current.incense_name.read_message,
+                            value.trim() !== ''
+                                ? null
+                                : current.incense_name.read_message,
                     },
                 };
             }
@@ -977,7 +1020,9 @@ export default function PublicBookingPage() {
                     ...current.incense_name,
                     source_image: file,
                     source_image_preview: previewUrl,
-                    indonesian_name: file ? '' : current.incense_name.indonesian_name,
+                    indonesian_name: file
+                        ? ''
+                        : current.incense_name.indonesian_name,
                     read_status: 'idle',
                     read_message: null,
                 },
@@ -1226,8 +1271,7 @@ export default function PublicBookingPage() {
             }
 
             if (mealTotal > selectedPackage.meal_quota) {
-                nextErrors.non_vegetarian_quantity =
-                    `Total makanan maksimal ${selectedPackage.meal_quota} porsi.`;
+                nextErrors.non_vegetarian_quantity = `Total makanan maksimal ${selectedPackage.meal_quota} porsi.`;
             }
         }
 
@@ -1412,10 +1456,16 @@ export default function PublicBookingPage() {
     const prayerPreviewImageUrls = form.deceased_names
         .slice(0, 2)
         .map((entry) =>
-            buildPreviewImageUrl(preview.render_url, 'A', 1, pickPrayerName(entry), {
-                indonesian: entry.indonesian_name,
-                mandarin: entry.mandarin_name,
-            }),
+            buildPreviewImageUrl(
+                preview.render_url,
+                'A',
+                1,
+                pickPrayerName(entry),
+                {
+                    indonesian: entry.indonesian_name,
+                    mandarin: entry.mandarin_name,
+                },
+            ),
         );
     const incensePreviewImageUrl = buildPreviewImageUrl(
         preview.render_url,
@@ -1476,7 +1526,7 @@ export default function PublicBookingPage() {
                             type="button"
                             onClick={closeFlyerModal}
                             aria-label="Tutup flyer"
-                            className="absolute right-3 top-3 z-20 flex h-11 w-11 items-center justify-center rounded-full bg-black/70 text-2xl leading-none text-white transition hover:bg-black"
+                            className="absolute top-3 right-3 z-20 flex h-11 w-11 items-center justify-center rounded-full bg-black/70 text-2xl leading-none text-white transition hover:bg-black"
                         >
                             ×
                         </button>
@@ -1755,9 +1805,10 @@ export default function PublicBookingPage() {
                                                     </p>
                                                 </div>
                                                 <p className="max-w-sm text-sm leading-6 text-[#5C3D2E]">
-                                                    Periksa kembali penulisan mandarin di
-                                                    samping sebelum lanjut ke
-                                                    langkah berikutnya.
+                                                    Periksa kembali penulisan
+                                                    mandarin di samping sebelum
+                                                    lanjut ke langkah
+                                                    berikutnya.
                                                 </p>
                                             </div>
                                             <div className="mt-4 space-y-4">
@@ -1790,11 +1841,14 @@ export default function PublicBookingPage() {
                                                                 limits.ocr_upload_max_mb
                                                             }
                                                             indonesianLocked={
-                                                                item.mandarin_name.trim() !== '' ||
-                                                                item.source_image !== null
+                                                                item.mandarin_name.trim() !==
+                                                                    '' ||
+                                                                item.source_image !==
+                                                                    null
                                                             }
                                                             mandarinLocked={
-                                                                item.indonesian_name.trim() !== ''
+                                                                item.indonesian_name.trim() !==
+                                                                ''
                                                             }
                                                             onChangeName={(
                                                                 key,
@@ -1881,11 +1935,15 @@ export default function PublicBookingPage() {
                                                         limits.ocr_upload_max_mb
                                                     }
                                                     indonesianLocked={
-                                                        form.incense_name.mandarin_name.trim() !== '' ||
-                                                        form.incense_name.source_image !== null
+                                                        form.incense_name.mandarin_name.trim() !==
+                                                            '' ||
+                                                        form.incense_name
+                                                            .source_image !==
+                                                            null
                                                     }
                                                     mandarinLocked={
-                                                        form.incense_name.indonesian_name.trim() !== ''
+                                                        form.incense_name.indonesian_name.trim() !==
+                                                        ''
                                                     }
                                                     onChangeName={
                                                         setIncenseName
@@ -2085,7 +2143,8 @@ export default function PublicBookingPage() {
                                                     setForm((current) => ({
                                                         ...current,
                                                         use_manual_virtual_account:
-                                                            event.target.checked,
+                                                            event.target
+                                                                .checked,
                                                         manual_virtual_account_number:
                                                             event.target.checked
                                                                 ? current.manual_virtual_account_number
@@ -2101,7 +2160,8 @@ export default function PublicBookingPage() {
                                         {form.use_manual_virtual_account ? (
                                             <label className="mt-4 block">
                                                 <span className="mb-2 block text-base font-medium text-[#2C1810]">
-                                                    Nomor VA yang sudah saya transfer
+                                                    Nomor VA yang sudah saya
+                                                    transfer
                                                 </span>
                                                 <input
                                                     type="text"
@@ -2121,7 +2181,11 @@ export default function PublicBookingPage() {
                                                     className={inputCls}
                                                 />
                                                 <p className="mt-2 text-sm leading-6 text-[#5C3D2E]">
-                                                    Isi nomor VA yang tadi Anda pakai saat transfer. Sistem akan cek apakah nomor ini cocok dengan paket yang dipilih.
+                                                    Isi nomor VA yang tadi Anda
+                                                    pakai saat transfer. Sistem
+                                                    akan cek apakah nomor ini
+                                                    cocok dengan paket yang
+                                                    dipilih.
                                                 </p>
                                                 <ErrorText
                                                     value={
@@ -2418,7 +2482,8 @@ export default function PublicBookingPage() {
                                                 Pembayaran
                                             </p>
                                             <p className="text-base leading-7 text-[#2C1810]">
-                                                Link pembayaran akan dikirim ke email
+                                                Link pembayaran akan dikirim ke
+                                                email
                                                 <br />
                                                 {selectedPackage
                                                     ? formatCurrency(
@@ -2495,16 +2560,16 @@ export default function PublicBookingPage() {
 
                             {/* ── Navigation buttons ── */}
                             <div className="flex items-center justify-between gap-3">
-                                    <button
-                                        type="button"
-                                        onClick={previousStep}
+                                <button
+                                    type="button"
+                                    onClick={previousStep}
                                     disabled={
                                         step === 1 ||
                                         processing ||
                                         reservingVirtualAccount
                                     }
-                                        className="rounded-full border-2 border-[#E8D5C0] px-6 py-3 text-base font-semibold text-[#5C3D2E] transition hover:border-[#5C3D2E] disabled:opacity-40"
-                                    >
+                                    className="rounded-full border-2 border-[#E8D5C0] px-6 py-3 text-base font-semibold text-[#5C3D2E] transition hover:border-[#5C3D2E] disabled:opacity-40"
+                                >
                                     ← Kembali
                                 </button>
 

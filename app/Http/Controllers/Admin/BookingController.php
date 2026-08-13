@@ -316,6 +316,7 @@ class BookingController extends Controller
             'WEBSITE' => 'Website',
             'AGENT' => 'Agent',
             $this->internalCompanySlotService->sourceValue() => $this->internalCompanySlotService->sourceLabel(),
+            'CHECKER_MANUAL' => 'Daftar Manual Checker',
             default => '-',
         };
     }

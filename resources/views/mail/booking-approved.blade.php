@@ -69,14 +69,16 @@
                                         {{ $customerName }}
                                     </td>
                                 </tr>
-                                <tr>
-                                    <td width="42%" style="padding:14px 16px; background:#fbf7f1; font-size:14px; color:#7a6251; border-bottom:1px solid #ead8c1;">
-                                        Jumlah hadir
-                                    </td>
-                                    <td style="padding:14px 16px; font-size:14px; font-weight:bold; border-bottom:1px solid #ead8c1;">
-                                        {{ $guestCount }} orang
-                                    </td>
-                                </tr>
+                                @if ($guestCount !== null)
+                                    <tr>
+                                        <td width="42%" style="padding:14px 16px; background:#fbf7f1; font-size:14px; color:#7a6251; border-bottom:1px solid #ead8c1;">
+                                            Jumlah hadir
+                                        </td>
+                                        <td style="padding:14px 16px; font-size:14px; font-weight:bold; border-bottom:1px solid #ead8c1;">
+                                            {{ $guestCount }} orang
+                                        </td>
+                                    </tr>
+                                @endif
                                 <tr>
                                     <td width="42%" style="padding:14px 16px; background:#fbf7f1; font-size:14px; color:#7a6251;">
                                         Status

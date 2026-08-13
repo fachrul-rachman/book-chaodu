@@ -25,6 +25,7 @@ use App\Http\Controllers\Admin\TableLayoutController;
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\Checker\CheckInController;
 use App\Http\Controllers\Checker\DashboardController as CheckerDashboardController;
+use App\Http\Controllers\Checker\ManualBookingController;
 use App\Http\Controllers\Content\CustomerMediaController;
 use App\Http\Controllers\Content\CustomerMediaOrderController;
 use App\Http\Controllers\Content\CustomerMediaUploadController;
@@ -168,6 +169,10 @@ Route::middleware('auth')->group(function () {
     Route::middleware('role:CHECKER')->group(function () {
         Route::get('/checker', CheckerDashboardController::class)
             ->name('checker.dashboard');
+        Route::get('/checker/daftar-manual', [ManualBookingController::class, 'create'])
+            ->name('checker.manual-bookings.create');
+        Route::post('/checker/daftar-manual', [ManualBookingController::class, 'store'])
+            ->name('checker.manual-bookings.store');
         Route::post('/checker/check-in/{booking}', CheckInController::class)
             ->name('checker.check-in');
     });

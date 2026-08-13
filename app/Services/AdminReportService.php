@@ -626,6 +626,7 @@ class AdminReportService
     {
         return match ($value) {
             'INTERNAL_PERUSAHAAN' => $this->internalCompanySlotService->sourceLabel(),
+            'CHECKER_MANUAL' => 'Daftar Manual Checker',
             'TEMAN' => 'Teman',
             'KELUARGA' => 'Keluarga',
             'MEDIA_SOSIAL' => 'Media sosial',

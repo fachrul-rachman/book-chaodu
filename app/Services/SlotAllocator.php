@@ -93,6 +93,46 @@ class SlotAllocator
         });
     }
 
+    public function assignSelectedForPackage(
+        PackageCode $packageCode,
+        int $bookingId,
+        ?int $tableSlotId,
+        ?int $incenseSlotId,
+    ): void {
+        DB::transaction(function () use ($packageCode, $bookingId, $tableSlotId, $incenseSlotId): void {
+            if (in_array($packageCode, [PackageCode::Prayer, PackageCode::Combo], true)) {
+                $tableSlot = TableSlot::query()
+                    ->whereKey($tableSlotId)
+                    ->where('status', SlotStatus::Available)
+                    ->whereNotIn('code', $this->internalCompanySlotService->tableCodes())
+                    ->notTemporarilyClosed()
+                    ->lockForUpdate()
+                    ->first();
+
+                if (! $tableSlot) {
+                    throw new SlotUnavailableException('Nomor meja sudah dipakai atau sedang ditutup. Silakan pilih nomor lain.');
+                }
+
+                $this->markAssigned($tableSlot, $bookingId);
+            }
+
+            if (in_array($packageCode, [PackageCode::Incense, PackageCode::Combo], true)) {
+                $incenseSlot = IncenseSlot::query()
+                    ->whereKey($incenseSlotId)
+                    ->where('status', SlotStatus::Available)
+                    ->whereNotIn('number', $this->internalCompanySlotService->incenseNumbers())
+                    ->lockForUpdate()
+                    ->first();
+
+                if (! $incenseSlot) {
+                    throw new SlotUnavailableException('Nomor hio sudah dipakai. Silakan pilih nomor lain.');
+                }
+
+                $this->markAssigned($incenseSlot, $bookingId);
+            }
+        });
+    }
+
     public function assignByBookingId(int $bookingId): void
     {
         DB::transaction(function () use ($bookingId): void {

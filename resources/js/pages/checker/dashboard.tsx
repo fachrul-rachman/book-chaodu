@@ -198,6 +198,12 @@ export default function CheckerDashboard() {
 
                             <div className="flex gap-3">
                                 <Link
+                                    href="/checker/daftar-manual"
+                                    className="rounded-full bg-[var(--color-brand)] px-4 py-2 text-sm font-semibold text-white"
+                                >
+                                    Daftar manual
+                                </Link>
+                                <Link
                                     href="/keluar"
                                     method="post"
                                     as="button"

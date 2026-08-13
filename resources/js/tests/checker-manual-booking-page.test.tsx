@@ -4,7 +4,10 @@ import CheckerManualBookingCreatePage from '@/pages/checker/manual-bookings/crea
 
 vi.mock('@inertiajs/react', () => ({
     Head: ({ children }: { children?: React.ReactNode }) => <>{children}</>,
-    Link: ({ children, ...props }: React.AnchorHTMLAttributes<HTMLAnchorElement>) => (
+    Link: ({
+        children,
+        ...props
+    }: React.AnchorHTMLAttributes<HTMLAnchorElement>) => (
         <a {...props}>{children}</a>
     ),
     usePage: () => ({
@@ -21,7 +24,7 @@ vi.mock('@inertiajs/react', () => ({
         },
     }),
     useForm: (data: Record<string, unknown>) => ({
-        data,
+        data: { ...data, package_code: 'COMBO' },
         errors: {},
         processing: false,
         setData: vi.fn(),
@@ -39,9 +42,15 @@ describe('Daftar Manual Checker', () => {
         expect(screen.getByLabelText('Paket')).toBeInTheDocument();
         expect(screen.getByLabelText('Nomor meja')).toBeInTheDocument();
         expect(screen.getByLabelText('Nomor hio')).toBeInTheDocument();
-        expect(screen.getAllByRole('textbox', { name: /Nama Mandarin/ })[0]).toHaveAttribute('rows');
-        expect(screen.getAllByRole('button', { name: /Baca foto/ }).length).toBeGreaterThan(0);
+        expect(
+            screen.getAllByRole('textbox', { name: /Nama Mandarin/ })[0],
+        ).toHaveAttribute('rows');
+        expect(
+            screen.getAllByRole('button', { name: /Baca foto/ }).length,
+        ).toBeGreaterThan(0);
         expect(screen.queryByLabelText('Jumlah hadir')).not.toBeInTheDocument();
-        expect(screen.queryByLabelText('Bukti pembayaran')).not.toBeInTheDocument();
+        expect(
+            screen.queryByLabelText('Bukti pembayaran'),
+        ).not.toBeInTheDocument();
     });
 });

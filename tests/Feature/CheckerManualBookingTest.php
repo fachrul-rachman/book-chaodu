@@ -9,6 +9,7 @@ use App\Enums\SlotStatus;
 use App\Mail\BookingApprovedMail;
 use App\Models\Booking;
 use App\Models\IncenseSlot;
+use App\Models\Package;
 use App\Models\TableSlot;
 use App\Models\User;
 use Illuminate\Support\Facades\Mail;
@@ -22,6 +23,7 @@ beforeEach(function () {
     Storage::fake('checker-gallery');
     Mail::fake();
     $this->seed();
+    Package::query()->update(['is_active' => true, 'price' => 100000]);
 });
 
 function checkerManualPayload(array $overrides = []): array
@@ -67,11 +69,10 @@ it('shows only available dropdown options to a checker', function () {
         ->assertInertia(fn ($page) => $page
             ->component('checker/manual-bookings/create')
             ->where('packages.0.code', 'PRAYER')
-            ->missing('table_slots.'.TableSlot::query()->where('code', 'A38')->value('id'))
-            ->where('table_slots', fn (array $slots): bool => collect($slots)->doesntContain('code', 'A18')
-                && collect($slots)->doesntContain('code', 'A38'))
-            ->where('incense_slots', fn (array $slots): bool => collect($slots)->doesntContain('number', 1)
-                && collect($slots)->doesntContain('number', 3)));
+            ->where('table_slots', fn ($slots): bool => $slots->doesntContain('code', 'A18')
+                && $slots->doesntContain('code', 'A38'))
+            ->where('incense_slots', fn ($slots): bool => $slots->doesntContain('number', 1)
+                && $slots->doesntContain('number', 3)));
 });
 
 it('creates a directly approved checker booking with the selected table and incense number', function () {
@@ -100,6 +101,13 @@ it('creates a directly approved checker booking with the selected table and ince
         ->and($booking->approvalIntegration?->approval_email_status)->toBe(ApprovalIntegrationStatus::Succeeded);
 
     Mail::assertSent(BookingApprovedMail::class, fn (BookingApprovedMail $mail): bool => $mail->hasTo('budi@example.com'));
+
+    $admin = User::factory()->admin()->create();
+    $this->actingAs($admin)
+        ->get(route('admin.bookings.show', $booking))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->where('booking.source_label', 'Daftar Manual Checker'));
 });
 
 it('requires only the slot types used by the selected package', function () {
