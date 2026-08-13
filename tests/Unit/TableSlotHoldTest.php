@@ -53,6 +53,17 @@ class TableSlotHoldTest extends TestCase
         $this->assertSame(['B118', 'E98'], $query->getBindings());
     }
 
+    public function test_extra_columns_outside_the_configured_count_are_temporarily_closed(): void
+    {
+        config()->set('table_slots.hold_ej_from_88', false);
+        config()->set('table_slots.extra_columns', 2);
+
+        $this->assertFalse($this->slot('A', 268)->isTemporarilyClosed());
+        $this->assertFalse($this->slot('H', 278)->isTemporarilyClosed());
+        $this->assertTrue($this->slot('A', 288)->isTemporarilyClosed());
+        $this->assertFalse($this->slot('E', 288)->isTemporarilyClosed());
+    }
+
     private function slot(string $rowCode, int $number): TableSlot
     {
         return (new TableSlot)->forceFill([

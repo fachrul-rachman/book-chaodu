@@ -39,9 +39,19 @@ it('seeds table slots in the required order', function () {
 it('seeds incense slots with the valid numbers only', function () {
     $this->seed(IncenseSlotSeeder::class);
 
-    expect(IncenseSlot::query()->count())->toBe(44)
-        ->and(IncenseSlot::query()->pluck('number')->all())->toContain(1, 12, 60)
+    expect(IncenseSlot::query()->count())->toBe(62)
+        ->and(IncenseSlot::query()->whereNotIn('number', [1, 2])->count())->toBe(60)
+        ->and(IncenseSlot::query()->pluck('number')->all())->toContain(1, 12, 60, 80)
         ->and(IncenseSlot::query()->pluck('number')->all())->not->toContain(4, 13, 14, 24, 40);
+});
+
+it('does not reset an existing incense assignment while syncing capacity', function () {
+    $this->seed(IncenseSlotSeeder::class);
+    IncenseSlot::query()->where('number', 3)->update(['status' => SlotStatus::Reserved]);
+
+    $this->seed(IncenseSlotSeeder::class);
+
+    expect(IncenseSlot::query()->where('number', 3)->value('status'))->toBe(SlotStatus::Reserved);
 });
 
 it('returns remaining counts and package availability', function () {
@@ -50,7 +60,7 @@ it('returns remaining counts and package availability', function () {
     $summary = app(AvailabilityService::class)->summary();
 
     expect($summary['table_remaining'])->toBe(165)
-        ->and($summary['incense_remaining'])->toBe(42)
+        ->and($summary['incense_remaining'])->toBe(60)
         ->and(collect($summary['packages'])->keyBy('code')->get(PackageCode::Combo->value)['available'])->toBeTrue();
 });
 
@@ -100,7 +110,7 @@ it('shows public availability data', function () {
     $this->getJson(route('api.public.availability.show'))
         ->assertOk()
         ->assertJsonPath('table_remaining', 165)
-        ->assertJsonPath('incense_remaining', 42);
+        ->assertJsonPath('incense_remaining', 60);
 });
 
 it('shows remaining counts on the admin home page', function () {
@@ -111,5 +121,5 @@ it('shows remaining counts on the admin home page', function () {
         ->get(route('admin.dashboard'))
         ->assertOk()
         ->assertSee('"table_remaining":165', false)
-        ->assertSee('"incense_remaining":42', false);
+        ->assertSee('"incense_remaining":60', false);
 });
