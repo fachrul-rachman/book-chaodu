@@ -15,6 +15,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property GalleryMediaScope $scope
  * @property int|null $booking_id
  * @property int|null $source_prayer_paper_id
+ * @property int|null $source_table_layout_booking_id
  * @property GalleryMediaType $media_type
  * @property GalleryMediaStatus $status
  * @property string $storage_disk
@@ -42,6 +43,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
     'scope',
     'booking_id',
     'source_prayer_paper_id',
+    'source_table_layout_booking_id',
     'media_type',
     'status',
     'storage_disk',
@@ -76,6 +78,7 @@ class GalleryMedia extends Model
             'scope' => GalleryMediaScope::class,
             'booking_id' => 'integer',
             'source_prayer_paper_id' => 'integer',
+            'source_table_layout_booking_id' => 'integer',
             'media_type' => GalleryMediaType::class,
             'status' => GalleryMediaStatus::class,
             'size_bytes' => 'integer',

@@ -155,10 +155,13 @@ it('runs QR and album approval email without creating Drive or Notion resources'
         ->and($calls['email'])->toBe(1);
 
     Storage::disk('approval-files')->assertExists('approval-qr/'.$booking->booking_number.'.png');
-    $paperMedia = GalleryMedia::query()->where('booking_id', $booking->id)->firstOrFail();
+    $paperMedia = GalleryMedia::query()->where('booking_id', $booking->id)->whereNotNull('source_prayer_paper_id')->firstOrFail();
     expect($paperMedia->source_prayer_paper_id)->not->toBeNull()
         ->and($paperMedia->caption)->toBe('Kertas Doa');
     Storage::disk('approval-gallery-files')->assertExists($paperMedia->original_path);
+    $layoutMedia = GalleryMedia::query()->where('source_table_layout_booking_id', $booking->id)->firstOrFail();
+    expect($layoutMedia->caption)->toStartWith('Denah Meja Anda: ');
+    Storage::disk('approval-gallery-files')->assertExists($layoutMedia->original_path);
 });
 
 it('does not rerun approval effects that already succeeded', function () {

@@ -11,6 +11,7 @@ use App\Models\GalleryMedia;
 use App\Models\Package;
 use App\Models\TableSlot;
 use App\Services\TableLayoutGallerySyncService;
+use App\Services\TableLayoutImageRenderer;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Storage;
@@ -93,4 +94,19 @@ it('backfills table layout images only for approved bookings with a table', func
     expect(Artisan::call('gallery:sync-table-layouts'))->toBe(Command::SUCCESS)
         ->and(GalleryMedia::query()->where('source_table_layout_booking_id', $approved->id)->exists())->toBeTrue()
         ->and(GalleryMedia::query()->where('source_table_layout_booking_id', $pending->id)->exists())->toBeFalse();
+});
+
+it('keeps approval successful when rendering the table layout fails', function () {
+    $booking = tableLayoutBooking('CD-LAYOUT-FAILED');
+    TableSlot::query()->where('code', 'A58')->update([
+        'status' => SlotStatus::Assigned,
+        'booking_id' => $booking->id,
+    ]);
+    $renderer = Mockery::mock(TableLayoutImageRenderer::class);
+    $renderer->shouldReceive('render')->once()->andThrow(new RuntimeException('GD gagal.'));
+    app()->instance(TableLayoutImageRenderer::class, $renderer);
+
+    expect(app(TableLayoutGallerySyncService::class)->syncSafely($booking))->toBeFalse()
+        ->and($booking->fresh()?->status)->toBe(BookingStatus::Approved)
+        ->and(GalleryMedia::query()->where('booking_id', $booking->id)->exists())->toBeFalse();
 });

@@ -19,6 +19,7 @@ type RowItem = {
 
 type Props = {
     rows: RowItem[];
+    show_closed_slots: boolean;
 };
 
 function slotTone(status: TableSlotItem['status']): string {
@@ -33,13 +34,15 @@ function slotTone(status: TableSlotItem['status']): string {
     return 'bg-white text-slate-800 border-slate-300';
 }
 
-function slotClass(slot: TableSlotItem): string {
+function slotClass(slot: TableSlotItem, showClosedSlots: boolean): string {
     if (slot.is_internal_company) {
         return 'bg-sky-400 text-sky-950 border-sky-500';
     }
 
     if (slot.is_temporarily_closed) {
-        return 'bg-slate-500 text-white border-slate-600';
+        return showClosedSlots
+            ? 'bg-slate-500 text-white border-slate-600'
+            : 'invisible';
     }
 
     return slotTone(slot.status);
@@ -62,7 +65,7 @@ function slotTitle(slot: TableSlotItem): string {
 }
 
 export default function AdminTableLayoutPage() {
-    const { rows } = usePage<Props>().props;
+    const { rows, show_closed_slots } = usePage<Props>().props;
     const leftRows = rows.filter((row) =>
         ['J', 'H', 'G', 'F'].includes(row.row_code),
     );
@@ -113,15 +116,17 @@ export default function AdminTableLayoutPage() {
                                 <span className="h-4 w-4 rounded border border-sky-500 bg-sky-400" />
                                 <span>Internal Perusahaan</span>
                             </div>
-                            <div className="flex items-center gap-2">
-                                <span className="h-4 w-4 rounded border border-slate-600 bg-slate-500" />
-                                <span>Ditutup sementara</span>
-                            </div>
+                            {show_closed_slots ? (
+                                <div className="flex items-center gap-2">
+                                    <span className="h-4 w-4 rounded border border-slate-600 bg-slate-500" />
+                                    <span>Ditutup sementara</span>
+                                </div>
+                            ) : null}
                         </div>
                     </section>
 
                     <section className="overflow-x-auto rounded-[24px] border border-[var(--color-border)] bg-white/90 p-5 shadow-sm sm:p-6">
-                        <div className="mx-auto min-w-[900px] max-w-[1120px] space-y-8">
+                        <div className="mx-auto max-w-[1120px] min-w-[900px] space-y-8">
                             <div className="mx-auto flex h-16 w-[220px] items-center justify-center rounded-md border border-slate-500 bg-slate-200 text-sm font-semibold text-slate-800">
                                 Mesin kremasi
                             </div>
@@ -129,23 +134,30 @@ export default function AdminTableLayoutPage() {
                             <div className="flex items-start justify-center gap-12">
                                 <div className="grid grid-cols-4 gap-6">
                                     {leftRows.map((row) => (
-                                        <div key={row.row_code} className="space-y-3">
+                                        <div
+                                            key={row.row_code}
+                                            className="space-y-3"
+                                        >
                                             <div className="grid gap-1">
                                                 {row.slots.map((slot) =>
                                                     slot.booking_id ? (
                                                         <Link
                                                             key={slot.id}
                                                             href={`/admin/booking/${slot.booking_id}`}
-                                                            title={slotTitle(slot)}
-                                                            className={`flex h-8 w-14 items-center justify-center rounded border text-xs font-medium transition hover:scale-[1.02] ${slotClass(slot)}`}
+                                                            title={slotTitle(
+                                                                slot,
+                                                            )}
+                                                            className={`flex h-8 w-14 items-center justify-center rounded border text-xs font-medium transition hover:scale-[1.02] ${slotClass(slot, show_closed_slots)}`}
                                                         >
                                                             {slot.number}
                                                         </Link>
                                                     ) : (
                                                         <div
                                                             key={slot.id}
-                                                            title={slotTitle(slot)}
-                                                            className={`flex h-8 w-14 items-center justify-center rounded border text-xs font-medium ${slotClass(slot)}`}
+                                                            title={slotTitle(
+                                                                slot,
+                                                            )}
+                                                            className={`flex h-8 w-14 items-center justify-center rounded border text-xs font-medium ${slotClass(slot, show_closed_slots)}`}
                                                         >
                                                             {slot.number}
                                                         </div>
@@ -163,23 +175,30 @@ export default function AdminTableLayoutPage() {
 
                                 <div className="grid grid-cols-4 gap-6">
                                     {rightRows.map((row) => (
-                                        <div key={row.row_code} className="space-y-3">
+                                        <div
+                                            key={row.row_code}
+                                            className="space-y-3"
+                                        >
                                             <div className="grid gap-1">
                                                 {row.slots.map((slot) =>
                                                     slot.booking_id ? (
                                                         <Link
                                                             key={slot.id}
                                                             href={`/admin/booking/${slot.booking_id}`}
-                                                            title={slotTitle(slot)}
-                                                            className={`flex h-8 w-14 items-center justify-center rounded border text-xs font-medium transition hover:scale-[1.02] ${slotClass(slot)}`}
+                                                            title={slotTitle(
+                                                                slot,
+                                                            )}
+                                                            className={`flex h-8 w-14 items-center justify-center rounded border text-xs font-medium transition hover:scale-[1.02] ${slotClass(slot, show_closed_slots)}`}
                                                         >
                                                             {slot.number}
                                                         </Link>
                                                     ) : (
                                                         <div
                                                             key={slot.id}
-                                                            title={slotTitle(slot)}
-                                                            className={`flex h-8 w-14 items-center justify-center rounded border text-xs font-medium ${slotClass(slot)}`}
+                                                            title={slotTitle(
+                                                                slot,
+                                                            )}
+                                                            className={`flex h-8 w-14 items-center justify-center rounded border text-xs font-medium ${slotClass(slot, show_closed_slots)}`}
                                                         >
                                                             {slot.number}
                                                         </div>

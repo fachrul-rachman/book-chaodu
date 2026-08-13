@@ -6,7 +6,10 @@ let showClosedSlots = false;
 
 vi.mock('@inertiajs/react', () => ({
     Head: ({ children }: { children?: React.ReactNode }) => <>{children}</>,
-    Link: ({ children, ...props }: React.AnchorHTMLAttributes<HTMLAnchorElement>) => (
+    Link: ({
+        children,
+        ...props
+    }: React.AnchorHTMLAttributes<HTMLAnchorElement>) => (
         <a {...props}>{children}</a>
     ),
     usePage: () => ({
@@ -42,7 +45,9 @@ describe('Layout meja admin', () => {
     it('keeps a hidden placeholder when closed tables are disabled', () => {
         render(<AdminTableLayoutPage />);
 
-        expect(screen.getByTitle('J88: ditutup sementara')).toHaveClass('invisible');
+        expect(screen.getByTitle('J88: ditutup sementara')).toHaveClass(
+            'invisible',
+        );
         expect(screen.queryByText('Ditutup sementara')).not.toBeInTheDocument();
     });
 
@@ -50,7 +55,9 @@ describe('Layout meja admin', () => {
         showClosedSlots = true;
         render(<AdminTableLayoutPage />);
 
-        expect(screen.getByTitle('J88: ditutup sementara')).toHaveClass('bg-slate-500');
+        expect(screen.getByTitle('J88: ditutup sementara')).toHaveClass(
+            'bg-slate-500',
+        );
         expect(screen.getByText('Ditutup sementara')).toBeInTheDocument();
     });
 });

@@ -1,0 +1,27 @@
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    public function up(): void
+    {
+        Schema::table('gallery_media', function (Blueprint $table): void {
+            $table->foreignId('source_table_layout_booking_id')
+                ->nullable()
+                ->unique()
+                ->after('source_prayer_paper_id')
+                ->constrained('bookings')
+                ->restrictOnDelete();
+        });
+    }
+
+    public function down(): void
+    {
+        Schema::table('gallery_media', function (Blueprint $table): void {
+            $table->dropConstrainedForeignId('source_table_layout_booking_id');
+        });
+    }
+};

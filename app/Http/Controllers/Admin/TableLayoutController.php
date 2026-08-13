@@ -21,6 +21,7 @@ class TableLayoutController extends Controller
             ->groupBy('row_code');
 
         return Inertia::render('admin/table-layout', [
+            'show_closed_slots' => (bool) config('table_slots.show_closed_slots', false),
             'rows' => collect($rowOrder)
                 ->map(fn (string $rowCode): array => [
                     'row_code' => $rowCode,

@@ -19,6 +19,7 @@ class InternalCompanyBookingService
         private readonly SlotAllocator $slotAllocator,
         private readonly PrayerPaperGenerationService $prayerPaperGenerationService,
         private readonly InternalCompanySlotService $internalCompanySlotService,
+        private readonly TableLayoutGallerySyncService $tableLayoutGallerySyncService,
     ) {}
 
     /**
@@ -83,6 +84,7 @@ class InternalCompanyBookingService
         }
 
         $this->prayerPaperGenerationService->generateForBooking($booking);
+        $this->tableLayoutGallerySyncService->syncSafely($booking);
 
         return $booking->fresh(['names', 'meal', 'tableSlots', 'incenseSlots', 'prayerPapers']) ?? $booking;
     }

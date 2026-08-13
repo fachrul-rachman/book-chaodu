@@ -13,6 +13,7 @@ class BookingApprovalService
         private readonly ApprovalIntegrationService $approvalIntegrationService,
         private readonly BookingDiscordNotificationService $bookingDiscordNotificationService,
         private readonly PrayerPaperGallerySyncService $prayerPaperGallerySyncService,
+        private readonly TableLayoutGallerySyncService $tableLayoutGallerySyncService,
     ) {}
 
     public function approve(Booking $booking, int $adminId): Booking
@@ -50,6 +51,7 @@ class BookingApprovalService
 
         $booking = $booking->fresh(['tableSlots', 'incenseSlots', 'approvalIntegration']) ?? $booking;
         $this->prayerPaperGallerySyncService->syncSafely($booking);
+        $this->tableLayoutGallerySyncService->syncSafely($booking);
         $this->approvalIntegrationService->runAfterApproval($booking);
 
         if ($approvedNow) {

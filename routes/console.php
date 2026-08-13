@@ -13,6 +13,7 @@ use App\Services\DirectorDiscordRecapService;
 use App\Services\GalleryArchiveService;
 use App\Services\PrayerPaperGallerySyncService;
 use App\Services\PrayerPaperGenerationService;
+use App\Services\TableLayoutGallerySyncService;
 use App\Services\VirtualAccountService;
 use Carbon\CarbonImmutable;
 use Illuminate\Console\Command;
@@ -229,6 +230,38 @@ Artisan::command('gallery:sync-prayer-papers {booking? : Nomor booking approved}
 
     return $failed === 0 ? Command::SUCCESS : Command::FAILURE;
 })->purpose('Memasukkan kertas doa dan kertas hio booking approved ke gallery customer.');
+
+Artisan::command('gallery:sync-table-layouts {booking? : Nomor booking approved}', function (
+    TableLayoutGallerySyncService $syncService,
+) {
+    $query = Booking::query()
+        ->where('status', BookingStatus::Approved)
+        ->whereHas('tableSlots')
+        ->with('tableSlots')
+        ->orderBy('id');
+
+    if ($bookingNumber = $this->argument('booking')) {
+        $query->where('booking_number', $bookingNumber);
+    }
+
+    $synced = 0;
+    $failed = 0;
+
+    $query->chunkById(100, function ($bookings) use ($syncService, &$synced, &$failed): void {
+        foreach ($bookings as $booking) {
+            if ($syncService->syncSafely($booking)) {
+                $synced++;
+            } else {
+                $failed++;
+                $this->error("{$booking->booking_number}: denah meja gagal dibuat.");
+            }
+        }
+    });
+
+    $this->info("Sinkronisasi denah selesai: {$synced} booking berhasil, {$failed} gagal.");
+
+    return $failed === 0 ? Command::SUCCESS : Command::FAILURE;
+})->purpose('Membuat atau memperbarui denah meja personal untuk gallery booking approved.');
 
 Artisan::command('approval-integrations:retry {booking : Nomor booking} {component? : qr|approval_email}', function (
     ApprovalIntegrationService $approvalIntegrationService,
