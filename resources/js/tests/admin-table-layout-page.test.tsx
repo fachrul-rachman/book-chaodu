@@ -122,10 +122,14 @@ describe('Layout meja admin', () => {
     it('uses the corrected admin status colors and hides E J labels', () => {
         render(<AdminTableLayoutPage />);
 
-        expect(screen.getByText('Row A')).toHaveClass('bg-[#1796C7]');
+        expect(screen.getByText('Row A')).toHaveClass(
+            'bg-[#FD9FC9]',
+            'text-slate-900',
+        );
         expect(screen.getByTitle('A38: masih kosong')).toHaveClass('bg-white');
         expect(screen.getByTitle('B38 | CD-APPROVED | Approved')).toHaveClass(
-            'bg-[#FD9FC9]',
+            'bg-[#1796C7]',
+            'text-white',
         );
         expect(screen.getByTitle('B48 | CD-PENDING | Pending')).toHaveClass(
             'bg-yellow-300',
@@ -145,7 +149,7 @@ describe('Layout meja admin', () => {
             screen
                 .getByText('Sudah disetujui')
                 .parentElement?.querySelector('span'),
-        ).toHaveClass('bg-[#FD9FC9]');
+        ).toHaveClass('bg-[#1796C7]');
         expect(
             screen
                 .getByText('Internal Perusahaan')

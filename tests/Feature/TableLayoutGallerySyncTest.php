@@ -71,16 +71,16 @@ it('stores one personalized table layout image in an approved booking gallery id
         ->and($dimensions[1])->toBe(1000);
 });
 
-it('renders a pink customer table with blue row labels and all other tables white', function () {
+it('renders a blue customer table with pink row labels and all other tables white', function () {
     $slots = TableSlot::query()->orderByDesc('number')->orderBy('allocation_order')->get();
     $bytes = app(TableLayoutImageRenderer::class)->render($slots, 'A58');
     $image = imagecreatefromstring($bytes);
 
     expect($image)->not->toBeFalse()
-        ->and(imagecolorsforindex($image, imagecolorat($image, 810, 750)))->toMatchArray(['red' => 23, 'green' => 150, 'blue' => 199])
+        ->and(imagecolorsforindex($image, imagecolorat($image, 810, 750)))->toMatchArray(['red' => 253, 'green' => 159, 'blue' => 201])
         ->and(imagecolorsforindex($image, imagecolorat($image, 120, 750)))->toMatchArray(['red' => 255, 'green' => 255, 'blue' => 255])
         ->and(imagecolorsforindex($image, imagecolorat($image, 1200, 750)))->toMatchArray(['red' => 255, 'green' => 255, 'blue' => 255])
-        ->and(imagecolorsforindex($image, imagecolorat($image, 810, 635)))->toMatchArray(['red' => 253, 'green' => 159, 'blue' => 201])
+        ->and(imagecolorsforindex($image, imagecolorat($image, 810, 635)))->toMatchArray(['red' => 23, 'green' => 150, 'blue' => 199])
         ->and(imagecolorsforindex($image, imagecolorat($image, 810, 610)))->toMatchArray(['red' => 255, 'green' => 255, 'blue' => 255])
         ->and(imagecolorsforindex($image, imagecolorat($image, 810, 710)))->toMatchArray(['red' => 255, 'green' => 255, 'blue' => 255]);
     imagedestroy($image);
