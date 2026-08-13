@@ -63,6 +63,33 @@ vi.mock('@inertiajs/react', () => ({
                     row_code: 'E',
                     slots: [],
                 },
+                {
+                    row_code: 'B',
+                    slots: [
+                        {
+                            id: 4,
+                            code: 'B38',
+                            number: 38,
+                            status: 'ASSIGNED',
+                            booking_id: 100,
+                            booking_number: 'CD-APPROVED',
+                            customer_name: 'Approved',
+                            is_internal_company: false,
+                            is_temporarily_closed: false,
+                        },
+                        {
+                            id: 5,
+                            code: 'B48',
+                            number: 48,
+                            status: 'RESERVED',
+                            booking_id: 101,
+                            booking_number: 'CD-PENDING',
+                            customer_name: 'Pending',
+                            is_internal_company: false,
+                            is_temporarily_closed: false,
+                        },
+                    ],
+                },
             ],
         },
     }),
@@ -92,19 +119,25 @@ describe('Layout meja admin', () => {
         expect(screen.getByText('Ditutup sementara')).toBeInTheDocument();
     });
 
-    it('uses blue row labels, pink available tables, and orange internal tables', () => {
+    it('uses the corrected admin status colors and hides E J labels', () => {
         render(<AdminTableLayoutPage />);
 
         expect(screen.getByText('Row A')).toHaveClass('bg-[#1796C7]');
         expect(screen.getByTitle('A38: masih kosong')).toHaveClass(
-            'bg-[#FD9FC9]',
+            'bg-white',
         );
+        expect(
+            screen.getByTitle('B38 | CD-APPROVED | Approved'),
+        ).toHaveClass('bg-[#FD9FC9]');
+        expect(
+            screen.getByTitle('B48 | CD-PENDING | Pending'),
+        ).toHaveClass('bg-yellow-300');
         expect(screen.getByTitle('A18: Internal Perusahaan')).toHaveClass(
             'bg-orange-400',
         );
         expect(
             screen.getByText('Kosong').parentElement?.querySelector('span'),
-        ).toHaveClass('bg-[#FD9FC9]');
+        ).toHaveClass('bg-white');
         expect(
             screen
                 .getByText('Internal Perusahaan')
