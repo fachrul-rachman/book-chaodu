@@ -59,10 +59,16 @@ class StoreManualBookingRequest extends FormRequest
             }
 
             if (in_array($packageCode, [PackageCode::Prayer, PackageCode::Combo], true)) {
-                $filled = collect($this->input('deceased_names', []))
-                    ->filter(fn (array $name): bool => filled($name['indonesian_name'] ?? null) || filled($name['mandarin_name'] ?? null));
+                $deceasedNames = $this->input('deceased_names', []);
+                $filledCount = is_array($deceasedNames)
+                    ? count(array_filter(
+                        $deceasedNames,
+                        fn (mixed $name): bool => is_array($name)
+                            && (filled($name['indonesian_name'] ?? null) || filled($name['mandarin_name'] ?? null)),
+                    ))
+                    : 0;
 
-                if ($filled->count() < 1 || $filled->count() > 2) {
+                if ($filledCount < 1 || $filledCount > 2) {
                     $validator->errors()->add('deceased_names', 'Isi 1 atau 2 nama untuk kertas doa.');
                 }
             }
@@ -114,14 +120,19 @@ class StoreManualBookingRequest extends FormRequest
 
     private function validateCharacters(Validator $validator): void
     {
-        $names = collect($this->input('deceased_names', []));
+        $deceasedNames = $this->input('deceased_names', []);
+        $names = is_array($deceasedNames) ? $deceasedNames : [];
         $incenseName = $this->input('incense_name');
 
         if (is_array($incenseName)) {
-            $names->push($incenseName);
+            $names[] = $incenseName;
         }
 
         foreach ($names as $index => $name) {
+            if (! is_array($name)) {
+                continue;
+            }
+
             $indonesian = (string) ($name['indonesian_name'] ?? '');
             $mandarin = (string) ($name['mandarin_name'] ?? '');
 
