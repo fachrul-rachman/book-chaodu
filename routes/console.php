@@ -1,6 +1,7 @@
 <?php
 
 use App\Enums\ApprovalIntegrationComponent;
+use App\Enums\BookingStatus;
 use App\Enums\GalleryMediaStatus;
 use App\Enums\GalleryMediaType;
 use App\Jobs\ProcessGalleryVideo;
@@ -10,6 +11,7 @@ use App\Services\ApprovalIntegrationService;
 use App\Services\BookingExpiryService;
 use App\Services\DirectorDiscordRecapService;
 use App\Services\GalleryArchiveService;
+use App\Services\PrayerPaperGallerySyncService;
 use App\Services\PrayerPaperGenerationService;
 use App\Services\VirtualAccountService;
 use Carbon\CarbonImmutable;
@@ -194,6 +196,39 @@ Artisan::command('prayer-papers:retry {booking? : Nomor booking}', function (
 
     return Command::SUCCESS;
 })->purpose('Mengulang pembuatan file final kertas doa yang gagal atau belum jadi.');
+
+Artisan::command('gallery:sync-prayer-papers {booking? : Nomor booking approved}', function (
+    PrayerPaperGallerySyncService $syncService,
+) {
+    $query = Booking::query()
+        ->where('status', BookingStatus::Approved)
+        ->with('prayerPapers')
+        ->orderBy('id');
+
+    if ($bookingNumber = $this->argument('booking')) {
+        $query->where('booking_number', $bookingNumber);
+    }
+
+    $synced = 0;
+    $failed = 0;
+
+    $query->chunkById(100, function ($bookings) use ($syncService, &$synced, &$failed): void {
+        foreach ($bookings as $booking) {
+            try {
+                $syncService->syncForBooking($booking);
+                $synced++;
+            } catch (Throwable $exception) {
+                report($exception);
+                $failed++;
+                $this->error("{$booking->booking_number}: {$exception->getMessage()}");
+            }
+        }
+    });
+
+    $this->info("Sinkronisasi selesai: {$synced} booking berhasil, {$failed} gagal.");
+
+    return $failed === 0 ? Command::SUCCESS : Command::FAILURE;
+})->purpose('Memasukkan kertas doa dan kertas hio booking approved ke gallery customer.');
 
 Artisan::command('approval-integrations:retry {booking : Nomor booking} {component? : qr|approval_email}', function (
     ApprovalIntegrationService $approvalIntegrationService,

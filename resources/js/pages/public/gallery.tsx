@@ -134,7 +134,7 @@ function AlbumMediaCard({
                                 setLoading(false);
                                 setFailed(true);
                             }}
-                            className={`block w-full object-cover transition duration-500 group-hover:scale-[1.02] ${isTallPortrait ? 'h-full' : 'h-auto'} ${loading ? 'opacity-0' : 'opacity-100'}`}
+                            className={`block w-full object-contain ${isTallPortrait ? 'h-full' : 'h-auto'} ${loading ? 'opacity-0' : 'opacity-100'}`}
                         />
                         {loading && (
                             <div className="absolute inset-0 flex items-center justify-center text-stone-500">

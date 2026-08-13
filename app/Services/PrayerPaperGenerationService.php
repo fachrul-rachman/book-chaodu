@@ -16,6 +16,7 @@ class PrayerPaperGenerationService
 {
     public function __construct(
         private readonly PrayerPaperRenderer $renderer,
+        private readonly PrayerPaperGallerySyncService $gallerySyncService,
     ) {}
 
     public function createPendingRows(Booking $booking): void
@@ -37,6 +38,7 @@ class PrayerPaperGenerationService
         }
 
         $this->syncBookingStatus($booking->fresh('prayerPapers') ?? $booking);
+        $this->gallerySyncService->syncSafely($booking);
     }
 
     public function retry(Booking $booking): void
@@ -52,6 +54,7 @@ class PrayerPaperGenerationService
         }
 
         $this->syncBookingStatus($booking->fresh('prayerPapers') ?? $booking);
+        $this->gallerySyncService->syncSafely($booking);
     }
 
     private function generateSingle(Booking $booking, PrayerPaper $paper): void

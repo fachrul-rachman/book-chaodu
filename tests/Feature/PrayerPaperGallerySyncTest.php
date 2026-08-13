@@ -116,6 +116,20 @@ it('replaces the gallery copy after a prayer paper is regenerated', function () 
     Storage::disk('prayer-paper-gallery-target')->assertExists((string) $updated?->original_path);
 });
 
+it('keeps the previous gallery copy when prayer paper regeneration fails', function () {
+    $booking = approvedPrayerPaperBooking('CD-PAPER-FAILED');
+    $paper = readyPrayerPaper($booking, PrayerPaperType::A);
+    $service = app(PrayerPaperGallerySyncService::class);
+    $service->syncForBooking($booking);
+    $media = GalleryMedia::query()->where('source_prayer_paper_id', $paper->id)->firstOrFail();
+
+    $paper->update(['status' => PrayerPaperStatus::Failed, 'error_message' => 'Gagal membuat versi baru.']);
+    $service->syncForBooking($booking);
+
+    expect($media->fresh())->not->toBeNull();
+    Storage::disk('prayer-paper-gallery-target')->assertExists($media->original_path);
+});
+
 it('backfills prayer papers for old approved bookings without adding pending bookings', function () {
     $approved = approvedPrayerPaperBooking('CD-PAPER-OLD');
     readyPrayerPaper($approved, PrayerPaperType::A);

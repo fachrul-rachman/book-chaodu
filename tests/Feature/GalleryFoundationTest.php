@@ -54,6 +54,7 @@ it('creates the gallery media schema needed by later modules', function () {
         'uuid',
         'scope',
         'booking_id',
+        'source_prayer_paper_id',
         'media_type',
         'status',
         'storage_disk',
