@@ -24,14 +24,14 @@ type Props = {
 
 function slotTone(status: TableSlotItem['status']): string {
     if (status === 'ASSIGNED') {
-        return 'bg-emerald-500 text-emerald-950 border-emerald-600';
+        return 'bg-[#FD9FC9] text-slate-900 border-pink-400';
     }
 
     if (status === 'RESERVED') {
-        return 'bg-amber-300 text-amber-950 border-amber-400';
+        return 'bg-yellow-300 text-yellow-950 border-yellow-400';
     }
 
-    return 'bg-[#FD9FC9] text-slate-900 border-pink-400';
+    return 'bg-white text-slate-900 border-slate-300';
 }
 
 function slotClass(slot: TableSlotItem, showClosedSlots: boolean): string {
@@ -101,15 +101,15 @@ export default function AdminTableLayoutPage() {
                     <section className="rounded-[24px] border border-[var(--color-border)] bg-white/90 p-5 shadow-sm sm:p-6">
                         <div className="flex flex-wrap gap-3 text-sm text-slate-700">
                             <div className="flex items-center gap-2">
-                                <span className="h-4 w-4 rounded border border-pink-400 bg-[#FD9FC9]" />
+                                <span className="h-4 w-4 rounded border border-slate-300 bg-white" />
                                 <span>Kosong</span>
                             </div>
                             <div className="flex items-center gap-2">
-                                <span className="h-4 w-4 rounded border border-amber-400 bg-amber-300" />
+                                <span className="h-4 w-4 rounded border border-yellow-400 bg-yellow-300" />
                                 <span>Sudah masuk booking</span>
                             </div>
                             <div className="flex items-center gap-2">
-                                <span className="h-4 w-4 rounded border border-emerald-600 bg-emerald-500" />
+                                <span className="h-4 w-4 rounded border border-pink-400 bg-[#FD9FC9]" />
                                 <span>Sudah disetujui</span>
                             </div>
                             <div className="flex items-center gap-2">

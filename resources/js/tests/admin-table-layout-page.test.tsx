@@ -123,21 +123,29 @@ describe('Layout meja admin', () => {
         render(<AdminTableLayoutPage />);
 
         expect(screen.getByText('Row A')).toHaveClass('bg-[#1796C7]');
-        expect(screen.getByTitle('A38: masih kosong')).toHaveClass(
-            'bg-white',
+        expect(screen.getByTitle('A38: masih kosong')).toHaveClass('bg-white');
+        expect(screen.getByTitle('B38 | CD-APPROVED | Approved')).toHaveClass(
+            'bg-[#FD9FC9]',
         );
-        expect(
-            screen.getByTitle('B38 | CD-APPROVED | Approved'),
-        ).toHaveClass('bg-[#FD9FC9]');
-        expect(
-            screen.getByTitle('B48 | CD-PENDING | Pending'),
-        ).toHaveClass('bg-yellow-300');
+        expect(screen.getByTitle('B48 | CD-PENDING | Pending')).toHaveClass(
+            'bg-yellow-300',
+        );
         expect(screen.getByTitle('A18: Internal Perusahaan')).toHaveClass(
             'bg-orange-400',
         );
         expect(
             screen.getByText('Kosong').parentElement?.querySelector('span'),
         ).toHaveClass('bg-white');
+        expect(
+            screen
+                .getByText('Sudah masuk booking')
+                .parentElement?.querySelector('span'),
+        ).toHaveClass('bg-yellow-300');
+        expect(
+            screen
+                .getByText('Sudah disetujui')
+                .parentElement?.querySelector('span'),
+        ).toHaveClass('bg-[#FD9FC9]');
         expect(
             screen
                 .getByText('Internal Perusahaan')

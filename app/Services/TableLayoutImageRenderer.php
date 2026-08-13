@@ -12,8 +12,6 @@ class TableLayoutImageRenderer
 
     public const HEIGHT = 1000;
 
-    public function __construct(private readonly InternalCompanySlotService $internalCompanySlotService) {}
-
     /**
      * @param  Collection<int, TableSlot>  $slots
      */
@@ -33,12 +31,8 @@ class TableLayoutImageRenderer
             $white = imagecolorallocate($image, 255, 255, 255);
             $ink = imagecolorallocate($image, 30, 41, 59);
             $border = imagecolorallocate($image, 148, 163, 184);
-            $green = imagecolorallocate($image, 16, 185, 129);
-            $greenBorder = imagecolorallocate($image, 5, 150, 105);
             $pink = imagecolorallocate($image, 253, 159, 201);
             $pinkBorder = imagecolorallocate($image, 244, 114, 182);
-            $orange = imagecolorallocate($image, 251, 146, 60);
-            $orangeBorder = imagecolorallocate($image, 249, 115, 22);
             $blue = imagecolorallocate($image, 23, 150, 199);
             $gray = imagecolorallocate($image, 100, 116, 139);
             $lightGray = imagecolorallocate($image, 226, 232, 240);
@@ -46,7 +40,7 @@ class TableLayoutImageRenderer
 
             imagefilledrectangle($image, 0, 0, self::WIDTH, self::HEIGHT, $white);
             $this->centeredText($image, 5, 36, 'DENAH MEJA ANDA', $ink, self::WIDTH / 2);
-            $this->centeredText($image, 4, 68, 'Meja Anda: '.$targetCode, $greenBorder, self::WIDTH / 2);
+            $this->centeredText($image, 4, 68, 'Meja Anda: '.$targetCode, $pinkBorder, self::WIDTH / 2);
 
             $this->labeledBox($image, 550, 105, 850, 170, 'MESIN KREMASI', $lightGray, $border, $ink);
 
@@ -71,18 +65,12 @@ class TableLayoutImageRenderer
                         continue;
                     }
 
-                    $isInternal = $this->internalCompanySlotService->isInternalTableCode($slot->code);
                     $fill = match (true) {
-                        $isTarget => $green,
+                        $isTarget => $pink,
                         $slot->isTemporarilyClosed() => $gray,
-                        $isInternal => $orange,
-                        default => $pink,
+                        default => $white,
                     };
-                    $outline = match (true) {
-                        $isTarget => $greenBorder,
-                        $isInternal => $orangeBorder,
-                        default => $pinkBorder,
-                    };
+                    $outline = $isTarget ? $pinkBorder : $border;
                     $text = $slot->isTemporarilyClosed() && ! $isTarget ? $white : $ink;
                     imagefilledrectangle($image, $rowX[$rowIndex], $y, $rowX[$rowIndex] + $boxWidth, $y + $boxHeight, $fill);
                     imagerectangle($image, $rowX[$rowIndex], $y, $rowX[$rowIndex] + $boxWidth, $y + $boxHeight, $outline);
