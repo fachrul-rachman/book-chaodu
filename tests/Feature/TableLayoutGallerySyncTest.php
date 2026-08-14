@@ -111,6 +111,32 @@ it('backfills table layout images only for approved bookings with a table', func
         ->and(GalleryMedia::query()->where('source_table_layout_booking_id', $pending->id)->exists())->toBeFalse();
 });
 
+it('replaces existing table layout files when the background label changes', function () {
+    $booking = tableLayoutBooking('CD-LAYOUT-RELABEL');
+    TableSlot::query()->where('code', 'A58')->update([
+        'status' => SlotStatus::Assigned,
+        'booking_id' => $booking->id,
+    ]);
+    config()->set('table_slots.background_label', 'MESIN KREMASI');
+
+    app(TableLayoutGallerySyncService::class)->syncForBooking($booking);
+    $media = GalleryMedia::query()
+        ->where('source_table_layout_booking_id', $booking->id)
+        ->firstOrFail();
+    $oldPath = $media->original_path;
+
+    config()->set('table_slots.background_label', 'BACKGROUND');
+
+    expect(Artisan::call('gallery:sync-table-layouts'))->toBe(Command::SUCCESS);
+
+    $media->refresh();
+
+    expect($media->original_path)->not->toBe($oldPath)
+        ->and(GalleryMedia::query()->where('source_table_layout_booking_id', $booking->id)->count())->toBe(1);
+    Storage::disk('table-layout-gallery')->assertMissing($oldPath);
+    Storage::disk('table-layout-gallery')->assertExists($media->original_path);
+});
+
 it('keeps approval successful when rendering the table layout fails', function () {
     $booking = tableLayoutBooking('CD-LAYOUT-FAILED');
     TableSlot::query()->where('code', 'A58')->update([

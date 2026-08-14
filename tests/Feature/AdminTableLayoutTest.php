@@ -61,6 +61,7 @@ it('shows table layout with slot colors data and booking information', function 
     $response = $this->actingAs($admin)->get(route('admin.table-layout'));
 
     $response->assertOk();
+    expect($response->viewData('page')['props']['background_label'])->toBe('BACKGROUND');
 
     $rows = $response->viewData('page')['props']['rows'];
     $rowA = collect($rows)->firstWhere('row_code', 'A');
