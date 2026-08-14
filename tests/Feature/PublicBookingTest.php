@@ -748,6 +748,8 @@ it('snapshots the admin payment deadline for each new booking and shows it to th
         ->assertInertia(fn (Assert $page) => $page
             ->component('public/payment')
             ->where('booking.expires_at', $expectedDeadline->toIso8601String()));
+
+    $this->travelBack();
 });
 
 it('expires an unpaid booking using its stored payment deadline', function () {
