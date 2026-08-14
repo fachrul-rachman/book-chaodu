@@ -627,21 +627,29 @@ export default function PublicGalleryPage() {
                         </div>
                     ) : null}
                     <div
-                        className={`mx-auto flex max-w-[1600px] flex-col items-center justify-center px-5 py-8 text-center sm:px-8 sm:py-12 ${album.wallpaperUrl ? 'relative bg-gradient-to-br from-[#4d1712] to-[#76291f] sm:absolute sm:inset-0 sm:bg-none' : 'min-h-[280px] sm:min-h-[380px]'}`}
+                        className={`mx-auto flex max-w-[1600px] flex-col items-center justify-center px-5 py-8 text-center sm:px-8 sm:py-12 lg:py-16 ${album.wallpaperUrl ? 'relative bg-gradient-to-br from-[#4d1712] to-[#76291f] sm:absolute sm:inset-0 sm:bg-none' : 'min-h-[280px] sm:min-h-[380px]'}`}
                     >
-                        <p className="text-sm font-semibold tracking-[0.16em] text-amber-100 uppercase">
+                        <p className="text-sm font-semibold tracking-[0.16em] text-amber-100 uppercase lg:text-xl">
                             {album.eventName}
                         </p>
-                        <h1 className="mt-3 max-w-4xl text-3xl leading-tight font-semibold text-balance sm:text-4xl">
+                        <h1 className="mt-3 max-w-4xl text-3xl leading-tight font-semibold text-balance sm:text-4xl lg:mt-5 lg:max-w-5xl lg:text-6xl lg:leading-[1.08]">
                             {album.title}
                         </h1>
-                        <div className="mt-7 flex flex-wrap justify-center gap-3 text-sm sm:gap-4">
-                            <span className="inline-flex min-h-11 items-center gap-2 rounded-full bg-white/12 px-4 backdrop-blur-sm">
-                                <CalendarDays size={18} aria-hidden="true" />
+                        <div className="mt-7 flex flex-wrap justify-center gap-3 text-sm sm:gap-4 lg:mt-10 lg:gap-5 lg:text-lg">
+                            <span className="inline-flex min-h-11 items-center gap-2 rounded-full bg-white/12 px-4 backdrop-blur-sm lg:min-h-14 lg:px-6">
+                                <CalendarDays
+                                    className="lg:size-6"
+                                    size={18}
+                                    aria-hidden="true"
+                                />
                                 {album.eventDate}
                             </span>
-                            <span className="inline-flex min-h-11 items-center gap-2 rounded-full bg-white/12 px-4 font-semibold backdrop-blur-sm">
-                                <Ticket size={18} aria-hidden="true" />
+                            <span className="inline-flex min-h-11 items-center gap-2 rounded-full bg-white/12 px-4 font-semibold backdrop-blur-sm lg:min-h-14 lg:px-6">
+                                <Ticket
+                                    className="lg:size-6"
+                                    size={18}
+                                    aria-hidden="true"
+                                />
                                 {album.bookingNumber}
                             </span>
                         </div>
