@@ -607,18 +607,28 @@ export default function PublicGalleryPage() {
                     </div>
                 </header>
 
-                <section className="relative isolate overflow-hidden bg-[#6f241b] text-white">
+                <section className="relative isolate overflow-hidden bg-[#4d1712] text-white">
                     {album.wallpaperUrl ? (
-                        <img
-                            src={album.wallpaperUrl}
-                            alt=""
-                            aria-hidden="true"
-                            className="absolute inset-0 -z-20 size-full object-cover"
-                        />
+                        <div
+                            data-testid="album-wallpaper-frame"
+                            data-aspect-ratio="12/5"
+                            className="relative mx-auto aspect-[12/5] w-full max-w-[1920px] bg-stone-900"
+                        >
+                            <img
+                                src={album.wallpaperUrl}
+                                alt=""
+                                aria-hidden="true"
+                                width="1920"
+                                height="800"
+                                className="size-full object-contain"
+                            />
+                            <div className="absolute inset-0 hidden bg-[radial-gradient(circle_at_15%_20%,rgba(255,221,164,0.12),transparent_34%),linear-gradient(115deg,rgba(49,14,11,0.72),rgba(111,36,27,0.4),rgba(30,20,16,0.18))] sm:block" />
+                            <div className="absolute inset-x-0 bottom-0 hidden h-40 bg-gradient-to-t from-black/50 to-transparent sm:block" />
+                        </div>
                     ) : null}
-                    <div className="absolute inset-0 -z-10 bg-[radial-gradient(circle_at_15%_20%,rgba(255,221,164,0.18),transparent_34%),linear-gradient(115deg,rgba(49,14,11,0.94),rgba(111,36,27,0.63),rgba(30,20,16,0.35))]" />
-                    <div className="absolute inset-x-0 bottom-0 -z-10 h-32 bg-gradient-to-t from-black/40 to-transparent" />
-                    <div className="mx-auto flex min-h-[280px] max-w-[1600px] flex-col items-center justify-center px-5 py-10 text-center sm:min-h-[380px] sm:px-8 sm:py-12">
+                    <div
+                        className={`mx-auto flex max-w-[1600px] flex-col items-center justify-center px-5 py-8 text-center sm:px-8 sm:py-12 ${album.wallpaperUrl ? 'relative bg-gradient-to-br from-[#4d1712] to-[#76291f] sm:absolute sm:inset-0 sm:bg-none' : 'min-h-[280px] sm:min-h-[380px]'}`}
+                    >
                         <p className="text-sm font-semibold tracking-[0.16em] text-amber-100 uppercase">
                             {album.eventName}
                         </p>

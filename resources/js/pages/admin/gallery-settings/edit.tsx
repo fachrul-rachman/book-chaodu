@@ -12,11 +12,19 @@ type Props = {
         wallpaper_url: string | null;
     };
     wallpaper_max_megabytes: number;
+    wallpaper_width: number;
+    wallpaper_height: number;
     flash?: { status?: string | null };
 };
 
 export default function GallerySettingsPage() {
-    const { settings, wallpaper_max_megabytes, flash } = usePage<Props>().props;
+    const {
+        settings,
+        wallpaper_max_megabytes,
+        wallpaper_width,
+        wallpaper_height,
+        flash,
+    } = usePage<Props>().props;
     const [localWallpaperPreview, setLocalWallpaperPreview] = useState<
         string | null
     >(null);
@@ -220,9 +228,11 @@ export default function GallerySettingsPage() {
                                     id="wallpaper-help"
                                     className="mt-2 text-sm leading-6 text-slate-600"
                                 >
-                                    JPG, PNG, atau WebP. Maksimal{' '}
-                                    {wallpaper_max_megabytes} MB. Jika tidak
-                                    memilih file, wallpaper lama tetap dipakai.
+                                    Ukuran wajib {wallpaper_width} x{' '}
+                                    {wallpaper_height} piksel. JPG, PNG, atau
+                                    WebP, maksimal {wallpaper_max_megabytes} MB.
+                                    Jika tidak memilih file, wallpaper lama
+                                    tetap dipakai.
                                 </p>
                                 <FieldError
                                     id="wallpaper-error"
@@ -246,23 +256,27 @@ export default function GallerySettingsPage() {
                             <p className="mb-3 text-sm font-semibold text-slate-700">
                                 Pratinjau kepala album
                             </p>
-                            <div className="relative isolate min-h-[430px] overflow-hidden rounded-[30px] bg-[#6f241b] text-white shadow-xl shadow-stone-900/15">
-                                {wallpaperPreview ? (
-                                    <img
-                                        src={wallpaperPreview}
-                                        alt="Pratinjau wallpaper album"
-                                        className="absolute inset-0 -z-20 size-full object-cover"
-                                    />
-                                ) : (
-                                    <div className="absolute inset-0 -z-20 flex items-center justify-center bg-stone-800 text-white/40">
-                                        <ImageIcon
-                                            size={64}
-                                            aria-hidden="true"
+                            <div className="overflow-hidden rounded-[30px] bg-[#6f241b] text-white shadow-xl shadow-stone-900/15">
+                                <div
+                                    className="aspect-[12/5] bg-stone-800"
+                                    data-aspect-ratio="12/5"
+                                >
+                                    {wallpaperPreview ? (
+                                        <img
+                                            src={wallpaperPreview}
+                                            alt="Pratinjau wallpaper album"
+                                            className="size-full object-contain"
                                         />
-                                    </div>
-                                )}
-                                <div className="absolute inset-0 -z-10 bg-gradient-to-t from-black/90 via-black/45 to-black/15" />
-                                <div className="flex min-h-[430px] flex-col justify-end p-7">
+                                    ) : (
+                                        <div className="flex size-full items-center justify-center text-white/40">
+                                            <ImageIcon
+                                                size={64}
+                                                aria-hidden="true"
+                                            />
+                                        </div>
+                                    )}
+                                </div>
+                                <div className="border-t border-white/10 bg-gradient-to-br from-[#4d1712] to-[#76291f] p-7">
                                     <p className="text-xs font-semibold tracking-[0.16em] text-amber-100 uppercase">
                                         {form.data.event_name || 'Nama acara'}
                                     </p>

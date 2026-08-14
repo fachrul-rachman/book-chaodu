@@ -26,6 +26,8 @@ class GallerySettingController extends Controller
                     : null,
             ],
             'wallpaper_max_megabytes' => (int) ceil((int) config('gallery.photo_max_bytes') / 1024 / 1024),
+            'wallpaper_width' => (int) config('gallery.wallpaper_width'),
+            'wallpaper_height' => (int) config('gallery.wallpaper_height'),
         ]);
     }
 
