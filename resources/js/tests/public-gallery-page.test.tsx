@@ -71,6 +71,14 @@ describe('Album customer', () => {
     it('shows event identity and lazy combined media without private customer data', () => {
         render(<PublicGalleryPage />);
 
+        const wallpaperFrame = screen.getByTestId('album-wallpaper-frame');
+        const wallpaper = wallpaperFrame.querySelector('img');
+
+        expect(wallpaperFrame).toHaveAttribute('data-aspect-ratio', '12/5');
+        expect(wallpaperFrame).toHaveClass('aspect-[12/5]');
+        expect(wallpaper).toHaveClass('object-contain');
+        expect(wallpaper).not.toHaveClass('object-cover');
+
         expect(
             screen.getByRole('heading', { name: 'Kenangan dalam Kebersamaan' }),
         ).toBeInTheDocument();

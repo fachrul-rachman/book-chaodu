@@ -58,7 +58,9 @@ it('lets only admins open and update the single event gallery settings', functio
             ->where('settings.event_name', 'Chao Du dari konfigurasi')
             ->where('settings.event_date', '2026-09-20')
             ->where('settings.album_title', 'Album dari konfigurasi')
-            ->where('settings.empty_state_text', 'Dokumentasi acara belum tersedia.'));
+            ->where('settings.empty_state_text', 'Dokumentasi acara belum tersedia.')
+            ->where('wallpaper_width', 1920)
+            ->where('wallpaper_height', 800));
 
     $this->actingAs($admin)
         ->post(route('admin.gallery-settings.update'), [
@@ -111,7 +113,7 @@ it('stores a validated private wallpaper and removes the replaced object', funct
             'event_date' => '2026-10-18',
             'album_title' => 'Album Dokumentasi',
             'empty_state_text' => 'Dokumentasi belum tersedia.',
-            'wallpaper' => UploadedFile::fake()->image('wallpaper.webp', 1600, 900)->size(2048),
+            'wallpaper' => UploadedFile::fake()->image('wallpaper.webp', 1920, 800)->size(2048),
         ])
         ->assertRedirect(route('admin.gallery-settings.edit'));
 
@@ -145,6 +147,7 @@ it('rejects an invalid or oversized wallpaper without changing the saved wallpap
 })->with([
     'bukan gambar' => fn () => UploadedFile::fake()->create('wallpaper.pdf', 100, 'application/pdf'),
     'lebih dari batas foto galeri' => fn () => UploadedFile::fake()->image('wallpaper.jpg')->size(30 * 1024 + 1),
+    'dimensi bukan 1920 x 800' => fn () => UploadedFile::fake()->image('wallpaper.jpg', 1920, 801)->size(2048),
 ]);
 
 it('applies the same single event identity to existing and new approved bookings', function () {
