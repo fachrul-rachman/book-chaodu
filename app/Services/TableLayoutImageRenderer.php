@@ -42,7 +42,17 @@ class TableLayoutImageRenderer
             $this->centeredText($image, 5, 36, 'DENAH MEJA ANDA', $ink, self::WIDTH / 2);
             $this->centeredText($image, 4, 68, 'Meja Anda: '.$targetCode, $blueBorder, self::WIDTH / 2);
 
-            $this->labeledBox($image, 550, 105, 850, 170, 'MESIN KREMASI', $lightGray, $border, $ink);
+            $this->labeledBox(
+                $image,
+                550,
+                105,
+                850,
+                170,
+                (string) config('table_slots.background_label', 'BACKGROUND'),
+                $lightGray,
+                $border,
+                $ink,
+            );
 
             $rowOrder = ['J', 'H', 'G', 'F', 'A', 'B', 'D', 'E'];
             $rowX = [110, 240, 370, 500, 800, 930, 1060, 1190];

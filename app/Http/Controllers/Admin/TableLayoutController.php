@@ -22,6 +22,7 @@ class TableLayoutController extends Controller
 
         return Inertia::render('admin/table-layout', [
             'show_closed_slots' => (bool) config('table_slots.show_closed_slots', false),
+            'background_label' => (string) config('table_slots.background_label', 'BACKGROUND'),
             'rows' => collect($rowOrder)
                 ->map(fn (string $rowCode): array => [
                     'row_code' => $rowCode,

@@ -20,6 +20,7 @@ type RowItem = {
 type Props = {
     rows: RowItem[];
     show_closed_slots: boolean;
+    background_label: string;
 };
 
 function slotTone(status: TableSlotItem['status']): string {
@@ -65,7 +66,8 @@ function slotTitle(slot: TableSlotItem): string {
 }
 
 export default function AdminTableLayoutPage() {
-    const { rows, show_closed_slots } = usePage<Props>().props;
+    const { rows, show_closed_slots, background_label } =
+        usePage<Props>().props;
     const leftRows = rows.filter((row) =>
         ['J', 'H', 'G', 'F'].includes(row.row_code),
     );
@@ -128,7 +130,7 @@ export default function AdminTableLayoutPage() {
                     <section className="overflow-x-auto rounded-[24px] border border-[var(--color-border)] bg-white/90 p-5 shadow-sm sm:p-6">
                         <div className="mx-auto max-w-[1120px] min-w-[900px] space-y-8">
                             <div className="mx-auto flex h-16 w-[220px] items-center justify-center rounded-md border border-slate-500 bg-slate-200 text-sm font-semibold text-slate-800">
-                                Mesin kremasi
+                                {background_label}
                             </div>
 
                             <div className="flex items-start justify-center gap-12">
