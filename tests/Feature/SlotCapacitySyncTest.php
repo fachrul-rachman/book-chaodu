@@ -46,6 +46,21 @@ it('provides an idempotent production command for syncing slot capacity', functi
         ->and(TableSlot::query()->where('code', 'A278')->exists())->toBeTrue();
 });
 
+it('remains idempotent after extra columns are disabled but their rows are preserved', function () {
+    config()->set('table_slots.extra_columns', 2);
+    $this->seed(TableSlotSeeder::class);
+
+    config()->set('table_slots.extra_columns', 0);
+    $this->seed(TableSlotSeeder::class);
+
+    expect(TableSlot::query()->where('code', 'B268')->value('allocation_order'))->toBeGreaterThanOrEqual(10000)
+        ->and(Artisan::call('slots:sync-capacity'))->toBe(Command::SUCCESS)
+        ->and(Artisan::call('slots:sync-capacity'))->toBe(Command::SUCCESS)
+        ->and(TableSlot::query()->where('code', 'B268')->value('status'))->toBe(SlotStatus::Available)
+        ->and(TableSlot::query()->max('allocation_order'))->toBe(TableSlot::query()->count())
+        ->and(TableSlot::query()->pluck('allocation_order')->unique()->count())->toBe(TableSlot::query()->count());
+});
+
 it('reverses unused expansion but refuses to remove a slot that is already used', function () {
     $migration = require database_path('migrations/2026_08_13_120000_expand_slot_capacity.php');
     config()->set('table_slots.extra_columns', 0);
