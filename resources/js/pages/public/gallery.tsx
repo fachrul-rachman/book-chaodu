@@ -622,32 +622,33 @@ export default function PublicGalleryPage() {
                                 height="800"
                                 className="size-full object-contain"
                             />
-                            <div className="absolute inset-0 hidden bg-[radial-gradient(circle_at_15%_20%,rgba(255,221,164,0.12),transparent_34%),linear-gradient(115deg,rgba(49,14,11,0.72),rgba(111,36,27,0.4),rgba(30,20,16,0.18))] sm:block" />
-                            <div className="absolute inset-x-0 bottom-0 hidden h-40 bg-gradient-to-t from-black/50 to-transparent sm:block" />
+                            <div className="absolute inset-0 bg-[radial-gradient(circle_at_15%_20%,rgba(255,221,164,0.12),transparent_34%),linear-gradient(115deg,rgba(49,14,11,0.72),rgba(111,36,27,0.4),rgba(30,20,16,0.18))]" />
+                            <div className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-black/50 to-transparent sm:h-40" />
                         </div>
                     ) : null}
                     <div
-                        className={`mx-auto flex max-w-[1600px] flex-col items-center justify-center px-5 py-8 text-center sm:px-8 sm:py-12 lg:py-16 ${album.wallpaperUrl ? 'relative bg-gradient-to-br from-[#4d1712] to-[#76291f] sm:absolute sm:inset-0 sm:bg-none' : 'min-h-[280px] sm:min-h-[380px]'}`}
+                        data-testid="album-identity"
+                        className={`mx-auto flex max-w-[1600px] flex-col items-center justify-center px-3 py-3 text-center sm:px-8 sm:py-12 lg:py-16 ${album.wallpaperUrl ? 'absolute inset-0' : 'relative min-h-[280px] bg-gradient-to-br from-[#4d1712] to-[#76291f] sm:min-h-[380px]'}`}
                     >
-                        <p className="text-sm font-semibold tracking-[0.16em] text-amber-100 uppercase lg:text-xl">
+                        <p className="text-[10px] font-semibold tracking-[0.16em] text-amber-100 uppercase sm:text-sm lg:text-xl">
                             {album.eventName}
                         </p>
-                        <h1 className="mt-3 max-w-4xl text-3xl leading-tight font-semibold text-balance sm:text-4xl lg:mt-5 lg:max-w-5xl lg:text-6xl lg:leading-[1.08]">
+                        <h1 className="mt-1.5 max-w-[calc(100%-1.5rem)] text-xl leading-tight font-semibold text-balance sm:mt-3 sm:max-w-4xl sm:text-4xl lg:mt-5 lg:max-w-5xl lg:text-6xl lg:leading-[1.08]">
                             {album.title}
                         </h1>
-                        <div className="mt-7 flex flex-wrap justify-center gap-3 text-sm sm:gap-4 lg:mt-10 lg:gap-5 lg:text-lg">
-                            <span className="inline-flex min-h-11 items-center gap-2 rounded-full bg-white/12 px-4 backdrop-blur-sm lg:min-h-14 lg:px-6">
+                        <div className="mt-3 flex flex-wrap justify-center gap-2 text-[10px] sm:mt-7 sm:gap-4 sm:text-sm lg:mt-10 lg:gap-5 lg:text-lg">
+                            <span className="inline-flex min-h-8 items-center gap-1 rounded-full bg-white/12 px-2.5 whitespace-nowrap backdrop-blur-sm sm:min-h-11 sm:gap-2 sm:px-4 lg:min-h-14 lg:px-6">
                                 <CalendarDays
-                                    className="lg:size-6"
-                                    size={18}
+                                    className="sm:size-[18px] lg:size-6"
+                                    size={14}
                                     aria-hidden="true"
                                 />
                                 {album.eventDate}
                             </span>
-                            <span className="inline-flex min-h-11 items-center gap-2 rounded-full bg-white/12 px-4 font-semibold backdrop-blur-sm lg:min-h-14 lg:px-6">
+                            <span className="inline-flex min-h-8 items-center gap-1 rounded-full bg-white/12 px-2.5 font-semibold whitespace-nowrap backdrop-blur-sm sm:min-h-11 sm:gap-2 sm:px-4 lg:min-h-14 lg:px-6">
                                 <Ticket
-                                    className="lg:size-6"
-                                    size={18}
+                                    className="sm:size-[18px] lg:size-6"
+                                    size={14}
                                     aria-hidden="true"
                                 />
                                 {album.bookingNumber}
