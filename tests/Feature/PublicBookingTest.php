@@ -6,6 +6,7 @@ use App\Enums\BookingNameCategory;
 use App\Enums\BookingStatus;
 use App\Enums\PackageCode;
 use App\Enums\SlotStatus;
+use App\Mail\BookingPaymentLinkMail;
 use App\Models\AppSetting;
 use App\Models\Booking;
 use App\Models\IncenseSlot;
@@ -17,6 +18,7 @@ use App\Services\BookingPaymentLinkService;
 use App\Services\VirtualAccountService;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
 use Inertia\Testing\AssertableInertia as Assert;
 
@@ -693,6 +695,85 @@ it('hangs booking after payment link expires and releases reserved data', functi
 
     expect($booking->fresh()?->status)->toBe(BookingStatus::Rejected)
         ->and($booking->fresh()?->rejection_reason)->toBe(BookingExpiryService::EXPIRED_REASON)
+        ->and(TableSlot::query()->where('booking_id', $booking->id)->exists())->toBeFalse()
+        ->and(VirtualAccount::query()->where('booking_id', $booking->id)->exists())->toBeFalse();
+});
+
+it('snapshots the admin payment deadline for each new booking and shows it to the customer', function () {
+    Mail::fake();
+    $this->travelTo('2026-08-14 10:00:00');
+    AppSetting::putMany(['payment_expiry_hours' => '3']);
+    activatePackage(PackageCode::Prayer);
+
+    $payload = bookingPayload([
+        'idempotency_key' => 'custom-payment-deadline',
+        'sender_name' => null,
+        'transfer_date' => null,
+        'proof' => null,
+    ]);
+
+    $this->post(route('api.public.bookings.store'), $payload, [
+        'Accept' => 'application/json',
+    ])->assertCreated();
+
+    $booking = Booking::query()->latest('id')->firstOrFail();
+    $expectedDeadline = now()->addHours(3);
+
+    expect($booking->payment_expires_at?->equalTo($expectedDeadline))->toBeTrue();
+
+    Mail::assertSent(
+        BookingPaymentLinkMail::class,
+        fn (BookingPaymentLinkMail $mail): bool => $mail->booking->is($booking)
+            && $mail->expiresAt === $expectedDeadline->format('d M Y H:i'),
+    );
+
+    AppSetting::putMany(['payment_expiry_hours' => '24']);
+
+    expect(app(BookingPaymentLinkService::class)->expiresAt($booking)?->equalTo($expectedDeadline))
+        ->toBeTrue();
+
+    $this->get(route('public.booking.success', $booking->booking_number))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->component('public/success')
+            ->where('payment_expires_at', $expectedDeadline->toIso8601String()));
+
+    $token = paymentTokenForBooking($booking);
+
+    $this->get(route('public.booking.payment.show', [
+        'bookingNumber' => $booking->booking_number,
+        'token' => $token,
+    ]))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->component('public/payment')
+            ->where('booking.expires_at', $expectedDeadline->toIso8601String()));
+});
+
+it('expires an unpaid booking using its stored payment deadline', function () {
+    setVirtualAccountMode(VirtualAccountService::MODE_POOL);
+    activatePackage(PackageCode::Prayer);
+
+    $payload = bookingPayload([
+        'idempotency_key' => 'stored-expiry-deadline',
+        'sender_name' => null,
+        'transfer_date' => null,
+        'proof' => null,
+    ]);
+
+    $this->post(route('api.public.bookings.store'), $payload, [
+        'Accept' => 'application/json',
+    ])->assertCreated();
+
+    $booking = Booking::query()->latest('id')->firstOrFail();
+    $booking->forceFill([
+        'payment_expires_at' => now()->subMinute(),
+    ])->save();
+    AppSetting::putMany(['payment_expiry_hours' => '24']);
+
+    $this->artisan('bookings:expire-unpaid')->assertExitCode(0);
+
+    expect($booking->fresh()?->status)->toBe(BookingStatus::Rejected)
         ->and(TableSlot::query()->where('booking_id', $booking->id)->exists())->toBeFalse()
         ->and(VirtualAccount::query()->where('booking_id', $booking->id)->exists())->toBeFalse();
 });

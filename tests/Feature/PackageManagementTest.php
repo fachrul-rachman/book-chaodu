@@ -81,6 +81,7 @@ it('allows an admin to update payment information', function () {
             'bank_account_holder' => 'PT Chao Du',
             'virtual_account_mode' => 'FIXED',
             'virtual_account_hold_minutes' => 180,
+            'payment_expiry_hours' => 3,
             'prayer_virtual_account' => '900001',
             'incense_virtual_account' => '910001',
             'combo_virtual_account' => '920001',
@@ -91,11 +92,33 @@ it('allows an admin to update payment information', function () {
         'bank_name',
         'bank_account_holder',
         'virtual_account_hold_minutes',
+        'payment_expiry_hours',
     ]))->toMatchArray([
         'bank_name' => 'BCA',
         'bank_account_holder' => 'PT Chao Du',
         'virtual_account_hold_minutes' => '180',
+        'payment_expiry_hours' => '3',
     ]);
+});
+
+it('validates the payment deadline configured by an admin', function () {
+    $admin = User::factory()->admin()->create();
+    $this->seed(AppSettingSeeder::class);
+
+    $this->actingAs($admin)
+        ->from(route('admin.settings.edit'))
+        ->put(route('admin.settings.update'), [
+            'bank_name' => 'BCA',
+            'bank_account_holder' => 'PT Chao Du',
+            'virtual_account_mode' => 'FIXED',
+            'virtual_account_hold_minutes' => 60,
+            'payment_expiry_hours' => 0,
+            'prayer_virtual_account' => '900001',
+            'incense_virtual_account' => '910001',
+            'combo_virtual_account' => '920001',
+        ])
+        ->assertRedirect(route('admin.settings.edit'))
+        ->assertSessionHasErrors('payment_expiry_hours');
 });
 
 it('only returns active packages from the public package data', function () {
