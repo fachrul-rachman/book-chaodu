@@ -92,6 +92,13 @@ class VirtualAccountService
 
     public function paymentLinkExpiryHours(): int
     {
+        $settings = AppSetting::getMany(['payment_expiry_hours']);
+        $stored = $settings['payment_expiry_hours'] ?? null;
+
+        if (is_numeric($stored)) {
+            return max(1, (int) $stored);
+        }
+
         return max(1, (int) config('phase3.payment_link_expiry_hours', 24));
     }
 

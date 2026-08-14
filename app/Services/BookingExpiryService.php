@@ -13,11 +13,12 @@ class BookingExpiryService
     public function __construct(
         private readonly SlotAllocator $slotAllocator,
         private readonly VirtualAccountService $virtualAccountService,
+        private readonly BookingPaymentLinkService $bookingPaymentLinkService,
     ) {}
 
     public function expireIfNeeded(Booking $booking): Booking
     {
-        $expiresAt = $booking->created_at?->copy()->addHours($this->virtualAccountService->paymentLinkExpiryHours());
+        $expiresAt = $this->bookingPaymentLinkService->expiresAt($booking);
 
         if (
             ! $this->isAwaitingPayment($booking)
@@ -37,7 +38,19 @@ class BookingExpiryService
         Booking::query()
             ->where('status', BookingStatus::Pending)
             ->whereDoesntHave('payment')
-            ->where('created_at', '<=', now()->subHours($this->virtualAccountService->paymentLinkExpiryHours()))
+            ->where(function ($query): void {
+                $query
+                    ->where('payment_expires_at', '<=', now())
+                    ->orWhere(function ($legacyQuery): void {
+                        $legacyQuery
+                            ->whereNull('payment_expires_at')
+                            ->where(
+                                'created_at',
+                                '<=',
+                                now()->subHours($this->virtualAccountService->paymentLinkExpiryHours()),
+                            );
+                    });
+            })
             ->orderBy('id')
             ->chunkById(100, function ($bookings) use (&$expired): void {
                 foreach ($bookings as $booking) {
@@ -58,7 +71,11 @@ class BookingExpiryService
                 ->lockForUpdate()
                 ->find($booking->id);
 
-            if (! $locked || ! $this->isAwaitingPayment($locked)) {
+            if (
+                ! $locked
+                || ! $this->isAwaitingPayment($locked)
+                || $this->bookingPaymentLinkService->expiresAt($locked)?->isFuture() !== false
+            ) {
                 return null;
             }
 

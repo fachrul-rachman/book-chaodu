@@ -84,6 +84,9 @@ class BookingSubmissionService
                     'referral_source' => $payload['referral_source'],
                     'agent_name' => $payload['agent_name'],
                     'status' => BookingStatus::Pending,
+                    'payment_expires_at' => now()->addHours(
+                        $this->virtualAccountService->paymentLinkExpiryHours(),
+                    ),
                     'prayer_paper_status' => PrayerPaperStatus::Pending,
                 ]);
 

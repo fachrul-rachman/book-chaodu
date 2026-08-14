@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Support\Carbon;
 
 /**
  * @property int $id
@@ -26,6 +27,7 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
  * @property string|null $agent_name
  * @property BookingStatus $status
  * @property string|null $rejection_reason
+ * @property Carbon|null $payment_expires_at
  * @property int|null $approved_by
  * @property int|null $rejected_by
  * @property bool $is_printed
@@ -46,6 +48,7 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
     'agent_name',
     'status',
     'rejection_reason',
+    'payment_expires_at',
     'is_printed',
     'approved_at',
     'approved_by',
@@ -63,6 +66,7 @@ class Booking extends Model
             'package_price_snapshot' => 'decimal:2',
             'attendee_count' => 'integer',
             'status' => BookingStatus::class,
+            'payment_expires_at' => 'datetime',
             'approved_at' => 'datetime',
             'approved_by' => 'integer',
             'rejected_at' => 'datetime',

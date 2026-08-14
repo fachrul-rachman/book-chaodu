@@ -47,7 +47,8 @@
                             </table>
 
                             <p style="margin:0;font-size:14px;line-height:1.7;color:#6b4a3d;">
-                                Jika link sudah lewat waktu, booking akan hangus dan Anda perlu melakukan booking ulang.
+                                Selesaikan pembayaran sebelum batas waktu di atas. Jika link sudah lewat waktu,
+                                booking akan hangus, slot serta nomor pembayaran akan dilepas, dan Anda perlu melakukan booking ulang.
                             </p>
                         </td>
                     </tr>

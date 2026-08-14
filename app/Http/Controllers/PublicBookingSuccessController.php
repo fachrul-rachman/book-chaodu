@@ -3,13 +3,16 @@
 namespace App\Http\Controllers;
 
 use App\Models\Booking;
+use App\Services\BookingPaymentLinkService;
 use Inertia\Inertia;
 use Inertia\Response;
 
 class PublicBookingSuccessController extends Controller
 {
-    public function __invoke(string $bookingNumber): Response
-    {
+    public function __invoke(
+        string $bookingNumber,
+        BookingPaymentLinkService $bookingPaymentLinkService,
+    ): Response {
         $booking = Booking::query()
             ->where('booking_number', $bookingNumber)
             ->firstOrFail();
@@ -19,6 +22,9 @@ class PublicBookingSuccessController extends Controller
             'customer_email' => $booking->customer_email,
             'package_name' => $booking->package_name_snapshot,
             'package_price' => $booking->package_price_snapshot,
+            'payment_expires_at' => optional(
+                $bookingPaymentLinkService->expiresAt($booking),
+            )->toIso8601String(),
         ]);
     }
 }

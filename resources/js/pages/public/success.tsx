@@ -1,14 +1,35 @@
 import { Head, Link, usePage } from '@inertiajs/react';
+import { useMemo } from 'react';
 import { formatCurrency } from '@/lib/booking';
 
 export default function PublicBookingSuccessPage() {
-    const { booking_number, customer_email, package_name, package_price } =
-        usePage<{
-            booking_number: string;
-            customer_email: string;
-            package_name: string;
-            package_price: string;
-        }>().props;
+    const {
+        booking_number,
+        customer_email,
+        package_name,
+        package_price,
+        payment_expires_at,
+    } = usePage<{
+        booking_number: string;
+        customer_email: string;
+        package_name: string;
+        package_price: string;
+        payment_expires_at: string | null;
+    }>().props;
+
+    const paymentDeadlineLabel = useMemo(() => {
+        if (!payment_expires_at) {
+            return '-';
+        }
+
+        return new Intl.DateTimeFormat('id-ID', {
+            day: '2-digit',
+            month: 'long',
+            year: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit',
+        }).format(new Date(payment_expires_at));
+    }, [payment_expires_at]);
 
     return (
         <>
@@ -24,9 +45,10 @@ export default function PublicBookingSuccessPage() {
                             Data Anda sudah kami terima.
                         </h1>
                         <p className="mt-4 text-base leading-7 text-slate-700">
-                            Langkah berikutnya adalah <strong>membuka Gmail
-                            Anda</strong>, lalu <strong>klik link pembayaran</strong>{' '}
-                            yang kami kirimkan ke email:
+                            Langkah berikutnya adalah{' '}
+                            <strong>membuka Gmail Anda</strong>, lalu{' '}
+                            <strong>klik link pembayaran</strong> yang kami
+                            kirimkan ke email:
                         </p>
                         <p className="mt-3 rounded-[20px] border border-[var(--color-brand)] bg-[var(--color-panel)] px-4 py-3 text-base font-semibold text-[var(--color-ink)]">
                             {customer_email}
@@ -47,9 +69,7 @@ export default function PublicBookingSuccessPage() {
                                 </p>
                             </div>
                             <div>
-                                <p className="text-sm text-slate-600">
-                                    Paket
-                                </p>
+                                <p className="text-sm text-slate-600">Paket</p>
                                 <p className="mt-2 text-lg font-semibold text-[var(--color-ink)]">
                                     {package_name}
                                 </p>
@@ -60,9 +80,17 @@ export default function PublicBookingSuccessPage() {
                         </div>
 
                         <div className="mt-6 rounded-[24px] border border-amber-200 bg-amber-50 px-5 py-4 text-sm leading-7 text-amber-900">
+                            <p className="mb-2">
+                                Batas pembayaran:{' '}
+                                <strong>{paymentDeadlineLabel}</strong>
+                            </p>
                             <p>
-                                <strong>Jangan transfer jika waktu booking pada link pembayaran sudah habis.</strong>{' '}
-                                Jika waktu sudah habis, booking harus dibuat ulang.
+                                <strong>
+                                    Jangan transfer jika waktu booking pada link
+                                    pembayaran sudah habis.
+                                </strong>{' '}
+                                Jika waktu sudah habis, booking harus dibuat
+                                ulang.
                             </p>
                         </div>
 

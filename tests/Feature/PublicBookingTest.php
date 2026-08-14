@@ -688,7 +688,7 @@ it('hangs booking after payment link expires and releases reserved data', functi
 
     $booking = Booking::query()->latest('id')->firstOrFail();
     $booking->forceFill([
-        'created_at' => now()->subHours(25),
+        'payment_expires_at' => now()->subMinute(),
     ])->save();
 
     $this->artisan('bookings:expire-unpaid')->assertExitCode(0);
@@ -826,7 +826,7 @@ it('rejects payment submit when the unique payment link has expired', function (
 
     $booking = Booking::query()->latest('id')->firstOrFail();
     $booking->forceFill([
-        'created_at' => now()->subHours(25),
+        'payment_expires_at' => now()->subMinute(),
     ])->save();
 
     $token = paymentTokenForBooking($booking);

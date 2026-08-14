@@ -7,6 +7,7 @@ type Props = {
         bank_account_holder: string | null;
         virtual_account_mode: 'FIXED' | 'POOL' | null;
         virtual_account_hold_minutes: number | null;
+        payment_expiry_hours: number | null;
         prayer_virtual_account: string | null;
         incense_virtual_account: string | null;
         combo_virtual_account: string | null;
@@ -37,11 +38,15 @@ export default function PaymentSettingsPage() {
         virtual_account_hold_minutes: String(
             payment_settings.virtual_account_hold_minutes ?? 60,
         ),
+        payment_expiry_hours: String(
+            payment_settings.payment_expiry_hours ?? 24,
+        ),
         prayer_virtual_account: payment_settings.prayer_virtual_account ?? '',
         incense_virtual_account: payment_settings.incense_virtual_account ?? '',
         combo_virtual_account: payment_settings.combo_virtual_account ?? '',
         prayer_virtual_accounts: payment_settings.prayer_virtual_accounts ?? '',
-        incense_virtual_accounts: payment_settings.incense_virtual_accounts ?? '',
+        incense_virtual_accounts:
+            payment_settings.incense_virtual_accounts ?? '',
         combo_virtual_accounts: payment_settings.combo_virtual_accounts ?? '',
     });
 
@@ -132,8 +137,7 @@ export default function PaymentSettingsPage() {
                                         form.setData(
                                             'virtual_account_mode',
                                             event.target.value as
-                                                | 'FIXED'
-                                                | 'POOL',
+                                                'FIXED' | 'POOL',
                                         )
                                     }
                                     className="w-full rounded-2xl border border-[var(--color-border)] bg-white px-4 py-3 text-base"
@@ -155,7 +159,9 @@ export default function PaymentSettingsPage() {
                                     type="number"
                                     min={1}
                                     max={1440}
-                                    value={form.data.virtual_account_hold_minutes}
+                                    value={
+                                        form.data.virtual_account_hold_minutes
+                                    }
                                     onChange={(event) =>
                                         form.setData(
                                             'virtual_account_hold_minutes',
@@ -166,13 +172,44 @@ export default function PaymentSettingsPage() {
                                 />
                             </label>
 
+                            <label className="block">
+                                <span className="mb-2 block text-sm font-medium">
+                                    Batas pembayaran booking baru (jam)
+                                </span>
+                                <input
+                                    type="number"
+                                    min={1}
+                                    step={1}
+                                    value={form.data.payment_expiry_hours}
+                                    onChange={(event) =>
+                                        form.setData(
+                                            'payment_expiry_hours',
+                                            event.target.value,
+                                        )
+                                    }
+                                    className="w-full rounded-2xl border border-[var(--color-border)] bg-white px-4 py-3 text-base"
+                                />
+                                <p className="mt-2 text-sm leading-6 text-slate-600">
+                                    Berlaku untuk booking baru. Deadline booking
+                                    yang sudah dibuat tidak akan berubah.
+                                </p>
+                                {form.errors.payment_expiry_hours ? (
+                                    <p className="mt-2 text-sm text-red-700">
+                                        {form.errors.payment_expiry_hours}
+                                    </p>
+                                ) : null}
+                            </label>
+
                             <div className="grid gap-4 rounded-2xl border border-[var(--color-border)] bg-[#F8F4EE] p-4 sm:grid-cols-3">
                                 {[
                                     ['PRAYER', 'Sembahyang'],
                                     ['INCENSE', 'Hio'],
                                     ['COMBO', 'Combo'],
                                 ].map(([code, label]) => (
-                                    <div key={code} className="space-y-1 text-sm">
+                                    <div
+                                        key={code}
+                                        className="space-y-1 text-sm"
+                                    >
                                         <p className="font-semibold text-[#2C1810]">
                                             {label}
                                         </p>
@@ -207,8 +244,7 @@ export default function PaymentSettingsPage() {
                                             type="text"
                                             inputMode="numeric"
                                             value={
-                                                form.data
-                                                    .prayer_virtual_account
+                                                form.data.prayer_virtual_account
                                             }
                                             onChange={(event) =>
                                                 form.setData(
@@ -249,8 +285,7 @@ export default function PaymentSettingsPage() {
                                             type="text"
                                             inputMode="numeric"
                                             value={
-                                                form.data
-                                                    .combo_virtual_account
+                                                form.data.combo_virtual_account
                                             }
                                             onChange={(event) =>
                                                 form.setData(
@@ -311,8 +346,7 @@ export default function PaymentSettingsPage() {
                                         <textarea
                                             rows={5}
                                             value={
-                                                form.data
-                                                    .combo_virtual_accounts
+                                                form.data.combo_virtual_accounts
                                             }
                                             onChange={(event) =>
                                                 form.setData(

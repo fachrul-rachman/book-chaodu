@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Enums\BookingStatus;
 use App\Models\Booking;
+use Carbon\CarbonInterface;
 
 class BookingPaymentLinkService
 {
@@ -28,8 +29,12 @@ class BookingPaymentLinkService
         return hash_equals($this->tokenFor($booking), $token);
     }
 
-    public function expiresAt(Booking $booking)
+    public function expiresAt(Booking $booking): ?CarbonInterface
     {
+        if ($booking->payment_expires_at instanceof CarbonInterface) {
+            return $booking->payment_expires_at;
+        }
+
         return $booking->created_at?->copy()->addHours($this->virtualAccountService->paymentLinkExpiryHours());
     }
 
