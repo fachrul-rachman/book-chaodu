@@ -124,19 +124,26 @@ describe('Album customer', () => {
         ).toBeInTheDocument();
     });
 
-    it('keeps mobile hero typography compact and enlarges it on desktop', () => {
+    it('overlays responsive identity text on the wallpaper at every breakpoint', () => {
         render(<PublicGalleryPage />);
 
+        expect(screen.getByTestId('album-identity')).toHaveClass(
+            'absolute',
+            'inset-0',
+        );
         expect(screen.getByText('Doa Bersama Chao Du')).toHaveClass(
-            'text-sm',
+            'text-[10px]',
+            'sm:text-sm',
             'lg:text-xl',
         );
         expect(
             screen.getByRole('heading', {
                 name: 'Kenangan dalam Kebersamaan',
             }),
-        ).toHaveClass('text-3xl', 'lg:text-6xl');
+        ).toHaveClass('text-xl', 'sm:text-4xl', 'lg:text-6xl');
         expect(screen.getByText('20 September 2026').parentElement).toHaveClass(
+            'text-[10px]',
+            'sm:text-sm',
             'lg:text-lg',
         );
     });
