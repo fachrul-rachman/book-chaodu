@@ -31,7 +31,7 @@ class SlotCapacityService
             $order = 1;
             $extraRows = config('table_slots.extra_rows', []);
             $extraNumbers = $this->extraTableNumbers();
-            TableSlot::query()->increment('allocation_order', 10000);
+            $desiredSlots = [];
 
             foreach (self::TABLE_ROWS as $row) {
                 $numbers = self::BASE_TABLE_NUMBERS;
@@ -41,25 +41,49 @@ class SlotCapacityService
                 }
 
                 foreach ($numbers as $number) {
-                    $slot = TableSlot::query()->firstOrCreate(['code' => $row.$number], [
-                        'row_code' => $row,
-                        'number' => $number,
-                        'allocation_order' => $order,
-                        'status' => SlotStatus::Available,
-                    ]);
-
-                    if ($slot->wasRecentlyCreated) {
-                        $created++;
-                    } else {
-                        $slot->forceFill([
-                            'row_code' => $row,
-                            'number' => $number,
-                            'allocation_order' => $order,
-                        ])->save();
-                    }
-
-                    $order++;
+                    $desiredSlots[] = ['row' => $row, 'number' => $number];
                 }
+            }
+
+            $existingSlots = TableSlot::query()->lockForUpdate()->get(['allocation_order']);
+
+            if ($existingSlots->isNotEmpty()) {
+                $minimumOrder = (int) $existingSlots->min('allocation_order');
+                $temporaryFloor = max(
+                    (int) $existingSlots->max('allocation_order'),
+                    count($desiredSlots),
+                ) + $existingSlots->count() + 1;
+
+                TableSlot::query()->increment('allocation_order', $temporaryFloor - $minimumOrder);
+            }
+
+            $desiredCodes = [];
+
+            foreach ($desiredSlots as $definition) {
+                $code = $definition['row'].$definition['number'];
+                $desiredCodes[] = $code;
+                $slot = TableSlot::query()->firstOrCreate(['code' => $code], [
+                    'row_code' => $definition['row'],
+                    'number' => $definition['number'],
+                    'allocation_order' => $order,
+                    'status' => SlotStatus::Available,
+                ]);
+
+                if ($slot->wasRecentlyCreated) {
+                    $created++;
+                } else {
+                    $slot->forceFill([
+                        'row_code' => $definition['row'],
+                        'number' => $definition['number'],
+                        'allocation_order' => $order,
+                    ])->save();
+                }
+
+                $order++;
+            }
+
+            foreach (TableSlot::query()->whereNotIn('code', $desiredCodes)->orderBy('allocation_order')->get() as $slot) {
+                $slot->forceFill(['allocation_order' => $order++])->save();
             }
 
             return $created;
@@ -70,9 +94,20 @@ class SlotCapacityService
     {
         return DB::transaction(function (): int {
             $created = 0;
-            IncenseSlot::query()->increment('allocation_order', 1000);
+            $desiredNumbers = $this->incenseNumbers();
+            $existingSlots = IncenseSlot::query()->lockForUpdate()->get(['allocation_order']);
 
-            foreach ($this->incenseNumbers() as $index => $number) {
+            if ($existingSlots->isNotEmpty()) {
+                $minimumOrder = (int) $existingSlots->min('allocation_order');
+                $temporaryFloor = max(
+                    (int) $existingSlots->max('allocation_order'),
+                    count($desiredNumbers),
+                ) + $existingSlots->count() + 1;
+
+                IncenseSlot::query()->increment('allocation_order', $temporaryFloor - $minimumOrder);
+            }
+
+            foreach ($desiredNumbers as $index => $number) {
                 $slot = IncenseSlot::query()->firstOrCreate(['number' => $number], [
                     'allocation_order' => $index + 1,
                     'status' => SlotStatus::Available,
@@ -83,6 +118,12 @@ class SlotCapacityService
                 } else {
                     $slot->forceFill(['allocation_order' => $index + 1])->save();
                 }
+            }
+
+            $order = count($desiredNumbers) + 1;
+
+            foreach (IncenseSlot::query()->whereNotIn('number', $desiredNumbers)->orderBy('allocation_order')->get() as $slot) {
+                $slot->forceFill(['allocation_order' => $order++])->save();
             }
 
             return $created;

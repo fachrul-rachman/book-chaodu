@@ -53,6 +53,15 @@ it('remains idempotent after extra columns are disabled but their rows are prese
     config()->set('table_slots.extra_columns', 0);
     $this->seed(TableSlotSeeder::class);
 
+    TableSlot::query()
+        ->where('number', '>', 258)
+        ->orderBy('id')
+        ->get()
+        ->each(function (TableSlot $slot, int $index): void {
+            $slot->forceFill(['allocation_order' => 11000 + $index])->save();
+        });
+    TableSlot::query()->where('code', 'B268')->update(['allocation_order' => 10068]);
+
     expect(TableSlot::query()->where('code', 'B268')->value('allocation_order'))->toBeGreaterThanOrEqual(10000)
         ->and(Artisan::call('slots:sync-capacity'))->toBe(Command::SUCCESS)
         ->and(Artisan::call('slots:sync-capacity'))->toBe(Command::SUCCESS)
