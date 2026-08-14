@@ -124,6 +124,23 @@ describe('Album customer', () => {
         ).toBeInTheDocument();
     });
 
+    it('keeps mobile hero typography compact and enlarges it on desktop', () => {
+        render(<PublicGalleryPage />);
+
+        expect(screen.getByText('Doa Bersama Chao Du')).toHaveClass(
+            'text-sm',
+            'lg:text-xl',
+        );
+        expect(
+            screen.getByRole('heading', {
+                name: 'Kenangan dalam Kebersamaan',
+            }),
+        ).toHaveClass('text-3xl', 'lg:text-6xl');
+        expect(screen.getByText('20 September 2026').parentElement).toHaveClass(
+            'lg:text-lg',
+        );
+    });
+
     it('opens an accessible viewer and navigates photo and video by controls and keyboard', () => {
         render(<PublicGalleryPage />);
         const trigger = screen.getByRole('button', {
