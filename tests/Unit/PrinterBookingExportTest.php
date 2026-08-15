@@ -39,6 +39,12 @@ class PrinterBookingExportTest extends TestCase
                 'indonesian_name' => 'Alm Satu',
                 'mandarin_name' => null,
             ]),
+            (new BookingName)->forceFill([
+                'category' => BookingNameCategory::Incense,
+                'position' => 1,
+                'indonesian_name' => 'Nama Hio',
+                'mandarin_name' => null,
+            ]),
         ]));
         $booking->setRelation('tableSlots', new Collection([
             (new TableSlot)->forceFill(['code' => 'A01', 'allocation_order' => 1]),
@@ -63,27 +69,94 @@ class PrinterBookingExportTest extends TestCase
             'Nama Customer',
             'Nama Alm 1',
             'Nama Alm 2',
-            'Nomor Meja/Hio',
+            'Nama Hio',
             'Meja',
             'Hio',
-            'Nomor Telepon',
             'Vegetarian',
-            'Non-Vegetarian',
-        ], $sheet->rangeToArray('A1:J1')[0]);
+            'Non Vegetarian',
+        ], $sheet->rangeToArray('A1:I1')[0]);
         self::assertSame([
             'CD-TEST-123',
             'Budi',
             'Alm Satu',
             '亡者二',
-            'Meja: A01 | Hio: 12',
+            'Nama Hio',
             'A01',
             '12',
-            '+628123456789',
             '2',
             '3',
-        ], $sheet->rangeToArray('A2:J2')[0]);
-        self::assertSame(DataType::TYPE_STRING, $sheet->getCell('H2')->getDataType());
+        ], $sheet->rangeToArray('A2:I2')[0]);
+        self::assertSame(DataType::TYPE_STRING, $sheet->getCell('A2')->getDataType());
+        self::assertSame(DataType::TYPE_NUMERIC, $sheet->getCell('H2')->getDataType());
         self::assertSame(DataType::TYPE_NUMERIC, $sheet->getCell('I2')->getDataType());
-        self::assertSame(DataType::TYPE_NUMERIC, $sheet->getCell('J2')->getDataType());
+    }
+
+    public function test_printer_excel_sorts_tables_by_requested_row_then_hio_only_by_number(): void
+    {
+        $bookings = new Collection([
+            $this->bookingWithSlots('CD-HIO-12', incenseNumber: 12),
+            $this->bookingWithSlots('CD-J-01', tableCode: 'J01'),
+            $this->bookingWithSlots('CD-A-10', tableCode: 'A10'),
+            $this->bookingWithSlots('CD-NONE'),
+            $this->bookingWithSlots('CD-E-01', tableCode: 'E01'),
+            $this->bookingWithSlots('CD-H-01', tableCode: 'H01'),
+            $this->bookingWithSlots('CD-B-01', tableCode: 'B01'),
+            $this->bookingWithSlots('CD-A-02', tableCode: 'A02'),
+            $this->bookingWithSlots('CD-HIO-01', incenseNumber: 1),
+            $this->bookingWithSlots('CD-D-01', tableCode: 'D01'),
+            $this->bookingWithSlots('CD-F-01', tableCode: 'F01'),
+            $this->bookingWithSlots('CD-G-01', tableCode: 'G01'),
+        ]);
+
+        $method = new ReflectionMethod(DashboardController::class, 'exportSpreadsheet');
+        $spreadsheet = $method->invoke(new DashboardController, $bookings);
+
+        self::assertSame([
+            'CD-A-02',
+            'CD-A-10',
+            'CD-B-01',
+            'CD-D-01',
+            'CD-F-01',
+            'CD-G-01',
+            'CD-H-01',
+            'CD-E-01',
+            'CD-J-01',
+            'CD-HIO-01',
+            'CD-HIO-12',
+            'CD-NONE',
+        ], array_column($spreadsheet->getActiveSheet()->rangeToArray('A2:A13'), 0));
+    }
+
+    private function bookingWithSlots(
+        string $bookingNumber,
+        ?string $tableCode = null,
+        ?int $incenseNumber = null,
+    ): Booking {
+        $booking = (new Booking)->forceFill([
+            'booking_number' => $bookingNumber,
+            'customer_name' => 'Customer '.$bookingNumber,
+        ]);
+        $booking->setRelation('names', new Collection);
+        $booking->setRelation('tableSlots', new Collection(
+            $tableCode === null
+                ? []
+                : [(new TableSlot)->forceFill([
+                    'code' => $tableCode,
+                    'row_code' => substr($tableCode, 0, 1),
+                    'number' => (int) substr($tableCode, 1),
+                    'allocation_order' => 1,
+                ])],
+        ));
+        $booking->setRelation('incenseSlots', new Collection(
+            $incenseNumber === null
+                ? []
+                : [(new IncenseSlot)->forceFill([
+                    'number' => $incenseNumber,
+                    'allocation_order' => 1,
+                ])],
+        ));
+        $booking->setRelation('meal', null);
+
+        return $booking;
     }
 }
