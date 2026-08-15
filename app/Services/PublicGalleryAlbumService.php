@@ -19,6 +19,7 @@ class PublicGalleryAlbumService
     public function findApprovedBooking(string $bookingNumber): Booking
     {
         return Booking::query()
+            ->with('meal')
             ->where('booking_number', $bookingNumber)
             ->where('status', BookingStatus::Approved)
             ->firstOrFail();
@@ -43,6 +44,17 @@ class PublicGalleryAlbumService
     public function albumIdentity(Booking $booking): array
     {
         return $this->settingService->albumIdentity($booking);
+    }
+
+    /** @return array{customerName:string, packageName:string, vegetarianQuantity:int, nonVegetarianQuantity:int} */
+    public function bookingDetails(Booking $booking): array
+    {
+        return [
+            'customerName' => $booking->customer_name,
+            'packageName' => $booking->package_name_snapshot,
+            'vegetarianQuantity' => (int) ($booking->meal?->vegetarian_quantity ?? 0),
+            'nonVegetarianQuantity' => (int) ($booking->meal?->non_vegetarian_quantity ?? 0),
+        ];
     }
 
     /** @return array<string, int|string|null> */

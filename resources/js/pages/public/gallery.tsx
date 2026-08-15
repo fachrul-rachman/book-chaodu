@@ -23,6 +23,13 @@ type Album = {
     wallpaperUrl: string | null;
 };
 
+type BookingDetails = {
+    customerName: string;
+    packageName: string;
+    vegetarianQuantity: number;
+    nonVegetarianQuantity: number;
+};
+
 type Media = {
     id: number;
     type: 'IMAGE' | 'VIDEO';
@@ -48,9 +55,64 @@ type DownloadAll = {
 
 type PageProps = {
     album: Album;
+    bookingDetails: BookingDetails;
     media: Media[];
     downloadAll: DownloadAll;
 };
+
+function BookingInformationStrip({ details }: { details: BookingDetails }) {
+    const meals = [
+        { label: 'Vegetarian', quantity: details.vegetarianQuantity },
+        {
+            label: 'Non-vegetarian',
+            quantity: details.nonVegetarianQuantity,
+        },
+    ].filter((meal) => meal.quantity > 0);
+
+    return (
+        <section
+            aria-label="Informasi booking"
+            data-position="below-hero"
+            className="border-b border-stone-200 bg-white/95"
+        >
+            <dl className="mx-auto grid max-w-[1600px] grid-cols-2 px-3 sm:flex sm:px-5">
+                <div className="min-w-0 px-2 py-3 sm:flex-1 sm:px-4 sm:py-4">
+                    <dt className="text-[10px] font-semibold tracking-[0.12em] text-stone-500 uppercase sm:text-xs">
+                        Nama customer
+                    </dt>
+                    <dd className="mt-1 text-sm leading-5 font-semibold break-words text-stone-900 sm:text-base">
+                        {details.customerName}
+                    </dd>
+                </div>
+                <div className="min-w-0 border-l border-stone-200 px-3 py-3 sm:flex-1 sm:px-5 sm:py-4">
+                    <dt className="text-[10px] font-semibold tracking-[0.12em] text-stone-500 uppercase sm:text-xs">
+                        Paket
+                    </dt>
+                    <dd className="mt-1 text-sm leading-5 font-semibold break-words text-stone-900 sm:text-base">
+                        {details.packageName}
+                    </dd>
+                </div>
+                {meals.length > 0 && (
+                    <div className="col-span-2 min-w-0 border-t border-stone-200 px-2 py-3 sm:flex-1 sm:border-t-0 sm:border-l sm:px-5 sm:py-4">
+                        <dt className="text-[10px] font-semibold tracking-[0.12em] text-stone-500 uppercase sm:text-xs">
+                            Konsumsi
+                        </dt>
+                        <dd className="mt-1.5 flex flex-wrap gap-1.5">
+                            {meals.map((meal) => (
+                                <span
+                                    key={meal.label}
+                                    className="inline-flex min-h-7 items-center rounded-full bg-[#f4efe7] px-2.5 text-xs font-semibold text-[#74291f] sm:text-sm"
+                                >
+                                    {meal.label} · {meal.quantity} pax
+                                </span>
+                            ))}
+                        </dd>
+                    </div>
+                )}
+            </dl>
+        </section>
+    );
+}
 
 function csrfToken(): string {
     return (
@@ -546,7 +608,8 @@ function MediaViewer({
 }
 
 export default function PublicGalleryPage() {
-    const { album, media, downloadAll } = usePage<PageProps>().props;
+    const { album, bookingDetails, media, downloadAll } =
+        usePage<PageProps>().props;
     const [viewerIndex, setViewerIndex] = useState<number | null>(null);
     const [viewerStartsPlaying, setViewerStartsPlaying] = useState(false);
     const viewerTrigger = useRef<HTMLButtonElement | null>(null);
@@ -656,6 +719,8 @@ export default function PublicGalleryPage() {
                         </div>
                     </div>
                 </section>
+
+                <BookingInformationStrip details={bookingDetails} />
 
                 <section
                     className="mx-auto max-w-[1600px] px-3 py-8 sm:px-5 sm:py-10"

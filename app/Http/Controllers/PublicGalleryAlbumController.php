@@ -21,6 +21,7 @@ class PublicGalleryAlbumController extends Controller
             ->map(fn ($item): array => $albumService->mediaPayload($booking, $item));
         $response = Inertia::render('public/gallery', [
             'album' => $albumService->albumIdentity($booking),
+            'bookingDetails' => $albumService->bookingDetails($booking),
             'media' => $media,
             'downloadAll' => $archiveService->albumPayload($booking),
         ])->toResponse($request);
