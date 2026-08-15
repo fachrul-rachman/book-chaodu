@@ -11,6 +11,12 @@ const pageProps = {
         emptyStateText: 'Album khusus ini masih disiapkan.',
         wallpaperUrl: '/chaodu/CD-ALBUM01/wallpaper',
     },
+    bookingDetails: {
+        customerName: 'Budi Santoso',
+        packageName: 'Combo',
+        vegetarianQuantity: 4,
+        nonVegetarianQuantity: 0,
+    },
     media: [
         {
             id: 10,
@@ -68,7 +74,7 @@ describe('Album customer', () => {
         vi.useRealTimers();
     });
 
-    it('shows event identity and lazy combined media without private customer data', () => {
+    it('shows a compact booking information strip below the hero', () => {
         render(<PublicGalleryPage />);
 
         const wallpaperFrame = screen.getByTestId('album-wallpaper-frame');
@@ -85,6 +91,17 @@ describe('Album customer', () => {
         expect(screen.getByText('Doa Bersama Chao Du')).toBeInTheDocument();
         expect(screen.getByText('20 September 2026')).toBeInTheDocument();
         expect(screen.getByText('CD-ALBUM01')).toBeInTheDocument();
+        const informationStrip = screen.getByRole('region', {
+            name: 'Informasi booking',
+        });
+
+        expect(informationStrip).toHaveAttribute('data-position', 'below-hero');
+        expect(screen.getByText('Budi Santoso')).toBeInTheDocument();
+        expect(screen.getByText('Combo')).toBeInTheDocument();
+        expect(screen.getByText('Vegetarian · 4 pax')).toBeInTheDocument();
+        expect(
+            screen.queryByText(/Non-vegetarian/i),
+        ).not.toBeInTheDocument();
         expect(screen.getByText('Doa pembukaan')).toBeInTheDocument();
         expect(screen.getByText('Dokumentasi keluarga')).toBeInTheDocument();
         expect(
@@ -110,7 +127,6 @@ describe('Album customer', () => {
         expect(
             screen.getByRole('img', { name: 'Doa pembukaan' }),
         ).not.toHaveClass('object-cover');
-        expect(screen.queryByText(/customer/i)).not.toBeInTheDocument();
         expect(screen.queryByText(/gallery\/global/i)).not.toBeInTheDocument();
     });
 

@@ -6,6 +6,7 @@ use App\Enums\GalleryMediaStatus;
 use App\Enums\GalleryMediaType;
 use App\Enums\PackageCode;
 use App\Models\Booking;
+use App\Models\BookingMeal;
 use App\Models\GalleryMedia;
 use App\Models\Package;
 use Illuminate\Support\Facades\Route;
@@ -74,6 +75,11 @@ function publicAlbumMedia(array $attributes = []): GalleryMedia
 
 it('opens an approved album by exact booking number with global and owned media only', function () {
     $booking = publicAlbumBooking();
+    BookingMeal::query()->create([
+        'booking_id' => $booking->id,
+        'vegetarian_quantity' => 4,
+        'non_vegetarian_quantity' => 0,
+    ]);
     $otherBooking = publicAlbumBooking(['booking_number' => 'CD-ALBUM02']);
     $global = publicAlbumMedia(['sort_order' => 1]);
     $owned = publicAlbumMedia([
@@ -106,7 +112,7 @@ it('opens an approved album by exact booking number with global and owned media 
         ->assertOk()
         ->assertHeader('X-Robots-Tag', 'noindex, nofollow, noarchive')
         ->assertHeader('Cache-Control', 'no-store, private')
-        ->assertDontSee('Nama Customer Rahasia')
+        ->assertSee('Nama Customer Rahasia')
         ->assertDontSee('+628123456789')
         ->assertDontSee('rahasia@example.com')
         ->assertDontSee('gallery/global')
@@ -116,6 +122,10 @@ it('opens an approved album by exact booking number with global and owned media 
             ->where('album.eventName', 'Doa Bersama Chao Du')
             ->where('album.eventDate', '20 September 2026')
             ->where('album.title', 'Kenangan dalam Kebersamaan')
+            ->where('bookingDetails.customerName', 'Nama Customer Rahasia')
+            ->where('bookingDetails.packageName', 'Combo')
+            ->where('bookingDetails.vegetarianQuantity', 4)
+            ->where('bookingDetails.nonVegetarianQuantity', 0)
             ->has('media', 2)
             ->where('media.0.id', $global->id)
             ->where('media.0.scope', 'GLOBAL')
@@ -130,6 +140,8 @@ it('opens an approved album by exact booking number with global and owned media 
                 'media' => $global->id,
             ]))
             ->missing('album.customerName')
+            ->missing('bookingDetails.customerPhone')
+            ->missing('bookingDetails.customerEmail')
             ->missing('media.0.originalPath')
             ->missing('media.0.storageDisk'));
 });
