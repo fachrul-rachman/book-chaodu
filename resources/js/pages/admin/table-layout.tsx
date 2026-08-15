@@ -1,4 +1,5 @@
 import { Head, Link, usePage } from '@inertiajs/react';
+import { Printer } from 'lucide-react';
 
 type TableSlotItem = {
     id: number;
@@ -79,9 +80,9 @@ export default function AdminTableLayoutPage() {
         <>
             <Head title="Layout meja" />
 
-            <main className="min-h-screen px-4 py-8 sm:px-6">
-                <div className="mx-auto max-w-7xl space-y-6">
-                    <div className="flex items-center justify-between gap-4">
+            <main className="table-layout-print-page min-h-screen px-4 py-8 sm:px-6">
+                <div className="table-layout-print-content mx-auto max-w-7xl space-y-6">
+                    <div className="table-layout-screen-only flex items-center justify-between gap-4">
                         <div>
                             <h1 className="text-3xl font-semibold">
                                 Layout meja
@@ -92,15 +93,29 @@ export default function AdminTableLayoutPage() {
                             </p>
                         </div>
 
-                        <Link
-                            href="/admin"
-                            className="rounded-full border border-[var(--color-brand)] px-4 py-2 text-sm font-semibold text-[var(--color-brand)]"
-                        >
-                            Kembali
-                        </Link>
+                        <div className="flex flex-wrap justify-end gap-3">
+                            <button
+                                type="button"
+                                onClick={() => window.print()}
+                                className="inline-flex min-h-11 items-center gap-2 rounded-full bg-[var(--color-brand)] px-5 py-2 text-sm font-semibold text-white"
+                            >
+                                <Printer aria-hidden="true" size={18} />
+                                Cetak denah
+                            </button>
+                            <Link
+                                href="/admin"
+                                className="rounded-full border border-[var(--color-brand)] px-4 py-2 text-sm font-semibold text-[var(--color-brand)]"
+                            >
+                                Kembali
+                            </Link>
+                        </div>
                     </div>
 
-                    <section className="rounded-[24px] border border-[var(--color-border)] bg-white/90 p-5 shadow-sm sm:p-6">
+                    <div className="table-layout-print-heading hidden text-center">
+                        <h1 className="text-lg font-semibold">Layout meja</h1>
+                    </div>
+
+                    <section className="table-layout-legend rounded-[24px] border border-[var(--color-border)] bg-white/90 p-5 shadow-sm sm:p-6">
                         <div className="flex flex-wrap gap-3 text-sm text-slate-700">
                             <div className="flex items-center gap-2">
                                 <span className="h-4 w-4 rounded border border-slate-300 bg-white" />
@@ -127,20 +142,23 @@ export default function AdminTableLayoutPage() {
                         </div>
                     </section>
 
-                    <section className="overflow-x-auto rounded-[24px] border border-[var(--color-border)] bg-white/90 p-5 shadow-sm sm:p-6">
-                        <div className="mx-auto max-w-[1120px] min-w-[900px] space-y-8">
-                            <div className="mx-auto flex h-16 w-[220px] items-center justify-center rounded-md border border-slate-500 bg-slate-200 text-sm font-semibold text-slate-800">
+                    <section
+                        data-testid="table-layout-sheet"
+                        className="table-layout-sheet overflow-x-auto rounded-[24px] border border-[var(--color-border)] bg-white/90 p-5 shadow-sm sm:p-6"
+                    >
+                        <div className="table-layout-canvas mx-auto max-w-[1120px] min-w-[900px] space-y-8">
+                            <div className="table-layout-landmark mx-auto flex h-16 w-[220px] items-center justify-center rounded-md border border-slate-500 bg-slate-200 text-sm font-semibold text-slate-800">
                                 {background_label}
                             </div>
 
-                            <div className="flex items-start justify-center gap-12">
-                                <div className="grid grid-cols-4 gap-6">
+                            <div className="table-layout-columns flex items-start justify-center gap-12">
+                                <div className="table-layout-row-grid grid grid-cols-4 gap-6">
                                     {leftRows.map((row) => (
                                         <div
                                             key={row.row_code}
-                                            className="space-y-3"
+                                            className="table-layout-row space-y-3"
                                         >
-                                            <div className="grid gap-1">
+                                            <div className="table-layout-slot-list grid gap-1">
                                                 {row.slots.map((slot) =>
                                                     slot.booking_id ? (
                                                         <Link
@@ -149,7 +167,7 @@ export default function AdminTableLayoutPage() {
                                                             title={slotTitle(
                                                                 slot,
                                                             )}
-                                                            className={`flex h-8 w-14 items-center justify-center rounded border text-xs font-medium transition hover:scale-[1.02] ${slotClass(slot, show_closed_slots)}`}
+                                                            className={`table-layout-slot flex h-8 w-14 items-center justify-center rounded border text-xs font-medium transition hover:scale-[1.02] ${slotClass(slot, show_closed_slots)}`}
                                                         >
                                                             {slot.number}
                                                         </Link>
@@ -159,7 +177,7 @@ export default function AdminTableLayoutPage() {
                                                             title={slotTitle(
                                                                 slot,
                                                             )}
-                                                            className={`flex h-8 w-14 items-center justify-center rounded border text-xs font-medium ${slotClass(slot, show_closed_slots)}`}
+                                                            className={`table-layout-slot flex h-8 w-14 items-center justify-center rounded border text-xs font-medium ${slotClass(slot, show_closed_slots)}`}
                                                         >
                                                             {slot.number}
                                                         </div>
@@ -171,10 +189,10 @@ export default function AdminTableLayoutPage() {
                                             ) ? (
                                                 <div
                                                     aria-hidden="true"
-                                                    className="h-6"
+                                                    className="table-layout-row-label h-6"
                                                 />
                                             ) : (
-                                                <div className="rounded bg-[#FD9FC9] px-3 py-1 text-center text-xs font-semibold text-slate-900">
+                                                <div className="table-layout-row-label rounded bg-[#FD9FC9] px-3 py-1 text-center text-xs font-semibold text-slate-900">
                                                     Row {row.row_code}
                                                 </div>
                                             )}
@@ -182,15 +200,15 @@ export default function AdminTableLayoutPage() {
                                     ))}
                                 </div>
 
-                                <div className="w-16 shrink-0" />
+                                <div className="table-layout-center-aisle w-16 shrink-0" />
 
-                                <div className="grid grid-cols-4 gap-6">
+                                <div className="table-layout-row-grid grid grid-cols-4 gap-6">
                                     {rightRows.map((row) => (
                                         <div
                                             key={row.row_code}
-                                            className="space-y-3"
+                                            className="table-layout-row space-y-3"
                                         >
-                                            <div className="grid gap-1">
+                                            <div className="table-layout-slot-list grid gap-1">
                                                 {row.slots.map((slot) =>
                                                     slot.booking_id ? (
                                                         <Link
@@ -199,7 +217,7 @@ export default function AdminTableLayoutPage() {
                                                             title={slotTitle(
                                                                 slot,
                                                             )}
-                                                            className={`flex h-8 w-14 items-center justify-center rounded border text-xs font-medium transition hover:scale-[1.02] ${slotClass(slot, show_closed_slots)}`}
+                                                            className={`table-layout-slot flex h-8 w-14 items-center justify-center rounded border text-xs font-medium transition hover:scale-[1.02] ${slotClass(slot, show_closed_slots)}`}
                                                         >
                                                             {slot.number}
                                                         </Link>
@@ -209,7 +227,7 @@ export default function AdminTableLayoutPage() {
                                                             title={slotTitle(
                                                                 slot,
                                                             )}
-                                                            className={`flex h-8 w-14 items-center justify-center rounded border text-xs font-medium ${slotClass(slot, show_closed_slots)}`}
+                                                            className={`table-layout-slot flex h-8 w-14 items-center justify-center rounded border text-xs font-medium ${slotClass(slot, show_closed_slots)}`}
                                                         >
                                                             {slot.number}
                                                         </div>
@@ -221,10 +239,10 @@ export default function AdminTableLayoutPage() {
                                             ) ? (
                                                 <div
                                                     aria-hidden="true"
-                                                    className="h-6"
+                                                    className="table-layout-row-label h-6"
                                                 />
                                             ) : (
-                                                <div className="rounded bg-[#FD9FC9] px-3 py-1 text-center text-xs font-semibold text-slate-900">
+                                                <div className="table-layout-row-label rounded bg-[#FD9FC9] px-3 py-1 text-center text-xs font-semibold text-slate-900">
                                                     Row {row.row_code}
                                                 </div>
                                             )}
@@ -233,7 +251,7 @@ export default function AdminTableLayoutPage() {
                                 </div>
                             </div>
 
-                            <div className="mx-auto flex h-20 w-[220px] items-center justify-center rounded-md border border-sky-500 bg-sky-200 text-sm font-semibold text-slate-800">
+                            <div className="table-layout-landmark mx-auto flex h-20 w-[220px] items-center justify-center rounded-md border border-sky-500 bg-sky-200 text-sm font-semibold text-slate-800">
                                 Altar
                             </div>
                         </div>

@@ -34,3 +34,130 @@
         color: var(--color-ink);
     }
 }
+
+@page table-layout {
+    size: A4 landscape;
+    margin: 7mm;
+}
+
+@media print {
+    html,
+    body,
+    #app {
+        min-height: 0 !important;
+        background: #ffffff !important;
+    }
+
+    .table-layout-print-page {
+        page: table-layout;
+        min-height: 0 !important;
+        padding: 0 !important;
+        color: #1f2937;
+        print-color-adjust: exact;
+        -webkit-print-color-adjust: exact;
+    }
+
+    .table-layout-screen-only {
+        display: none !important;
+    }
+
+    .table-layout-print-heading {
+        display: block !important;
+        margin-bottom: 2mm;
+    }
+
+    .table-layout-print-content {
+        max-width: none !important;
+        width: 100% !important;
+        display: flex;
+        flex-direction: column;
+        gap: 2mm !important;
+    }
+
+    .table-layout-legend {
+        padding: 1.5mm 2mm !important;
+        border-radius: 2mm !important;
+        box-shadow: none !important;
+        break-inside: avoid;
+    }
+
+    .table-layout-legend > div {
+        justify-content: center;
+        gap: 4mm !important;
+        font-size: 7pt !important;
+    }
+
+    .table-layout-legend span:first-child {
+        width: 3mm !important;
+        height: 3mm !important;
+    }
+
+    .table-layout-sheet {
+        overflow: visible !important;
+        padding: 1.5mm 2mm !important;
+        border: 0 !important;
+        border-radius: 0 !important;
+        box-shadow: none !important;
+        break-inside: avoid;
+    }
+
+    .table-layout-canvas {
+        min-width: 0 !important;
+        max-width: none !important;
+        width: 100% !important;
+        display: flex;
+        flex-direction: column;
+        gap: 2mm !important;
+    }
+
+    .table-layout-landmark {
+        width: 45mm !important;
+        height: 7mm !important;
+        border-radius: 1mm !important;
+        font-size: 7pt !important;
+    }
+
+    .table-layout-columns {
+        gap: 4mm !important;
+    }
+
+    .table-layout-row-grid {
+        gap: 3mm !important;
+    }
+
+    .table-layout-center-aisle {
+        width: 7mm !important;
+    }
+
+    .table-layout-row {
+        display: flex;
+        flex-direction: column;
+        gap: 1mm !important;
+    }
+
+    .table-layout-slot-list {
+        gap: 0.2mm !important;
+    }
+
+    .table-layout-slot {
+        width: 9mm !important;
+        height: 3.2mm !important;
+        border-radius: 0.5mm !important;
+        font-size: 6pt !important;
+        line-height: 1 !important;
+        text-decoration: none !important;
+    }
+
+    .table-layout-slot::after {
+        content: none !important;
+    }
+
+    .table-layout-row-label {
+        min-height: 3.5mm !important;
+        height: 3.5mm !important;
+        padding: 0.4mm 1mm !important;
+        border-radius: 0.5mm !important;
+        font-size: 6pt !important;
+        line-height: 1 !important;
+    }
+}
