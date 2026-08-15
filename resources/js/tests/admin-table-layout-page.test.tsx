@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import AdminTableLayoutPage from '@/pages/admin/table-layout';
 
@@ -15,6 +15,7 @@ vi.mock('@inertiajs/react', () => ({
     usePage: () => ({
         props: {
             show_closed_slots: showClosedSlots,
+            background_label: 'BACKGROUND',
             rows: [
                 {
                     row_code: 'J',
@@ -98,6 +99,7 @@ vi.mock('@inertiajs/react', () => ({
 describe('Layout meja admin', () => {
     beforeEach(() => {
         showClosedSlots = false;
+        vi.restoreAllMocks();
     });
 
     it('keeps a hidden placeholder when closed tables are disabled', () => {
@@ -157,5 +159,20 @@ describe('Layout meja admin', () => {
         ).toHaveClass('bg-orange-400');
         expect(screen.queryByText('Row J')).not.toBeInTheDocument();
         expect(screen.queryByText('Row E')).not.toBeInTheDocument();
+    });
+
+    it('opens the browser print dialog for the dedicated table layout sheet', () => {
+        const printMock = vi
+            .spyOn(window, 'print')
+            .mockImplementation(() => undefined);
+
+        render(<AdminTableLayoutPage />);
+
+        fireEvent.click(screen.getByRole('button', { name: 'Cetak denah' }));
+
+        expect(printMock).toHaveBeenCalledOnce();
+        expect(screen.getByTestId('table-layout-sheet')).toHaveClass(
+            'table-layout-sheet',
+        );
     });
 });
