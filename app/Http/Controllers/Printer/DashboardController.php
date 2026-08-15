@@ -8,7 +8,9 @@ use App\Enums\PrayerPaperType;
 use App\Http\Controllers\Controller;
 use App\Models\Booking;
 use App\Models\BookingName;
+use App\Models\IncenseSlot;
 use App\Models\PrayerPaper;
+use App\Models\TableSlot;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\Request;
@@ -120,6 +122,10 @@ class DashboardController extends Controller
      */
     private function exportSpreadsheet(Collection $bookings): Spreadsheet
     {
+        $bookings = $bookings
+            ->sort(fn (Booking $left, Booking $right): int => $this->exportSortKey($left) <=> $this->exportSortKey($right))
+            ->values();
+
         $spreadsheet = new Spreadsheet;
         $sheet = $spreadsheet->getActiveSheet();
         $sheet->setTitle('Data Printer');
@@ -128,12 +134,11 @@ class DashboardController extends Controller
             'Nama Customer',
             'Nama Alm 1',
             'Nama Alm 2',
-            'Nomor Meja/Hio',
+            'Nama Hio',
             'Meja',
             'Hio',
-            'Nomor Telepon',
             'Vegetarian',
-            'Non-Vegetarian',
+            'Non Vegetarian',
         ]], null, 'A1');
 
         foreach ($bookings->values() as $index => $booking) {
@@ -152,10 +157,10 @@ class DashboardController extends Controller
                 ->pluck('number')
                 ->filter()
                 ->implode(', ');
-            $slotNumbers = array_filter([
-                $tableNumbers !== '' ? 'Meja: '.$tableNumbers : null,
-                $incenseNumbers !== '' ? 'Hio: '.$incenseNumbers : null,
-            ]);
+            $incenseName = $booking->names
+                ->where('category', BookingNameCategory::Incense)
+                ->sortBy('position')
+                ->first();
             $nameOne = $names->get(0);
             $nameTwo = $names->get(1);
 
@@ -164,22 +169,49 @@ class DashboardController extends Controller
                 $booking->customer_name,
                 $this->displayName($nameOne instanceof BookingName ? $nameOne : null),
                 $this->displayName($nameTwo instanceof BookingName ? $nameTwo : null),
-                implode(' | ', $slotNumbers) ?: '-',
+                $this->displayName($incenseName instanceof BookingName ? $incenseName : null),
                 $tableNumbers !== '' ? $tableNumbers : '-',
                 $incenseNumbers !== '' ? $incenseNumbers : '-',
-                $booking->customer_phone,
                 (int) ($booking->meal?->vegetarian_quantity ?? 0),
                 (int) ($booking->meal?->non_vegetarian_quantity ?? 0),
             ]], null, 'A'.$row);
             $sheet->setCellValueExplicit('A'.$row, $booking->booking_number, DataType::TYPE_STRING);
-            $sheet->setCellValueExplicit('H'.$row, $booking->customer_phone, DataType::TYPE_STRING);
         }
 
-        foreach (range('A', 'J') as $column) {
+        foreach (range('A', 'I') as $column) {
             $sheet->getColumnDimension($column)->setAutoSize(true);
         }
 
         return $spreadsheet;
+    }
+
+    /**
+     * @return array{int, int, int, string}
+     */
+    private function exportSortKey(Booking $booking): array
+    {
+        $tableSlot = $booking->tableSlots->sortBy('allocation_order')->first();
+
+        if ($tableSlot instanceof TableSlot) {
+            $rowOrder = ['A', 'B', 'D', 'F', 'G', 'H', 'E', 'J'];
+            $rowCode = strtoupper(trim((string) $tableSlot->row_code));
+            $rowRank = array_search($rowCode, $rowOrder, true);
+
+            return [
+                0,
+                $rowRank === false ? count($rowOrder) : $rowRank,
+                (int) $tableSlot->number,
+                (string) $booking->booking_number,
+            ];
+        }
+
+        $incenseSlot = $booking->incenseSlots->sortBy('allocation_order')->first();
+
+        if ($incenseSlot instanceof IncenseSlot) {
+            return [1, 0, (int) $incenseSlot->number, (string) $booking->booking_number];
+        }
+
+        return [2, 0, 0, (string) $booking->booking_number];
     }
 
     private function displayName(?BookingName $name): string
