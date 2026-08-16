@@ -37,7 +37,7 @@ class PublicGalleryAlbumService
             ->where('booking_id', $booking->id)
             ->get();
 
-        return $global->concat($owned)->values();
+        return $owned->concat($global)->values();
     }
 
     /** @return array<string, string|null> */
@@ -134,8 +134,7 @@ class PublicGalleryAlbumService
     {
         return GalleryMedia::query()
             ->where('status', GalleryMediaStatus::Ready)
-            ->orderByRaw('CASE WHEN sort_order IS NULL THEN 1 ELSE 0 END')
-            ->orderBy('sort_order')
+            ->orderByRaw('CASE WHEN published_at IS NULL THEN 1 ELSE 0 END')
             ->orderByDesc('published_at')
             ->orderByDesc('id');
     }

@@ -201,8 +201,8 @@ it('builds a zip containing active global and owned originals only', function ()
     $zip = new ZipArchive;
     expect($zip->open(Storage::disk('gallery-download-test')->path($archive->file_path)))->toBeTrue()
         ->and($zip->numFiles)->toBe(2)
-        ->and($zip->getFromName('001-Pembukaan.jpg'))->toBe('bytes-'.$global->id)
-        ->and($zip->getFromName('002-Keluarga.mp4'))->toBe('bytes-'.$owned->id);
+        ->and($zip->getFromName('001-Keluarga.mp4'))->toBe('bytes-'.$owned->id)
+        ->and($zip->getFromName('002-Pembukaan.jpg'))->toBe('bytes-'.$global->id);
     $zip->close();
 
     $zipBytes = Storage::disk('gallery-download-test')->get($archive->file_path);
