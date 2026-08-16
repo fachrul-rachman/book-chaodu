@@ -1,4 +1,5 @@
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
+import { useState } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 import CheckerManualBookingCreatePage from '@/pages/checker/manual-bookings/create';
 
@@ -23,13 +24,21 @@ vi.mock('@inertiajs/react', () => ({
             errors: {},
         },
     }),
-    useForm: (data: Record<string, unknown>) => ({
-        data: { ...data, package_code: 'COMBO' },
-        errors: {},
-        processing: false,
-        setData: vi.fn(),
-        post: vi.fn(),
-    }),
+    useForm: (initialData: Record<string, unknown>) => {
+        const [data, setData] = useState({
+            ...initialData,
+            package_code: 'COMBO',
+        });
+
+        return {
+            data,
+            errors: {},
+            processing: false,
+            setData: (key: string, value: unknown) =>
+                setData((current) => ({ ...current, [key]: value })),
+            post: vi.fn(),
+        };
+    },
 }));
 
 describe('Daftar Manual Checker', () => {
@@ -52,5 +61,23 @@ describe('Daftar Manual Checker', () => {
         expect(
             screen.queryByLabelText('Bukti pembayaran'),
         ).not.toBeInTheDocument();
+    });
+
+    it('offers Site and Agent sources and asks for agent name conditionally', () => {
+        render(<CheckerManualBookingCreatePage />);
+
+        const source = screen.getByRole('combobox', { name: 'Sumber' });
+
+        expect(source).toHaveTextContent('Site');
+        expect(source).toHaveTextContent('Agent');
+        expect(screen.queryByLabelText('Nama agent')).not.toBeInTheDocument();
+
+        fireEvent.change(source, { target: { value: 'AGENT' } });
+
+        expect(screen.getByLabelText('Nama agent')).toBeInTheDocument();
+
+        fireEvent.change(source, { target: { value: 'WEBSITE' } });
+
+        expect(screen.queryByLabelText('Nama agent')).not.toBeInTheDocument();
     });
 });

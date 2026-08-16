@@ -40,6 +40,8 @@ function checkerManualPayload(array $overrides = []): array
         'customer_name' => 'Budi Santoso',
         'customer_phone_local' => '81234567890',
         'customer_email' => 'budi@example.com',
+        'referral_source' => 'WEBSITE',
+        'agent_name' => null,
         'package_code' => 'COMBO',
         'table_slot_id' => $tableId,
         'incense_slot_id' => $incenseId,
@@ -86,7 +88,9 @@ it('creates a directly approved checker booking with the selected table and ince
     $booking = Booking::query()->where('idempotency_key', 'checker-manual-key-1')->firstOrFail();
 
     expect($booking->status)->toBe(BookingStatus::Approved)
-        ->and($booking->referral_source)->toBe('CHECKER_MANUAL')
+        ->and($booking->referral_source)->toBe('WEBSITE')
+        ->and($booking->agent_name)->toBeNull()
+        ->and($booking->is_checker_manual)->toBeTrue()
         ->and($booking->approved_by)->toBe($checker->id)
         ->and($booking->attendee_count)->toBeNull()
         ->and($booking->payment)->toBeNull()
@@ -107,7 +111,50 @@ it('creates a directly approved checker booking with the selected table and ince
         ->get(route('admin.bookings.show', $booking))
         ->assertOk()
         ->assertInertia(fn ($page) => $page
-            ->where('booking.source_label', 'Daftar Manual Checker'));
+            ->where('booking.source_label', 'Website'));
+});
+
+it('stores a trimmed agent name when manual booking source is agent', function () {
+    $checker = User::factory()->checker()->create();
+
+    $this->actingAs($checker)
+        ->post(route('checker.manual-bookings.store'), checkerManualPayload([
+            'idempotency_key' => 'checker-manual-agent',
+            'referral_source' => 'AGENT',
+            'agent_name' => '  Budi Agent  ',
+        ]))
+        ->assertSessionHasNoErrors()
+        ->assertRedirect(route('checker.dashboard'));
+
+    $booking = Booking::query()->where('idempotency_key', 'checker-manual-agent')->firstOrFail();
+
+    expect($booking->referral_source)->toBe('AGENT')
+        ->and($booking->agent_name)->toBe('Budi Agent')
+        ->and($booking->is_checker_manual)->toBeTrue();
+});
+
+it('requires a valid source and agent name for manual agent bookings', function () {
+    $checker = User::factory()->checker()->create();
+
+    $this->actingAs($checker)
+        ->post(route('checker.manual-bookings.store'), checkerManualPayload([
+            'idempotency_key' => 'checker-manual-no-source',
+            'referral_source' => '',
+        ]))
+        ->assertSessionHasErrors('referral_source');
+
+    $this->actingAs($checker)
+        ->post(route('checker.manual-bookings.store'), checkerManualPayload([
+            'idempotency_key' => 'checker-manual-agent-without-name',
+            'referral_source' => 'AGENT',
+            'agent_name' => '',
+        ]))
+        ->assertSessionHasErrors('agent_name');
+
+    expect(Booking::query()->whereIn('idempotency_key', [
+        'checker-manual-no-source',
+        'checker-manual-agent-without-name',
+    ])->exists())->toBeFalse();
 });
 
 it('requires only the slot types used by the selected package', function () {
