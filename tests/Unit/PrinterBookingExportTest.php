@@ -65,7 +65,6 @@ class PrinterBookingExportTest extends TestCase
         $sheet = $spreadsheet->getActiveSheet();
 
         self::assertSame([
-            'Nomor Booking',
             'Nama Customer',
             'Nama Alm 1',
             'Nama Alm 2',
@@ -74,9 +73,8 @@ class PrinterBookingExportTest extends TestCase
             'Hio',
             'Vegetarian',
             'Non Vegetarian',
-        ], $sheet->rangeToArray('A1:I1')[0]);
+        ], $sheet->rangeToArray('A1:H1')[0]);
         self::assertSame([
-            'CD-TEST-123',
             'Budi',
             'Alm Satu',
             '亡者二',
@@ -85,10 +83,9 @@ class PrinterBookingExportTest extends TestCase
             '12',
             '2',
             '3',
-        ], $sheet->rangeToArray('A2:I2')[0]);
-        self::assertSame(DataType::TYPE_STRING, $sheet->getCell('A2')->getDataType());
+        ], $sheet->rangeToArray('A2:H2')[0]);
+        self::assertSame(DataType::TYPE_NUMERIC, $sheet->getCell('G2')->getDataType());
         self::assertSame(DataType::TYPE_NUMERIC, $sheet->getCell('H2')->getDataType());
-        self::assertSame(DataType::TYPE_NUMERIC, $sheet->getCell('I2')->getDataType());
     }
 
     public function test_printer_excel_sorts_tables_by_requested_row_then_hio_only_by_number(): void
@@ -112,18 +109,18 @@ class PrinterBookingExportTest extends TestCase
         $spreadsheet = $method->invoke(new DashboardController, $bookings);
 
         self::assertSame([
-            'CD-A-02',
-            'CD-A-10',
-            'CD-B-01',
-            'CD-D-01',
-            'CD-F-01',
-            'CD-G-01',
-            'CD-H-01',
-            'CD-E-01',
-            'CD-J-01',
-            'CD-HIO-01',
-            'CD-HIO-12',
-            'CD-NONE',
+            'Customer CD-A-02',
+            'Customer CD-A-10',
+            'Customer CD-B-01',
+            'Customer CD-D-01',
+            'Customer CD-F-01',
+            'Customer CD-G-01',
+            'Customer CD-H-01',
+            'Customer CD-E-01',
+            'Customer CD-J-01',
+            'Customer CD-HIO-01',
+            'Customer CD-HIO-12',
+            'Customer CD-NONE',
         ], array_column($spreadsheet->getActiveSheet()->rangeToArray('A2:A13'), 0));
     }
 
