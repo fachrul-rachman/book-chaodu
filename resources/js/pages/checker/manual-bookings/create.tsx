@@ -31,6 +31,8 @@ export default function CheckerManualBookingCreatePage() {
         customer_name: '',
         customer_phone_local: '',
         customer_email: '',
+        referral_source: '' as '' | 'WEBSITE' | 'AGENT',
+        agent_name: '',
         package_code: '' as '' | PackageCode,
         table_slot_id: '',
         incense_slot_id: '',
@@ -216,6 +218,54 @@ export default function CheckerManualBookingCreatePage() {
                                     />
                                 </div>
                             </label>
+                            <label
+                                className={
+                                    form.data.referral_source === 'AGENT'
+                                        ? ''
+                                        : 'sm:col-span-2'
+                                }
+                            >
+                                <span className="mb-2 block text-sm font-medium">
+                                    Sumber
+                                </span>
+                                <select
+                                    aria-label="Sumber"
+                                    className={inputClass}
+                                    value={form.data.referral_source}
+                                    onChange={(event) => {
+                                        const source = event.target.value as
+                                            '' | 'WEBSITE' | 'AGENT';
+
+                                        form.setData('referral_source', source);
+
+                                        if (source !== 'AGENT') {
+                                            form.setData('agent_name', '');
+                                        }
+                                    }}
+                                >
+                                    <option value="">Pilih sumber</option>
+                                    <option value="WEBSITE">Site</option>
+                                    <option value="AGENT">Agent</option>
+                                </select>
+                            </label>
+                            {form.data.referral_source === 'AGENT' ? (
+                                <label>
+                                    <span className="mb-2 block text-sm font-medium">
+                                        Nama agent
+                                    </span>
+                                    <input
+                                        aria-label="Nama agent"
+                                        className={inputClass}
+                                        value={form.data.agent_name}
+                                        onChange={(event) =>
+                                            form.setData(
+                                                'agent_name',
+                                                event.target.value,
+                                            )
+                                        }
+                                    />
+                                </label>
+                            ) : null}
                             <label className="sm:col-span-2">
                                 <span className="mb-2 block text-sm font-medium">
                                     Paket

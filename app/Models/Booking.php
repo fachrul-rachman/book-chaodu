@@ -25,6 +25,7 @@ use Illuminate\Support\Carbon;
  * @property int|null $attendee_count
  * @property string $referral_source
  * @property string|null $agent_name
+ * @property bool $is_checker_manual
  * @property BookingStatus $status
  * @property string|null $rejection_reason
  * @property Carbon|null $payment_expires_at
@@ -46,6 +47,7 @@ use Illuminate\Support\Carbon;
     'attendee_count',
     'referral_source',
     'agent_name',
+    'is_checker_manual',
     'status',
     'rejection_reason',
     'payment_expires_at',
@@ -65,6 +67,7 @@ class Booking extends Model
         return [
             'package_price_snapshot' => 'decimal:2',
             'attendee_count' => 'integer',
+            'is_checker_manual' => 'boolean',
             'status' => BookingStatus::class,
             'payment_expires_at' => 'datetime',
             'approved_at' => 'datetime',

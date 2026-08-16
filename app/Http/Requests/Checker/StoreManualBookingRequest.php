@@ -19,6 +19,7 @@ class StoreManualBookingRequest extends FormRequest
     public function rules(): array
     {
         $packageCode = $this->input('package_code');
+        $referralSource = $this->input('referral_source');
         $requiresTable = in_array($packageCode, [PackageCode::Prayer->value, PackageCode::Combo->value], true);
         $requiresIncense = in_array($packageCode, [PackageCode::Incense->value, PackageCode::Combo->value], true);
 
@@ -28,6 +29,14 @@ class StoreManualBookingRequest extends FormRequest
             'customer_phone_local' => ['required', 'regex:/^[1-9][0-9]{7,14}$/'],
             'customer_phone' => ['required', 'regex:/^\+62[1-9][0-9]{7,14}$/'],
             'customer_email' => ['required', 'email:rfc', 'max:120'],
+            'referral_source' => ['required', Rule::in(['WEBSITE', 'AGENT'])],
+            'agent_name' => [
+                Rule::requiredIf($referralSource === 'AGENT'),
+                Rule::prohibitedIf($referralSource !== 'AGENT'),
+                'nullable',
+                'string',
+                'max:120',
+            ],
             'package_code' => ['required', Rule::enum(PackageCode::class)],
             'table_slot_id' => [Rule::requiredIf($requiresTable), Rule::prohibitedIf(! $requiresTable), 'nullable', 'integer', 'exists:table_slots,id'],
             'incense_slot_id' => [Rule::requiredIf($requiresIncense), Rule::prohibitedIf(! $requiresIncense), 'nullable', 'integer', 'exists:incense_slots,id'],
@@ -88,6 +97,7 @@ class StoreManualBookingRequest extends FormRequest
     protected function prepareForValidation(): void
     {
         $localPhone = preg_replace('/\D+/', '', (string) $this->input('customer_phone_local'));
+        $referralSource = strtoupper(trim((string) $this->input('referral_source')));
         $deceasedNames = [];
 
         foreach ($this->input('deceased_names', []) as $name) {
@@ -109,6 +119,10 @@ class StoreManualBookingRequest extends FormRequest
             'customer_phone_local' => $localPhone,
             'customer_phone' => $localPhone !== '' ? '+62'.$localPhone : null,
             'customer_email' => strtolower(trim((string) $this->input('customer_email'))),
+            'referral_source' => $referralSource,
+            'agent_name' => $referralSource === 'AGENT'
+                ? $this->nullableText($this->input('agent_name'))
+                : null,
             'deceased_names' => $deceasedNames,
             'incense_name' => is_array($incenseName) ? [
                 'position' => 1,
