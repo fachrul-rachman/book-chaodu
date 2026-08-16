@@ -27,9 +27,7 @@
     <table>
         <thead>
             <tr>
-                <th>Nomor booking</th>
                 <th>Nama customer</th>
-                <th>Nomor telepon</th>
                 <th>Paket</th>
                 <th>Jumlah hadir</th>
                 <th>Vegetarian</th>
@@ -44,9 +42,7 @@
         <tbody>
             @foreach (($payload['rows'] ?? []) as $row)
                 <tr>
-                    <td>{{ $row['booking_number'] }}</td>
                     <td>{{ $row['customer_name'] }}</td>
-                    <td>{{ $row['customer_phone'] }}</td>
                     <td>{{ $row['package_name'] }}</td>
                     <td>{{ $row['attendee_count'] }}</td>
                     <td>{{ $row['vegetarian_quantity'] }}</td>

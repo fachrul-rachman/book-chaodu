@@ -27,12 +27,9 @@
     <table>
         <thead>
             <tr>
-                <th>Nomor Booking</th>
                 <th>Nomor Meja/Hio</th>
                 <th>Tanggal Booking</th>
                 <th>Nama Customer</th>
-                <th>Nomor Telepon</th>
-                <th>Email</th>
                 <th>Paket</th>
                 <th>Kertas Doa 1</th>
                 <th>Kertas Doa 2</th>
@@ -42,12 +39,9 @@
         <tbody>
             @foreach (($payload['rows'] ?? []) as $row)
                 <tr>
-                    <td>{{ $row['booking_number'] }}</td>
                     <td>{{ $row['slot_number'] ?: '-' }}</td>
                     <td>{{ $row['booking_date'] ?: '-' }}</td>
                     <td>{{ $row['customer_name'] }}</td>
-                    <td>{{ $row['customer_phone'] }}</td>
-                    <td>{{ $row['customer_email'] }}</td>
                     <td>{{ $row['package_name'] }}</td>
                     <td>{{ $row['prayer_paper_1']['name'] ?: '-' }}</td>
                     <td>{{ $row['prayer_paper_2']['name'] ?: '-' }}</td>

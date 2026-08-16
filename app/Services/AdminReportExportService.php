@@ -4,7 +4,6 @@ namespace App\Services;
 
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Response;
-use PhpOffice\PhpSpreadsheet\Cell\DataType;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 use Symfony\Component\HttpFoundation\StreamedResponse;
@@ -91,9 +90,7 @@ class AdminReportExportService
     {
         $payload = $this->reportService->checkIn($filters);
         $headers = [
-            'Nomor booking',
             'Nama customer',
-            'Nomor telepon',
             'Paket',
             'Jumlah hadir',
             'Vegetarian',
@@ -113,9 +110,7 @@ class AdminReportExportService
 
         foreach ($payload['rows'] as $item) {
             $sheet->fromArray([
-                $item['booking_number'],
                 $item['customer_name'],
-                $item['customer_phone'],
                 $item['package_name'],
                 $item['attendee_count'],
                 $item['vegetarian_quantity'],
@@ -161,14 +156,13 @@ class AdminReportExportService
 
         $row++;
         $sheet->fromArray([
-            ['Nomor booking', 'Tanggal booking', 'Tanggal setuju', 'Nama customer', 'Paket', 'Nominal', 'Nomor VA', 'Sumber', 'Agent'],
+            ['Tanggal booking', 'Tanggal setuju', 'Nama customer', 'Paket', 'Nominal', 'Nomor VA', 'Sumber', 'Agent'],
         ], null, 'A'.$row);
         $row++;
 
         foreach ($payload['rows'] as $item) {
             $sheet->fromArray([
                 [
-                    $item['booking_number'],
                     $item['booking_date'],
                     $item['approval_date'],
                     $item['customer_name'],
@@ -208,7 +202,7 @@ class AdminReportExportService
 
         $row++;
         $sheet->fromArray([
-            ['Nama agent', 'Nomor booking', 'Tanggal booking', 'Tanggal setuju', 'Nama customer', 'Paket', 'Jumlah hadir', 'Nominal'],
+            ['Nama agent', 'Tanggal booking', 'Tanggal setuju', 'Nama customer', 'Paket', 'Jumlah hadir', 'Nominal'],
         ], null, 'A'.$row);
         $row++;
 
@@ -217,7 +211,6 @@ class AdminReportExportService
                 $sheet->fromArray([
                     [
                         $group['display_name'],
-                        $booking['booking_number'],
                         $booking['booking_date'],
                         $booking['approval_date'],
                         $booking['customer_name'],
@@ -238,12 +231,9 @@ class AdminReportExportService
     {
         $payload = $this->reportService->customer($filters);
         $sheet->fromArray([[
-            'Nomor Booking',
             'Nomor Meja/Hio',
             'Tanggal Booking',
             'Nama Customer',
-            'Nomor Telepon',
-            'Email',
             'Paket',
             'Kertas Doa 1',
             'Kertas Doa 2',
@@ -253,19 +243,14 @@ class AdminReportExportService
 
         foreach ($payload['rows'] as $item) {
             $sheet->fromArray([[
-                $item['booking_number'],
                 $item['slot_number'] ?: '-',
                 $item['booking_date'] ?: '-',
                 $item['customer_name'],
-                $item['customer_phone'],
-                $item['customer_email'],
                 $item['package_name'],
                 $item['prayer_paper_1']['name'] ?: '-',
                 $item['prayer_paper_2']['name'] ?: '-',
                 $item['incense_paper']['name'] ?: '-',
             ]], null, 'A'.$row);
-            $sheet->setCellValueExplicit('A'.$row, $item['booking_number'], DataType::TYPE_STRING);
-            $sheet->setCellValueExplicit('E'.$row, $item['customer_phone'], DataType::TYPE_STRING);
             $row++;
         }
     }

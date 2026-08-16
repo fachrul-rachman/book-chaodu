@@ -16,7 +16,6 @@ use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
-use PhpOffice\PhpSpreadsheet\Cell\DataType;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 use Symfony\Component\HttpFoundation\StreamedResponse;
@@ -130,7 +129,6 @@ class DashboardController extends Controller
         $sheet = $spreadsheet->getActiveSheet();
         $sheet->setTitle('Data Printer');
         $sheet->fromArray([[
-            'Nomor Booking',
             'Nama Customer',
             'Nama Alm 1',
             'Nama Alm 2',
@@ -165,7 +163,6 @@ class DashboardController extends Controller
             $nameTwo = $names->get(1);
 
             $sheet->fromArray([[
-                $booking->booking_number,
                 $booking->customer_name,
                 $this->displayName($nameOne instanceof BookingName ? $nameOne : null),
                 $this->displayName($nameTwo instanceof BookingName ? $nameTwo : null),
@@ -175,10 +172,9 @@ class DashboardController extends Controller
                 (int) ($booking->meal?->vegetarian_quantity ?? 0),
                 (int) ($booking->meal?->non_vegetarian_quantity ?? 0),
             ]], null, 'A'.$row);
-            $sheet->setCellValueExplicit('A'.$row, $booking->booking_number, DataType::TYPE_STRING);
         }
 
-        foreach (range('A', 'I') as $column) {
+        foreach (range('A', 'H') as $column) {
             $sheet->getColumnDimension($column)->setAutoSize(true);
         }
 

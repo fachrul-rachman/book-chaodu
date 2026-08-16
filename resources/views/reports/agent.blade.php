@@ -48,7 +48,6 @@
         <thead>
             <tr>
                 <th>Nama agent</th>
-                <th>Nomor booking</th>
                 <th>Tanggal booking</th>
                 <th>Tanggal setuju</th>
                 <th>Nama customer</th>
@@ -62,7 +61,6 @@
                 @foreach (($group['bookings'] ?? []) as $booking)
                     <tr>
                         <td>{{ $group['display_name'] }}</td>
-                        <td>{{ $booking['booking_number'] }}</td>
                         <td>{{ $booking['booking_date'] ?: '-' }}</td>
                         <td>{{ $booking['approval_date'] ?: '-' }}</td>
                         <td>{{ $booking['customer_name'] }}</td>

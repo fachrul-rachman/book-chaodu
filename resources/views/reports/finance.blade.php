@@ -48,7 +48,6 @@
     <table>
         <thead>
             <tr>
-                <th>Nomor booking</th>
                 <th>Tanggal booking</th>
                 <th>Tanggal setuju</th>
                 <th>Nama customer</th>
@@ -62,7 +61,6 @@
         <tbody>
             @foreach (($payload['rows'] ?? []) as $row)
                 <tr>
-                    <td>{{ $row['booking_number'] }}</td>
                     <td>{{ $row['booking_date'] ?: '-' }}</td>
                     <td>{{ $row['approval_date'] ?: '-' }}</td>
                     <td>{{ $row['customer_name'] }}</td>

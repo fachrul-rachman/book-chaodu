@@ -561,7 +561,14 @@ export default function AdminReportsPage() {
                                             ].map((label) => (
                                                 <th
                                                     key={label}
-                                                    className="px-3 py-3 font-semibold"
+                                                    className={`px-3 py-3 font-semibold ${
+                                                        [
+                                                            'Nomor booking',
+                                                            'Nomor telepon',
+                                                        ].includes(label)
+                                                            ? 'print:hidden'
+                                                            : ''
+                                                    }`}
                                                 >
                                                     {label}
                                                 </th>
@@ -574,13 +581,13 @@ export default function AdminReportsPage() {
                                                 key={row.booking_number}
                                                 className="border-b border-slate-100 align-top"
                                             >
-                                                <td className="px-3 py-3">
+                                                <td className="px-3 py-3 print:hidden">
                                                     {row.booking_number}
                                                 </td>
                                                 <td className="px-3 py-3">
                                                     {row.customer_name}
                                                 </td>
-                                                <td className="px-3 py-3">
+                                                <td className="px-3 py-3 print:hidden">
                                                     {row.customer_phone}
                                                 </td>
                                                 <td className="px-3 py-3">
