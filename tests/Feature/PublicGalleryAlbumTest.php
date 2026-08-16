@@ -127,23 +127,55 @@ it('opens an approved album by exact booking number with global and owned media 
             ->where('bookingDetails.vegetarianQuantity', 4)
             ->where('bookingDetails.nonVegetarianQuantity', 0)
             ->has('media', 2)
-            ->where('media.0.id', $global->id)
-            ->where('media.0.scope', 'GLOBAL')
-            ->where('media.1.id', $owned->id)
-            ->where('media.1.scope', 'BOOKING')
+            ->where('media.0.id', $owned->id)
+            ->where('media.0.scope', 'BOOKING')
+            ->where('media.1.id', $global->id)
+            ->where('media.1.scope', 'GLOBAL')
             ->where('media.0.previewUrl', route('public.gallery.media.preview', [
                 'bookingNumber' => $booking->booking_number,
-                'media' => $global->id,
+                'media' => $owned->id,
             ]))
             ->where('media.0.viewerUrl', route('public.gallery.media.viewer', [
                 'bookingNumber' => $booking->booking_number,
-                'media' => $global->id,
+                'media' => $owned->id,
             ]))
             ->missing('album.customerName')
             ->missing('bookingDetails.customerPhone')
             ->missing('bookingDetails.customerEmail')
             ->missing('media.0.originalPath')
             ->missing('media.0.storageDisk'));
+});
+
+it('shows customer media before global media and orders each group by newest publication time', function () {
+    $booking = publicAlbumBooking();
+    $ownedOlder = publicAlbumMedia([
+        'scope' => GalleryMediaScope::Booking,
+        'booking_id' => $booking->id,
+        'sort_order' => 1,
+        'published_at' => now()->subHours(4),
+    ]);
+    $ownedNewer = publicAlbumMedia([
+        'scope' => GalleryMediaScope::Booking,
+        'booking_id' => $booking->id,
+        'sort_order' => 99,
+        'published_at' => now()->subHours(3),
+    ]);
+    $globalOlder = publicAlbumMedia([
+        'sort_order' => 1,
+        'published_at' => now()->subHours(2),
+    ]);
+    $globalNewer = publicAlbumMedia([
+        'sort_order' => 99,
+        'published_at' => now()->subHour(),
+    ]);
+
+    $this->get(route('public.gallery.show', ['bookingNumber' => $booking->booking_number]))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('media.0.id', $ownedNewer->id)
+            ->where('media.1.id', $ownedOlder->id)
+            ->where('media.2.id', $globalNewer->id)
+            ->where('media.3.id', $globalOlder->id));
 });
 
 it('serves a screen-sized image preview instead of the original in the viewer', function () {
