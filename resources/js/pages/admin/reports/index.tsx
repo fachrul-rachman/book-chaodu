@@ -4,7 +4,7 @@ import type { FormEvent } from 'react';
 import { formatCurrency } from '@/lib/booking';
 
 type Filters = {
-    tab: 'checkin' | 'finance' | 'agent' | 'customer';
+    tab: 'checkin' | 'finance' | 'agent' | 'customer' | 'after_event';
     date_field: 'booking' | 'approval';
     date_from: string | null;
     date_to: string | null;
@@ -116,6 +116,20 @@ type Props = {
         filter_lines: string[];
         pagination: PaginationMeta;
     };
+    after_event: {
+        rows: Array<{
+            booking_number: string;
+            customer_name: string;
+            customer_phone: string | null;
+            agent_name: string | null;
+            approval_date: string | null;
+            package_name: string;
+            table_number: string;
+            incense_number: string;
+        }>;
+        filter_lines: string[];
+        pagination: PaginationMeta;
+    };
     export_urls: Record<string, { xlsx: string; pdf: string }>;
 };
 
@@ -210,6 +224,7 @@ export default function AdminReportsPage() {
         finance,
         agent,
         customer,
+        after_event,
         export_urls,
     } = usePage<Props>().props;
     const [form, setForm] = useState({
@@ -1026,6 +1041,94 @@ export default function AdminReportsPage() {
                             )}
                             <ReportPagination
                                 pagination={customer.pagination}
+                                onPageChange={changePage}
+                            />
+                        </section>
+                    ) : null}
+
+                    {filters.tab === 'after_event' ? (
+                        <section className="rounded-[24px] border border-[var(--color-border)] bg-white p-4 shadow-sm sm:p-6">
+                            <div className="mb-6 flex flex-wrap gap-2 text-xs text-slate-600">
+                                {after_event.filter_lines.map((line) => (
+                                    <span
+                                        key={line}
+                                        className="rounded-full bg-slate-100 px-3 py-1"
+                                    >
+                                        {line}
+                                    </span>
+                                ))}
+                            </div>
+
+                            {after_event.rows.length > 0 ? (
+                                <div className="overflow-x-auto">
+                                    <table className="min-w-full border-collapse text-sm">
+                                        <thead>
+                                            <tr className="border-b border-slate-200 text-left text-slate-600">
+                                                {[
+                                                    'Kode booking',
+                                                    'Nama customer',
+                                                    'Nomor telepon',
+                                                    'Nama agent',
+                                                    'Tanggal disetujui',
+                                                    'Paket',
+                                                    'Nomor meja',
+                                                    'Nomor hio',
+                                                ].map((label) => (
+                                                    <th
+                                                        key={label}
+                                                        className="px-3 py-3 font-semibold whitespace-nowrap"
+                                                    >
+                                                        {label}
+                                                    </th>
+                                                ))}
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {after_event.rows.map((row) => (
+                                                <tr
+                                                    key={row.booking_number}
+                                                    className="border-b border-slate-100 align-top"
+                                                >
+                                                    <td className="px-3 py-3 font-medium whitespace-nowrap text-slate-900">
+                                                        {row.booking_number}
+                                                    </td>
+                                                    <td className="px-3 py-3">
+                                                        {row.customer_name}
+                                                    </td>
+                                                    <td className="px-3 py-3 whitespace-nowrap">
+                                                        {row.customer_phone ||
+                                                            '-'}
+                                                    </td>
+                                                    <td className="px-3 py-3">
+                                                        {row.agent_name || '-'}
+                                                    </td>
+                                                    <td className="px-3 py-3 whitespace-nowrap">
+                                                        {row.approval_date ||
+                                                            '-'}
+                                                    </td>
+                                                    <td className="px-3 py-3">
+                                                        {row.package_name}
+                                                    </td>
+                                                    <td className="px-3 py-3 whitespace-nowrap">
+                                                        {row.table_number ||
+                                                            '-'}
+                                                    </td>
+                                                    <td className="px-3 py-3 whitespace-nowrap">
+                                                        {row.incense_number ||
+                                                            '-'}
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            ) : (
+                                <p className="py-10 text-center text-sm text-slate-600">
+                                    Belum ada data after event yang sesuai.
+                                </p>
+                            )}
+                            <ReportPagination
+                                pagination={after_event.pagination}
                                 onPageChange={changePage}
                             />
                         </section>

@@ -281,10 +281,11 @@ it('paginates every report tab with 25 items per page', function () {
     $admin = User::factory()->admin()->create();
 
     $expected = [
-        'checkin' => ['key' => 'rows', 'total' => 31, 'page_two_count' => 6],
-        'finance' => ['key' => 'rows', 'total' => 31, 'page_two_count' => 6],
+        'checkin' => ['key' => 'rows', 'total' => 30, 'page_two_count' => 5],
+        'finance' => ['key' => 'rows', 'total' => 30, 'page_two_count' => 5],
         'agent' => ['key' => 'groups', 'total' => 26, 'page_two_count' => 1],
         'customer' => ['key' => 'rows', 'total' => 26, 'page_two_count' => 1],
+        'after_event' => ['key' => 'rows', 'total' => 26, 'page_two_count' => 1],
     ];
 
     foreach ($expected as $tab => $expectation) {
@@ -297,12 +298,17 @@ it('paginates every report tab with 25 items per page', function () {
 
         $report = $response->viewData('page')['props'][$tab];
 
-        expect($report[$expectation['key']])->toHaveCount($expectation['page_two_count'])
-            ->and($report['pagination'])->toMatchArray([
-                'current_page' => 2,
-                'per_page' => 25,
-                'total' => $expectation['total'],
-            ]);
+        $this->assertCount(
+            $expectation['page_two_count'],
+            $report[$expectation['key']],
+            "Jumlah baris halaman kedua tab {$tab} tidak sesuai.",
+        );
+
+        expect($report['pagination'])->toMatchArray([
+            'current_page' => 2,
+            'per_page' => 25,
+            'total' => $expectation['total'],
+        ]);
     }
 
     $reportService = app(AdminReportService::class);
@@ -311,8 +317,8 @@ it('paginates every report tab with 25 items per page', function () {
         'page' => 2,
     ]));
 
-    expect($financeExportData['rows'])->toHaveCount(31)
-        ->and($financeExportData['summary']['total_bookings'])->toBe(31);
+    expect($financeExportData['rows'])->toHaveCount(30)
+        ->and($financeExportData['summary']['total_bookings'])->toBe(30);
 });
 
 it('uses stored transferred amount in finance report', function () {

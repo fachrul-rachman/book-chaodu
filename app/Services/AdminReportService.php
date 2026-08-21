@@ -35,7 +35,7 @@ class AdminReportService
      */
     public function filters(array $input): array
     {
-        $tab = in_array($input['tab'] ?? null, ['checkin', 'finance', 'agent', 'customer'], true)
+        $tab = in_array($input['tab'] ?? null, ['checkin', 'finance', 'agent', 'customer', 'after_event'], true)
             ? (string) $input['tab']
             : 'checkin';
 
@@ -281,6 +281,33 @@ class AdminReportService
 
     /**
      * @param  array<string, mixed>  $filters
+     * @return array{
+     *     rows:array<int, array<string, mixed>>,
+     *     filter_lines:array<int, string>,
+     *     pagination:array<string, mixed>
+     * }
+     */
+    public function afterEvent(array $filters, bool $paginate = false): array
+    {
+        /** @var Collection<int, Booking> $bookings */
+        $bookings = $this->baseQuery($filters)->get();
+        $rows = $bookings
+            ->map(fn (Booking $booking): array => $this->afterEventRow($booking))
+            ->values()
+            ->all();
+
+        $this->sortCheckInRows($rows, (string) ($filters['sort'] ?? 'table_number'));
+        $paginated = $this->paginate($rows, $filters, $paginate);
+
+        return [
+            'rows' => $paginated['items'],
+            'pagination' => $paginated['pagination'],
+            'filter_lines' => $this->filterLines($filters),
+        ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $filters
      */
     /**
      * @param  array<string, mixed>  $filters
@@ -497,6 +524,29 @@ class AdminReportService
                 $incenseName,
                 $papers->get(PrayerPaperType::B->value.':1'),
             ),
+        ];
+    }
+
+    /** @return array<string, mixed> */
+    private function afterEventRow(Booking $booking): array
+    {
+        return [
+            'booking_number' => $booking->booking_number,
+            'customer_name' => $booking->customer_name,
+            'customer_phone' => $booking->customer_phone,
+            'agent_name' => $booking->agent_name,
+            'approval_date' => optional($booking->approved_at)->toDateString(),
+            'package_name' => $booking->package_name_snapshot,
+            'table_number' => $booking->tableSlots
+                ->sortBy('allocation_order')
+                ->pluck('code')
+                ->filter()
+                ->implode(', '),
+            'incense_number' => $booking->incenseSlots
+                ->sortBy('allocation_order')
+                ->pluck('number')
+                ->filter()
+                ->implode(', '),
         ];
     }
 
