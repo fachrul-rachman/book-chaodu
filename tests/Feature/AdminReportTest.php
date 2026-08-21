@@ -9,10 +9,12 @@ use App\Enums\PrayerPaperStatus;
 use App\Enums\PrayerPaperType;
 use App\Enums\SlotStatus;
 use App\Models\Booking;
+use App\Models\IncenseSlot;
 use App\Models\Package;
 use App\Models\TableSlot;
 use App\Models\User;
 use App\Services\AdminReportService;
+use PhpOffice\PhpSpreadsheet\IOFactory;
 
 beforeEach(function () {
     $this->seed();
@@ -390,4 +392,123 @@ it('can export printable check-in pdf', function () {
 
     $response->assertOk();
     $response->assertHeader('content-type', 'application/pdf');
+});
+
+it('shows the admin-only after event report with table and incense numbers separated', function () {
+    $approved = createApprovedReportBooking([
+        'booking_number' => 'CD-AFTER-EVENT-1',
+        'customer_name' => 'Budi Santoso',
+        'customer_phone' => '+6281234567890',
+        'referral_source' => 'AGENT',
+        'agent_name' => 'Agent Lestari',
+        'package_code_snapshot' => PackageCode::Combo->value,
+        'approved_at' => '2026-08-16 14:30:00',
+    ]);
+    createApprovedReportBooking([
+        'booking_number' => 'CD-AFTER-EVENT-PENDING',
+        'status' => BookingStatus::Pending,
+        'approved_at' => null,
+    ]);
+
+    TableSlot::query()->where('code', 'F18')->update([
+        'status' => SlotStatus::Assigned,
+        'booking_id' => $approved->id,
+    ]);
+    IncenseSlot::query()->where('number', 7)->update([
+        'status' => SlotStatus::Assigned,
+        'booking_id' => $approved->id,
+    ]);
+
+    $admin = User::factory()->admin()->create();
+    $response = $this->actingAs($admin)->get(route('admin.reports.index', [
+        'tab' => 'after_event',
+    ]));
+
+    $response->assertOk();
+    $props = $response->viewData('page')['props'];
+    expect($props)->toHaveKey('after_event');
+
+    $row = collect($props['after_event']['rows'])->firstWhere('booking_number', 'CD-AFTER-EVENT-1');
+
+    expect(array_column($props['tabs'], 'value'))->toContain('after_event')
+        ->and(collect($props['after_event']['rows'])->pluck('booking_number')->all())
+        ->toContain('CD-AFTER-EVENT-1')
+        ->not->toContain('CD-AFTER-EVENT-PENDING')
+        ->and($row)->toMatchArray([
+            'booking_number' => 'CD-AFTER-EVENT-1',
+            'customer_name' => 'Budi Santoso',
+            'customer_phone' => '+6281234567890',
+            'agent_name' => 'Agent Lestari',
+            'approval_date' => '2026-08-16',
+            'table_number' => 'F18',
+            'incense_number' => '7',
+        ])
+        ->and($row['package_name'])->not->toBeEmpty()
+        ->and($props['export_urls']['after_event']['xlsx'])->toBe(route('admin.reports.export', [
+            'tab' => 'after_event',
+            'format' => 'xlsx',
+        ]));
+});
+
+it('exports the after event report to Excel and PDF for admins only', function () {
+    $booking = createApprovedReportBooking([
+        'booking_number' => 'CD-AFTER-EXPORT',
+        'customer_name' => 'Customer Export',
+        'customer_phone' => '+628111222333',
+        'referral_source' => 'WEBSITE',
+        'agent_name' => null,
+        'approved_at' => '2026-08-16 09:00:00',
+    ]);
+    TableSlot::query()->where('code', 'F18')->update([
+        'status' => SlotStatus::Assigned,
+        'booking_id' => $booking->id,
+    ]);
+
+    $admin = User::factory()->admin()->create();
+    $xlsxResponse = $this->actingAs($admin)->get(route('admin.reports.export', [
+        'tab' => 'after_event',
+        'format' => 'xlsx',
+    ]));
+
+    $xlsxResponse->assertOk()->assertHeader(
+        'content-type',
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    );
+    $temporaryFile = tempnam(sys_get_temp_dir(), 'after-event-report-');
+    file_put_contents($temporaryFile, $xlsxResponse->streamedContent());
+    $sheet = IOFactory::load($temporaryFile)->getActiveSheet();
+
+    expect($sheet->rangeToArray('A7:H7')[0])->toBe([
+        'Kode booking',
+        'Nama customer',
+        'Nomor telepon',
+        'Nama agent',
+        'Tanggal disetujui',
+        'Paket',
+        'Nomor meja',
+        'Nomor hio',
+    ])->and($sheet->rangeToArray('A8:H8')[0])->toBe([
+        'CD-AFTER-EXPORT',
+        'Customer Export',
+        '+628111222333',
+        '-',
+        '2026-08-16',
+        $booking->package_name_snapshot,
+        'F18',
+        '-',
+    ]);
+    unlink($temporaryFile);
+
+    $this->actingAs($admin)->get(route('admin.reports.export', [
+        'tab' => 'after_event',
+        'format' => 'pdf',
+    ]))->assertOk()->assertHeader('content-type', 'application/pdf');
+
+    $checker = User::factory()->checker()->create();
+    $this->actingAs($checker)->get(route('admin.reports.index', ['tab' => 'after_event']))
+        ->assertForbidden();
+    $this->actingAs($checker)->get(route('admin.reports.export', [
+        'tab' => 'after_event',
+        'format' => 'xlsx',
+    ]))->assertForbidden();
 });
